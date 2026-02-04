@@ -10,11 +10,9 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 
 export default function SignupScreen() {
-  const router = useRouter();
   const { signUp, loading, error } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,8 +36,7 @@ export default function SignupScreen() {
 
     try {
       await signUp(email, password);
-      Alert.alert('Success', 'Account created! Please check your email to verify.');
-      router.replace('/(auth)/login');
+      Alert.alert('Success', 'Account created! You can now log in.');
     } catch (err: any) {
       Alert.alert('Signup Failed', err.message || 'An error occurred');
     }
@@ -103,9 +100,7 @@ export default function SignupScreen() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-            <Text style={styles.link}>Sign in</Text>
-          </TouchableOpacity>
+          <Text style={styles.link}>Sign in (use login screen)</Text>
         </View>
       </View>
     </KeyboardAvoidingView>
