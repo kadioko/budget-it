@@ -44,7 +44,7 @@ export default function App() {
     );
   }
 
-  return <DebugSupabase />;
+  return <DashboardWeb />;
 }
 
 const styles = StyleSheet.create({
