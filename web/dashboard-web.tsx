@@ -24,6 +24,11 @@ export default function DashboardWeb() {
     );
   }
 
+  if (currentView === 'settings') {
+    console.log('Rendering SettingsWeb component');
+    return <SettingsWeb onBack={() => setCurrentView('dashboard')} />;
+  }
+
   if (!budget) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f5f5f5' }}>
