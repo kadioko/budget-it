@@ -22,12 +22,13 @@ export default function DashboardScreen() {
       fetchBudget(user.id);
       fetchTransactions(user.id);
     }
-  }, [user]);
+  }, [user, fetchBudget, fetchTransactions]);
 
   if (loading) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#3498db" />
+        <Text style={{ marginTop: 16 }}>Loading...</Text>
       </View>
     );
   }
