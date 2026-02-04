@@ -33,10 +33,7 @@ export default function DashboardWeb() {
             Let's set up your daily and monthly spending targets to get started.
           </p>
           <button
-            onClick={() => {
-              setShowToast(true);
-              setTimeout(() => setShowToast(false), 3000);
-            }}
+            onClick={() => setCurrentView('settings')}
             style={{
               backgroundColor: '#3498db',
               color: '#fff',
@@ -53,20 +50,6 @@ export default function DashboardWeb() {
           >
             Set Up Budget
           </button>
-          {showToast && (
-            <div style={{
-              marginTop: '16px',
-              padding: '12px 16px',
-              backgroundColor: '#2c3e50',
-              color: '#fff',
-              borderRadius: '8px',
-              fontSize: '14px',
-              textAlign: 'center',
-              animation: 'fadeIn 0.3s ease-in'
-            }}>
-              Go to Settings to set up your budget targets
-            </div>
-          )}
         </div>
       </div>
     );
