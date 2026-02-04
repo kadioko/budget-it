@@ -78,16 +78,28 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   checkAuth: async () => {
     set({ loading: true });
+    
+    // Add timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      console.log('Auth check timeout - forcing loading to false');
+      set({ loading: false, user: null });
+    }, 5000);
+    
     try {
       const { data } = await supabase.auth.getSession();
+      clearTimeout(timeout);
+      
       if (data.session?.user) {
         set({ user: data.session.user });
       } else {
         set({ user: null });
       }
     } catch (err: any) {
-      set({ error: err.message });
+      clearTimeout(timeout);
+      console.error('Auth check error:', err);
+      set({ error: err.message, user: null });
     } finally {
+      clearTimeout(timeout);
       set({ loading: false });
     }
   },
