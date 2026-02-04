@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
 
 export default function DashboardWeb() {
   const { user } = useAuthStore();
   const { budget, stats, loading, fetchBudget, fetchTransactions } = useBudgetStore();
+  const [showToast, setShowToast] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -30,7 +31,10 @@ export default function DashboardWeb() {
             Let's set up your daily and monthly spending targets to get started.
           </p>
           <button
-            onClick={() => alert('Budget Setup: Please go to Settings to set up your budget targets.')}
+            onClick={() => {
+              setShowToast(true);
+              setTimeout(() => setShowToast(false), 3000);
+            }}
             style={{
               backgroundColor: '#3498db',
               color: '#fff',
@@ -47,6 +51,20 @@ export default function DashboardWeb() {
           >
             Set Up Budget
           </button>
+          {showToast && (
+            <div style={{
+              marginTop: '16px',
+              padding: '12px 16px',
+              backgroundColor: '#2c3e50',
+              color: '#fff',
+              borderRadius: '8px',
+              fontSize: '14px',
+              textAlign: 'center',
+              animation: 'fadeIn 0.3s ease-in'
+            }}>
+              Go to Settings to set up your budget targets
+            </div>
+          )}
         </div>
       </div>
     );
@@ -98,7 +116,12 @@ export default function DashboardWeb() {
   const monthlyMsg = getMonthlyMessage();
 
   return (
-    <div style={{ backgroundColor: '#f5f5f5', minHeight: '100vh', padding: '16px' }}>
+    <div style={{ 
+      backgroundColor: '#f5f5f5', 
+      minHeight: '100vh', 
+      padding: '16px',
+      scrollbarGutter: 'stable' // Prevent layout shift from scrollbar
+    }}>
       <div style={{ maxWidth: '600px', margin: '0 auto' }}>
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
           <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>Today's Spending</h2>
