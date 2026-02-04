@@ -1,3 +1,4 @@
-import RootLayout from './app/_layout';
+import { registerRootComponent } from 'expo';
+import App from './app/_layout';
 
-export default RootLayout;
+registerRootComponent(App);
