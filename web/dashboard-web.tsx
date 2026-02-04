@@ -122,41 +122,50 @@ export default function DashboardWeb() {
   }
 
   return (
-    <div style={{ 
-      backgroundColor: '#f5f5f5', 
-      minHeight: '100vh', 
-      padding: '16px',
-      scrollbarGutter: 'stable' // Prevent layout shift from scrollbar
-    }}>
-      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          marginBottom: '16px' 
-        }}>
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#2c3e50', margin: 0 }}>
-            Budget It
-          </h1>
-          <button
-            onClick={() => setCurrentView('settings')}
-            style={{
-              backgroundColor: '#3498db',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '8px 16px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'opacity 0.2s'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-          >
-            Settings
-          </button>
-        </div>
+    <>
+      <style>{`
+        html, body {
+          scrollbar-gutter: stable;
+          overflow-y: scroll;
+        }
+      `}</style>
+      <div style={{ 
+        backgroundColor: '#f5f5f5', 
+        minHeight: '100vh', 
+        padding: '16px',
+      }}>
+        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            marginBottom: '24px',
+            gap: '12px'
+          }}>
+            <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#2c3e50', margin: 0, flex: 1 }}>
+              Budget It
+            </h1>
+            <button
+              onClick={() => setCurrentView('settings')}
+              style={{
+                backgroundColor: '#3498db',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '10px 20px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'opacity 0.2s',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+            >
+              ⚙️ Settings
+            </button>
+          </div>
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
           <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>Today's Spending</h2>
           <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#2c3e50', marginBottom: '4px' }}>
@@ -226,5 +235,6 @@ export default function DashboardWeb() {
         </div>
       </div>
     </div>
+    </>
   );
 }

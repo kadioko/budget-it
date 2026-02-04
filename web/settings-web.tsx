@@ -78,12 +78,18 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div style={{ 
-      backgroundColor: '#f5f5f5', 
-      minHeight: '100vh', 
-      padding: '16px',
-      scrollbarGutter: 'stable'
-    }}>
+    <>
+      <style>{`
+        html, body {
+          scrollbar-gutter: stable;
+          overflow-y: scroll;
+        }
+      `}</style>
+      <div style={{ 
+        backgroundColor: '#f5f5f5', 
+        minHeight: '100vh', 
+        padding: '16px',
+      }}>
       <div style={{ maxWidth: '600px', margin: '0 auto' }}>
         <div style={{ 
           display: 'flex', 
@@ -291,5 +297,6 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
