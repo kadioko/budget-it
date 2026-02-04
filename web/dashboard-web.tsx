@@ -4,6 +4,7 @@ import { useBudgetStore } from '../src/store/budget';
 import SettingsWeb from './settings-web';
 import AddTransactionWeb from './add-transaction-web';
 import TransactionsWeb from './transactions-web';
+import AnalyticsWeb from './analytics-web';
 
 // Format currency with commas
 const formatCurrency = (amount: number, currency: string) => {
@@ -55,7 +56,7 @@ export default function DashboardWeb() {
   const { user } = useAuthStore();
   const { budget, stats, loading, fetchBudget, fetchTransactions } = useBudgetStore();
   const [showToast, setShowToast] = useState(false);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'settings' | 'add-transaction' | 'transactions'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'settings' | 'add-transaction' | 'transactions' | 'analytics'>('dashboard');
 
   useEffect(() => {
     if (user) {
@@ -165,6 +166,10 @@ export default function DashboardWeb() {
     return <TransactionsWeb onBack={() => setCurrentView('dashboard')} />;
   }
 
+  if (currentView === 'analytics') {
+    return <AnalyticsWeb onBack={() => setCurrentView('dashboard')} />;
+  }
+
   return (
     <>
       <style>{`
@@ -239,6 +244,25 @@ export default function DashboardWeb() {
                 onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
               >
                 📊 View History
+              </button>
+              <button
+                onClick={() => setCurrentView('analytics')}
+                style={{
+                  backgroundColor: '#e67e22',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '10px 20px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'opacity 0.2s',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+              >
+                📈 Analytics
               </button>
               <button
                 onClick={() => setCurrentView('settings')}

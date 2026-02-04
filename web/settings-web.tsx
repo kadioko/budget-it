@@ -29,6 +29,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
     budget?.month_start_day.toString() || '1'
   );
   const [bankBalance, setBankBalance] = useState('0');
+  const [showRecurring, setShowRecurring] = useState(false);
 
   useEffect(() => {
     if (budget) {
@@ -338,6 +339,82 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
           >
             Set Bank Balance
           </button>
+        </div>
+
+        {/* Recurring Transactions Section */}
+        <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#2c3e50' }}>
+              🔄 Recurring Transactions
+            </h2>
+            <button
+              onClick={() => setShowRecurring(!showRecurring)}
+              style={{
+                backgroundColor: '#e67e22',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '8px 16px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'opacity 0.2s'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+            >
+              {showRecurring ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          
+          {showRecurring && (
+            <div>
+              <div style={{ fontSize: '14px', color: '#7f8c8d', marginBottom: '16px' }}>
+                Set up recurring transactions like salary, rent, subscriptions, etc. (Coming soon!)
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                <div style={{ backgroundColor: '#f8f9fa', borderRadius: '8px', padding: '16px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>💰</div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#2c3e50' }}>Monthly Salary</div>
+                  <div style={{ fontSize: '12px', color: '#95a5a6' }}>Auto-add income</div>
+                </div>
+                
+                <div style={{ backgroundColor: '#f8f9fa', borderRadius: '8px', padding: '16px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>🏠</div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#2c3e50' }}>Monthly Rent</div>
+                  <div style={{ fontSize: '12px', color: '#95a5a6' }}>Auto-deduct expense</div>
+                </div>
+                
+                <div style={{ backgroundColor: '#f8f9fa', borderRadius: '8px', padding: '16px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>📱</div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#2c3e50' }}>Subscriptions</div>
+                  <div style={{ fontSize: '12px', color: '#95a5a6' }}>Track monthly bills</div>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => alert('Recurring transactions feature coming soon!')}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  backgroundColor: '#95a5a6',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  marginTop: '16px',
+                  transition: 'opacity 0.2s'
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+              >
+                Coming Soon - Set Up Recurring Transactions
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Account Section */}
