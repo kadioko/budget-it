@@ -200,7 +200,7 @@ export default function DashboardWeb() {
               <button
                 onClick={() => setCurrentView('add-transaction')}
                 style={{
-                  backgroundColor: '#27ae60',
+                  backgroundColor: '#3498db',
                   color: '#fff',
                   border: 'none',
                   borderRadius: '8px',
@@ -214,12 +214,12 @@ export default function DashboardWeb() {
                 onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
                 onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
               >
-                + Add Expense
+                + Add Transaction
               </button>
               <button
                 onClick={() => setCurrentView('settings')}
                 style={{
-                  backgroundColor: '#3498db',
+                  backgroundColor: '#7f8c8d',
                   color: '#fff',
                   border: 'none',
                   borderRadius: '8px',
