@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
 
-const CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Other'];
+const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Other'];
+const INCOME_CATEGORIES = ['Salary', 'Business', 'Investment', 'Gift', 'Other'];
 
 export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
   const { user } = useAuthStore();
@@ -13,6 +14,7 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
+  const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,9 +31,12 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
     }
 
     try {
+      // For income, we store as negative amount to increase balance
+      const transactionAmount = transactionType === 'income' ? -Math.abs(parseFloat(amount)) : parseFloat(amount);
+      
       await addTransaction(
         user.id,
-        parseFloat(amount),
+        transactionAmount,
         category,
         date,
         note || undefined
@@ -43,12 +48,30 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      backgroundColor: '#f5f5f5', 
-      padding: '20px',
-      boxSizing: 'border-box'
-    }}>
+    <>
+      <style>{`
+        html, body {
+          scrollbar-gutter: stable;
+          overflow-y: scroll;
+          margin: 0;
+          padding: 0;
+          width: 100%;
+        }
+        * {
+          box-sizing: border-box;
+        }
+      `}</style>
+      <div style={{ 
+        minHeight: '100vh', 
+        backgroundColor: '#f5f5f5', 
+        padding: '20px',
+        boxSizing: 'border-box',
+        width: '100%',
+        maxWidth: '100vw',
+        margin: '0',
+        left: '0',
+        right: '0'
+      }}>
       <div style={{ maxWidth: '600px', margin: '0 auto' }}>
         <div style={{ 
           display: 'flex', 
@@ -70,12 +93,56 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
             ← Back
           </button>
           <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#2c3e50', margin: 0 }}>
-            Add Expense
+            Add {transactionType === 'income' ? 'Income' : 'Expense'}
           </h1>
         </div>
 
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
           <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#2c3e50', marginBottom: '8px' }}>
+                Transaction Type
+              </label>
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+                <button
+                  type="button"
+                  onClick={() => setTransactionType('expense')}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: transactionType === 'expense' ? '#e74c3c' : '#fff',
+                    color: transactionType === 'expense' ? '#fff' : '#e74c3c',
+                    border: '2px solid #e74c3c',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  💸 Expense
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTransactionType('income')}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: transactionType === 'income' ? '#27ae60' : '#fff',
+                    color: transactionType === 'income' ? '#fff' : '#27ae60',
+                    border: '2px solid #27ae60',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  💰 Income
+                </button>
+              </div>
+            </div>
+
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#2c3e50', marginBottom: '8px' }}>
                 Amount
@@ -114,7 +181,7 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
                   backgroundColor: '#fff',
                 }}
               >
-                {CATEGORIES.map((cat) => (
+                {(transactionType === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map((cat: string) => (
                   <option key={cat} value={cat}>
                     {cat}
                   </option>
@@ -182,7 +249,7 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
               style={{
                 width: '100%',
                 padding: '14px',
-                backgroundColor: loading ? '#95a5a6' : '#27ae60',
+                backgroundColor: loading ? '#95a5a6' : (transactionType === 'income' ? '#27ae60' : '#e74c3c'),
                 color: '#fff',
                 border: 'none',
                 borderRadius: '8px',
@@ -194,11 +261,12 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
               onMouseEnter={(e) => !loading && (e.currentTarget.style.opacity = '0.9')}
               onMouseLeave={(e) => !loading && (e.currentTarget.style.opacity = '1')}
             >
-              {loading ? 'Adding...' : 'Add Expense'}
+              {loading ? 'Adding...' : `Add ${transactionType === 'income' ? 'Income' : 'Expense'}`}
             </button>
           </form>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

@@ -93,12 +93,24 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
         html, body {
           scrollbar-gutter: stable;
           overflow-y: scroll;
+          margin: 0;
+          padding: 0;
+          width: 100%;
+        }
+        * {
+          box-sizing: border-box;
         }
       `}</style>
       <div style={{ 
-        backgroundColor: '#f5f5f5', 
         minHeight: '100vh', 
-        padding: '16px',
+        backgroundColor: '#f5f5f5', 
+        padding: '20px',
+        boxSizing: 'border-box',
+        width: '100%',
+        maxWidth: '100vw',
+        margin: '0',
+        left: '0',
+        right: '0'
       }}>
       <div style={{ maxWidth: '600px', margin: '0 auto' }}>
         <div style={{ 

@@ -28,6 +28,28 @@ const formatCurrency = (amount: number, currency: string) => {
   }).format(amount);
 };
 
+// Calculate days until end of month
+const getDaysUntilEndOfMonth = () => {
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
+  const daysUntilEnd = lastDayOfMonth.getDate() - now.getDate();
+  return daysUntilEnd;
+};
+
+// Get current date info
+const getDateInfo = () => {
+  const now = new Date();
+  const options: Intl.DateTimeFormatOptions = { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  };
+  return now.toLocaleDateString('en-US', options);
+};
+
 export default function DashboardWeb() {
   const { user } = useAuthStore();
   const { budget, stats, loading, fetchBudget, fetchTransactions } = useBudgetStore();
@@ -216,18 +238,34 @@ export default function DashboardWeb() {
             </div>
           </div>
         
+        {/* Calendar & Date Info Card */}
+        <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+          <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>📅 Date & Time</h2>
+          <div style={{ fontSize: '16px', fontWeight: '600', color: '#2c3e50', marginBottom: '8px' }}>
+            {getDateInfo()}
+          </div>
+          <div style={{ fontSize: '14px', color: '#7f8c8d', marginBottom: '12px' }}>
+            {getDaysUntilEndOfMonth()} days until end of month
+          </div>
+          <div style={{ backgroundColor: '#e8f4fd', borderRadius: '6px', padding: '8px 12px', textAlign: 'center' }}>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: '#3498db' }}>
+              Track your spending daily!
+            </div>
+          </div>
+        </div>
+
         {/* Bank Account Balance Card */}
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-          <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>Bank Account Balance</h2>
+          <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>💰 Bank Account Balance</h2>
           <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#2c3e50', marginBottom: '4px' }}>
-            {formatCurrency(100000, budget.currency)}
+            {formatCurrency(0, budget.currency)}
           </div>
           <div style={{ fontSize: '12px', color: '#95a5a6', marginBottom: '12px' }}>
-            Available balance
+            Starting balance (add income to update)
           </div>
-          <div style={{ backgroundColor: '#e8f5e8', borderRadius: '6px', padding: '8px 12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '12px', fontWeight: '600', color: '#27ae60' }}>
-              Healthy balance
+          <div style={{ backgroundColor: '#fff3cd', borderRadius: '6px', padding: '8px 12px', textAlign: 'center' }}>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: '#856404' }}>
+              Add income to set your balance
             </div>
           </div>
         </div>
