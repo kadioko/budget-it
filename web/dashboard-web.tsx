@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
 import SettingsWeb from './settings-web';
@@ -64,7 +64,7 @@ export default function DashboardWeb() {
       fetchBudget(user.id);
       fetchTransactions(user.id);
     }
-  }, [user]);
+  }, [user, fetchBudget, fetchTransactions]);
 
   if (loading) {
     return (
@@ -152,28 +152,19 @@ export default function DashboardWeb() {
     };
   };
 
-  // Calculate running balance from transactions + bank balance
-  const calculateRunningBalance = () => {
+  // Calculate running balance from transactions + bank balance (optimized with useMemo)
+  const runningBalance = useMemo(() => {
     // Start with bank balance (default to 0 if not set)
     let balance = budget?.bank_balance || 0;
-    
-    // Debug logging
-    console.log('Bank balance:', budget?.bank_balance);
-    console.log('Transactions:', transactions);
     
     // Add/subtract transactions
     const sortedTransactions = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     sortedTransactions.forEach(t => {
-      console.log(`Transaction: ${t.category}, amount: ${t.amount}, type: ${t.amount < 0 ? 'income' : 'expense'}`);
       balance -= t.amount; // Subtract because expenses are positive, income is negative
-      console.log('Running balance after this transaction:', balance);
     });
     
-    console.log('Final running balance:', balance);
     return balance;
-  };
-
-  const runningBalance = calculateRunningBalance();
+  }, [budget?.bank_balance, transactions]);
   const dailyMsg = getDailyMessage();
   const monthlyMsg = getMonthlyMessage();
 
