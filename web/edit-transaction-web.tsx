@@ -5,6 +5,27 @@ import { useBudgetStore } from '../src/store/budget';
 const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Other'];
 const INCOME_CATEGORIES = ['Salary', 'Business', 'Investment', 'Gift', 'Other'];
 
+// Format currency with commas
+const formatCurrency = (amount: number, currency: string) => {
+  if (isNaN(amount) || amount === null || amount === undefined) {
+    amount = 0;
+  }
+  
+  if (currency === 'TZS') {
+    return amount.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }) + ' TZS';
+  }
+  
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
+
 interface EditTransactionWebProps {
   transactionId: string;
   onBack: () => void;
@@ -83,6 +104,11 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
         date,
         note || undefined
       );
+      
+      // Show success message
+      const transactionTypeText = transactionType === 'income' ? 'Income' : 'Expense';
+      alert(`${transactionTypeText} of ${formatCurrency(Math.abs(parseFloat(amount)), 'TZS')} successfully updated!`);
+      
       onSave(); // Refresh the transactions list
       onBack(); // Go back to history
     } catch (err: any) {

@@ -54,8 +54,9 @@ const getDateInfo = () => {
 
 export default function DashboardWeb() {
   const { user } = useAuthStore();
-  const { budget, stats, loading, fetchBudget, fetchTransactions } = useBudgetStore();
+  const { budget, stats, transactions, loading, fetchBudget, fetchTransactions } = useBudgetStore();
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
   const [currentView, setCurrentView] = useState<'dashboard' | 'settings' | 'add-transaction' | 'transactions' | 'analytics'>('dashboard');
 
   useEffect(() => {
@@ -151,6 +152,19 @@ export default function DashboardWeb() {
     };
   };
 
+  // Calculate running balance from transactions
+  const calculateRunningBalance = () => {
+    if (!transactions.length) return 0;
+    
+    let balance = 0;
+    const sortedTransactions = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    sortedTransactions.forEach(t => {
+      balance -= t.amount; // Subtract because expenses are positive, income is negative
+    });
+    return balance;
+  };
+
+  const runningBalance = calculateRunningBalance();
   const dailyMsg = getDailyMessage();
   const monthlyMsg = getMonthlyMessage();
 
@@ -311,17 +325,19 @@ export default function DashboardWeb() {
         {/* Bank Account Balance Card */}
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
           <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>💰 Bank Account Balance</h2>
-          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#2c3e50', marginBottom: '4px' }}>
-            {formatCurrency(0, budget.currency)}
+          <div style={{ fontSize: '28px', fontWeight: 'bold', color: runningBalance >= 0 ? '#27ae60' : '#e74c3c', marginBottom: '4px' }}>
+            {formatCurrency(Math.abs(runningBalance), budget?.currency || 'TZS')}
           </div>
           <div style={{ fontSize: '12px', color: '#95a5a6', marginBottom: '12px' }}>
-            Starting balance (add income to update)
+            {runningBalance >= 0 ? 'Positive balance' : 'Negative balance'}
           </div>
-          <div style={{ backgroundColor: '#fff3cd', borderRadius: '6px', padding: '8px 12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '12px', fontWeight: '600', color: '#856404' }}>
-              Add income to set your balance
+          {transactions.length === 0 && (
+            <div style={{ backgroundColor: '#fff3cd', borderRadius: '6px', padding: '8px 12px', textAlign: 'center' }}>
+              <div style={{ fontSize: '12px', fontWeight: '600', color: '#856404' }}>
+                Add transactions to see your balance
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>

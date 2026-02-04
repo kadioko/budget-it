@@ -5,6 +5,27 @@ import { useBudgetStore } from '../src/store/budget';
 const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Other'];
 const INCOME_CATEGORIES = ['Salary', 'Business', 'Investment', 'Gift', 'Other'];
 
+// Format currency with commas
+const formatCurrency = (amount: number, currency: string) => {
+  if (isNaN(amount) || amount === null || amount === undefined) {
+    amount = 0;
+  }
+  
+  if (currency === 'TZS') {
+    return amount.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }) + ' TZS';
+  }
+  
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
+
 export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
   const { user } = useAuthStore();
   const { addTransaction, loading } = useBudgetStore();
@@ -70,6 +91,12 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
         date,
         note || undefined
       );
+      
+      // Show success message
+      const transactionTypeText = transactionType === 'income' ? 'Income' : 'Expense';
+      const actionText = transactionType === 'income' ? 'added to' : 'deducted from';
+      alert(`${transactionTypeText} of ${formatCurrency(Math.abs(parseFloat(amount)), 'TZS')} successfully ${actionText} your balance!`);
+      
       onBack(); // Go back to dashboard
     } catch (err: any) {
       setError(err.message || 'Failed to add transaction');
