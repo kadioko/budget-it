@@ -6,15 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useAuthStore } from '@/store/auth';
 import { useBudgetStore } from '@/store/budget';
 
-interface DashboardScreenProps {
-  onNavigate?: (screen: string) => void;
-}
-
-export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
+export default function DashboardScreen() {
   const { user } = useAuthStore();
   const { budget, stats, loading, fetchBudget, fetchTransactions } =
     useBudgetStore();
@@ -44,7 +41,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
           </Text>
           <TouchableOpacity
             style={styles.setupButton}
-            onPress={() => onNavigate?.('settings')}
+            onPress={() => Alert.alert('Budget Setup', 'Please go to Settings to set up your budget targets.')}
           >
             <Text style={styles.setupButtonText}>Set Up Budget</Text>
           </TouchableOpacity>

@@ -4,16 +4,11 @@ import { useAuthStore } from './src/store/auth';
 import LoginScreen from './app/(auth)/login';
 import SignupScreen from './app/(auth)/signup';
 import DashboardScreen from './app/(app)/dashboard';
-import SettingsScreen from './app/(app)/settings';
-import AddTransactionScreen from './app/(app)/add-transaction';
-import TransactionsScreen from './app/(app)/transactions';
-
-type AppScreen = 'login' | 'signup' | 'dashboard' | 'settings' | 'add-transaction' | 'transactions';
 
 export default function App() {
-  const { user, loading, checkAuth, signOut } = useAuthStore();
+  const { user, loading, checkAuth } = useAuthStore();
   const [mounted, setMounted] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState<AppScreen>('login');
+  const [currentScreen, setCurrentScreen] = useState<'login' | 'signup'>('login');
 
   useEffect(() => {
     checkAuth();
@@ -28,15 +23,6 @@ export default function App() {
       </View>
     );
   }
-
-  const handleNavigate = (screen: AppScreen) => {
-    setCurrentScreen(screen);
-  };
-
-  const handleLogout = async () => {
-    await signOut();
-    setCurrentScreen('login');
-  };
 
   if (!user) {
     return (
@@ -57,20 +43,7 @@ export default function App() {
     );
   }
 
-  return (
-    <View style={styles.container}>
-      {currentScreen === 'dashboard' && <DashboardScreen onNavigate={handleNavigate} />}
-      {currentScreen === 'settings' && <SettingsScreen onNavigate={handleNavigate} onLogout={handleLogout} />}
-      {currentScreen === 'add-transaction' && <AddTransactionScreen onNavigate={handleNavigate} />}
-      {currentScreen === 'transactions' && <TransactionsScreen onNavigate={handleNavigate} />}
-      
-      {currentScreen !== 'dashboard' && user && (
-        <TouchableOpacity style={styles.backButton} onPress={() => handleNavigate('dashboard')}>
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
+  return <DashboardScreen />;
 }
 
 const styles = StyleSheet.create({

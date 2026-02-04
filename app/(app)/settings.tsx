@@ -86,7 +86,7 @@ export default function SettingsScreen({ onNavigate, onLogout }: SettingsScreenP
         onPress: async () => {
           try {
             await signOut();
-            router.replace('/(auth)/login');
+            onLogout?.();
           } catch (err: any) {
             Alert.alert('Error', err.message || 'Failed to sign out');
           }
