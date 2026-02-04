@@ -5,6 +5,20 @@ import SettingsWeb from './settings-web';
 
 // Format currency with commas
 const formatCurrency = (amount: number, currency: string) => {
+  // Handle NaN or invalid numbers
+  if (isNaN(amount) || amount === null || amount === undefined) {
+    amount = 0;
+  }
+  
+  // For TZS, format without currency symbol (we'll add it manually)
+  if (currency === 'TZS') {
+    return amount.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }) + ' TZS';
+  }
+  
+  // For other currencies, use standard formatting
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,
@@ -48,12 +62,7 @@ export default function DashboardWeb() {
             Let's set up your daily and monthly spending targets to get started.
           </p>
           <button
-            onClick={() => {
-              console.log('Set Up Budget button clicked!');
-              console.log('Current view before:', currentView);
-              setCurrentView('settings');
-              console.log('Setting view to settings');
-            }}
+            onClick={() => setCurrentView('settings')}
             style={{
               backgroundColor: '#3498db',
               color: '#fff',
@@ -147,15 +156,10 @@ export default function DashboardWeb() {
             gap: '12px'
           }}>
             <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#2c3e50', margin: 0, flex: 1 }}>
-              Budget It ({currentView})
+              Budget It
             </h1>
             <button
-            onClick={() => {
-              console.log('Settings button clicked!');
-              console.log('Current view before:', currentView);
-              setCurrentView('settings');
-              console.log('Setting view to settings');
-            }}
+            onClick={() => setCurrentView('settings')}
             style={{
               backgroundColor: '#3498db',
               color: '#fff',
