@@ -54,6 +54,7 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
   fetchBudget: async (userId: string) => {
     set({ loading: true, error: null });
     try {
+      console.log('Fetching budget for user:', userId);
       const { data, error } = await supabase
         .from('budgets')
         .select('*')
@@ -61,8 +62,11 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
         .maybeSingle();
 
       if (error) throw error;
+      console.log('Budget fetched:', data);
       set({ budget: data || null });
+      get().calculateStats();
     } catch (err: any) {
+      console.error('Error fetching budget:', err);
       set({ error: err.message });
     } finally {
       set({ loading: false });
@@ -72,6 +76,7 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
   fetchTransactions: async (userId: string) => {
     set({ loading: true, error: null });
     try {
+      console.log('Fetching transactions for user:', userId);
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
@@ -79,9 +84,11 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
         .order('date', { ascending: false });
 
       if (error) throw error;
+      console.log('Transactions fetched:', data?.length || 0);
       set({ transactions: data || [] });
       get().calculateStats();
     } catch (err: any) {
+      console.error('Error fetching transactions:', err);
       set({ error: err.message });
     } finally {
       set({ loading: false });
@@ -268,12 +275,23 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
   },
 
   calculateStats: () => {
-    const { budget, transactions } = get();
-    if (!budget) {
-      set({ stats: null });
-      return;
+    try {
+      const { budget, transactions } = get();
+      console.log('calculateStats called with budget:', budget, 'transactions:', transactions.length);
+      
+      if (!budget) {
+        console.log('No budget, setting stats to null');
+        set({ stats: null });
+        return;
+      }
+      
+      console.log('Calculating stats...');
+      const stats = calculateBudgetStats(transactions, budget, new Date());
+      console.log('Stats calculated:', stats);
+      set({ stats });
+    } catch (error) {
+      console.error('Error calculating stats:', error);
+      set({ stats: null, error: 'Failed to calculate stats' });
     }
-    const stats = calculateBudgetStats(transactions, budget, new Date());
-    set({ stats });
   },
 }));
