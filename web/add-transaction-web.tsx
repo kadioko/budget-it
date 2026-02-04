@@ -84,6 +84,14 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
       // For income, we store as negative amount to increase balance
       const transactionAmount = transactionType === 'income' ? -Math.abs(parseFloat(amount)) : parseFloat(amount);
       
+      console.log('Adding transaction:', {
+        transactionType,
+        originalAmount: amount,
+        transactionAmount,
+        category,
+        date
+      });
+      
       await addTransaction(
         user.id,
         transactionAmount,

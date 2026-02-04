@@ -157,11 +157,19 @@ export default function DashboardWeb() {
     // Start with bank balance (default to 0 if not set)
     let balance = budget?.bank_balance || 0;
     
+    // Debug logging
+    console.log('Bank balance:', budget?.bank_balance);
+    console.log('Transactions:', transactions);
+    
     // Add/subtract transactions
     const sortedTransactions = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     sortedTransactions.forEach(t => {
+      console.log(`Transaction: ${t.category}, amount: ${t.amount}, type: ${t.amount < 0 ? 'income' : 'expense'}`);
       balance -= t.amount; // Subtract because expenses are positive, income is negative
+      console.log('Running balance after this transaction:', balance);
     });
+    
+    console.log('Final running balance:', balance);
     return balance;
   };
 
