@@ -4,6 +4,16 @@ import { useBudgetStore } from '../src/store/budget';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'INR', 'TZS'];
 
+// Format currency with commas
+const formatCurrency = (amount: number, currency: string) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
+
 export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   const { user, signOut } = useAuthStore();
   const { budget, loading, createBudget, updateBudget } = useBudgetStore();
@@ -274,6 +284,31 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
             <div style={{ fontSize: '16px', color: '#2c3e50', fontWeight: '600' }}>
               {user?.email}
             </div>
+          </div>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#2c3e50', marginBottom: '8px' }}>
+            Currency
+          </label>
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px',
+              border: '1px solid #ddd',
+              borderRadius: '8px',
+              fontSize: '16px',
+              marginBottom: '8px',
+              backgroundColor: '#fff',
+            }}
+          >
+            {CURRENCIES.map((curr) => (
+              <option key={curr} value={curr}>
+                {curr}
+              </option>
+            ))}
+          </select>
+          <div style={{ fontSize: '12px', color: '#7f8c8d', marginBottom: '24px' }}>
+            Example: {formatCurrency(50000, currency)}
           </div>
           <button
             onClick={handleSignOut}

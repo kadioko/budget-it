@@ -3,6 +3,16 @@ import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
 import SettingsWeb from './settings-web';
 
+// Format currency with commas
+const formatCurrency = (amount: number, currency: string) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
+
 export default function DashboardWeb() {
   const { user } = useAuthStore();
   const { budget, stats, loading, fetchBudget, fetchTransactions } = useBudgetStore();
@@ -168,10 +178,10 @@ export default function DashboardWeb() {
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
           <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>Today's Spending</h2>
           <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#2c3e50', marginBottom: '4px' }}>
-            {stats.spentToday.toFixed(2)} {budget.currency}
+            {formatCurrency(stats.spentToday, budget.currency)}
           </div>
           <div style={{ fontSize: '12px', color: '#95a5a6', marginBottom: '12px' }}>
-            Target: {budget.daily_target.toFixed(2)} {budget.currency}
+            Target: {formatCurrency(budget.daily_target, budget.currency)}
           </div>
           <div style={{ backgroundColor: dailyMsg.bgColor, borderRadius: '6px', padding: '8px 12px', textAlign: 'center' }}>
             <div style={{ fontSize: '12px', fontWeight: '600', color: dailyMsg.color }}>
@@ -183,10 +193,10 @@ export default function DashboardWeb() {
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
           <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>Month to Date</h2>
           <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#2c3e50', marginBottom: '4px' }}>
-            {stats.spentMonthToDate.toFixed(2)} {budget.currency}
+            {formatCurrency(stats.spentThisMonth, budget.currency)}
           </div>
           <div style={{ fontSize: '12px', color: '#95a5a6', marginBottom: '12px' }}>
-            Target: {budget.monthly_target.toFixed(2)} {budget.currency}
+            Target: {formatCurrency(budget.monthly_target, budget.currency)}
           </div>
           <div style={{ backgroundColor: monthlyMsg.bgColor, borderRadius: '6px', padding: '8px 12px', textAlign: 'center' }}>
             <div style={{ fontSize: '12px', fontWeight: '600', color: monthlyMsg.color }}>
@@ -198,12 +208,12 @@ export default function DashboardWeb() {
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
           <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>Projected End of Month</h2>
           <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#2c3e50', marginBottom: '4px' }}>
-            {stats.projectedMonthEnd.toFixed(2)} {budget.currency}
+            {formatCurrency(stats.projectedEndOfMonth, budget.currency)}
           </div>
           <div style={{ fontSize: '12px', color: '#95a5a6', marginBottom: '12px' }}>
-            Budget: {budget.monthly_target.toFixed(2)} {budget.currency}
+            Target: {formatCurrency(budget.monthly_target, budget.currency)}
           </div>
-          {stats.projectedMonthEnd > budget.monthly_target ? (
+          {stats.projectedEndOfMonth > budget.monthly_target ? (
             <div style={{ backgroundColor: '#fadbd8', borderRadius: '6px', padding: '8px 12px', textAlign: 'center' }}>
               <div style={{ fontSize: '12px', fontWeight: '600', color: '#e74c3c' }}>
                 Projected over budget
