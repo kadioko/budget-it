@@ -33,7 +33,12 @@ export default function DashboardWeb() {
             Let's set up your daily and monthly spending targets to get started.
           </p>
           <button
-            onClick={() => setCurrentView('settings')}
+            onClick={() => {
+              console.log('Set Up Budget button clicked!');
+              console.log('Current view before:', currentView);
+              setCurrentView('settings');
+              console.log('Setting view to settings');
+            }}
             style={{
               backgroundColor: '#3498db',
               color: '#fff',
@@ -129,25 +134,30 @@ export default function DashboardWeb() {
               Budget It
             </h1>
             <button
-              onClick={() => setCurrentView('settings')}
-              style={{
-                backgroundColor: '#3498db',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '10px 20px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'opacity 0.2s',
-                whiteSpace: 'nowrap',
-                flexShrink: 0
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-            >
-              ⚙️ Settings
-            </button>
+            onClick={() => {
+              console.log('Settings button clicked!');
+              console.log('Current view before:', currentView);
+              setCurrentView('settings');
+              console.log('Setting view to settings');
+            }}
+            style={{
+              backgroundColor: '#3498db',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '10px 20px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'opacity 0.2s',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+          >
+            ⚙️ Settings
+          </button>
           </div>
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
           <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>Today's Spending</h2>
