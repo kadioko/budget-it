@@ -14,7 +14,7 @@ import {
 import { useAuthStore } from '@/store/auth';
 import { useBudgetStore } from '@/store/budget';
 
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'INR'];
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'INR', 'TZS'];
 
 interface SettingsScreenProps {
   onNavigate?: (screen: string) => void;
