@@ -159,7 +159,13 @@ export default function DashboardWeb() {
   }
 
   if (currentView === 'add-transaction') {
-    return <AddTransactionWeb onBack={() => setCurrentView('dashboard')} />;
+    return <AddTransactionWeb onBack={() => {
+      setCurrentView('dashboard');
+      // Refresh transactions when returning to dashboard
+      if (user) {
+        fetchTransactions(user.id);
+      }
+    }} />;
   }
 
   if (currentView === 'transactions') {

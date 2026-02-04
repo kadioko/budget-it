@@ -10,11 +10,40 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
   const { addTransaction, loading } = useBudgetStore();
   
   const [amount, setAmount] = useState('');
+  const [displayAmount, setDisplayAmount] = useState('');
   const [category, setCategory] = useState('Food');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
+
+  // Format amount with commas
+  const formatAmountWithCommas = (value: string) => {
+    // Remove all non-digit and non-decimal characters
+    const cleanValue = value.replace(/[^\d.]/g, '');
+    
+    // Split into integer and decimal parts
+    const parts = cleanValue.split('.');
+    let integerPart = parts[0] || '0';
+    const decimalPart = parts[1] || '';
+    
+    // Add commas to integer part
+    integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    
+    // Return formatted value
+    if (decimalPart) {
+      return `${integerPart}.${decimalPart}`;
+    }
+    return integerPart;
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setDisplayAmount(formatAmountWithCommas(value));
+    // Store the clean value for submission
+    const cleanValue = value.replace(/[^\d.]/g, '');
+    setAmount(cleanValue);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,10 +177,9 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
                 Amount
               </label>
               <input
-                type="number"
-                step="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                type="text"
+                value={displayAmount}
+                onChange={handleAmountChange}
                 placeholder="0.00"
                 style={{
                   width: '100%',

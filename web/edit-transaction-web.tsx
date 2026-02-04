@@ -16,6 +16,7 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
   const { transactions, updateTransaction, loading } = useBudgetStore();
   
   const [amount, setAmount] = useState('');
+  const [displayAmount, setDisplayAmount] = useState('');
   const [category, setCategory] = useState('Food');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [note, setNote] = useState('');
@@ -25,9 +26,31 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
   // Find the transaction to edit
   const transaction = transactions.find(t => t.id === transactionId);
 
+  // Format amount with commas
+  const formatAmountWithCommas = (value: string) => {
+    const cleanValue = value.replace(/[^\d.]/g, '');
+    const parts = cleanValue.split('.');
+    let integerPart = parts[0] || '0';
+    const decimalPart = parts[1] || '';
+    integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    if (decimalPart) {
+      return `${integerPart}.${decimalPart}`;
+    }
+    return integerPart;
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setDisplayAmount(formatAmountWithCommas(value));
+    const cleanValue = value.replace(/[^\d.]/g, '');
+    setAmount(cleanValue);
+  };
+
   useEffect(() => {
     if (transaction) {
-      setAmount(Math.abs(transaction.amount).toString());
+      const cleanAmount = Math.abs(transaction.amount).toString();
+      setAmount(cleanAmount);
+      setDisplayAmount(formatAmountWithCommas(cleanAmount));
       setCategory(transaction.category);
       setDate(transaction.date);
       setNote(transaction.note || '');
@@ -204,10 +227,9 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
                 Amount
               </label>
               <input
-                type="number"
-                step="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                type="text"
+                value={displayAmount}
+                onChange={handleAmountChange}
                 placeholder="0.00"
                 style={{
                   width: '100%',
