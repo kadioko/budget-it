@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Pressable,
 } from 'react-native';
 import { useAuthStore } from '@/store/auth';
 import { useBudgetStore } from '@/store/budget';
@@ -39,16 +40,18 @@ export default function DashboardScreen() {
           <Text style={styles.emptyText}>
             Let's set up your daily and monthly spending targets to get started.
           </Text>
-          <TouchableOpacity
-            style={styles.setupButton}
+          <Pressable
+            style={({ pressed }) => [
+              styles.setupButton,
+              pressed && { opacity: 0.7 }
+            ]}
             onPress={() => {
               console.log('Set Up Budget button pressed');
               Alert.alert('Budget Setup', 'Please go to Settings to set up your budget targets.');
             }}
-            activeOpacity={0.7}
           >
             <Text style={styles.setupButtonText}>Set Up Budget</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     );
