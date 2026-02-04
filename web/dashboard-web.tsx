@@ -106,6 +106,7 @@ export default function DashboardWeb() {
   const monthlyMsg = getMonthlyMessage();
 
   if (currentView === 'settings') {
+    console.log('Rendering SettingsWeb component');
     return <SettingsWeb onBack={() => setCurrentView('dashboard')} />;
   }
 
@@ -131,7 +132,7 @@ export default function DashboardWeb() {
             gap: '12px'
           }}>
             <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#2c3e50', margin: 0, flex: 1 }}>
-              Budget It
+              Budget It ({currentView})
             </h1>
             <button
             onClick={() => {
