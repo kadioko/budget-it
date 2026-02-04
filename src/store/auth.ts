@@ -1,4 +1,4 @@
-import { create as createStore } from 'zustand';
+import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { Profile } from '@/types/index';
 
@@ -14,7 +14,7 @@ interface AuthState {
   setProfile: (profile: Profile) => void;
 }
 
-export const useAuthStore = createStore<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   profile: null,
   loading: true,
