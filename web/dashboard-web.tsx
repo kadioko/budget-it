@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
 import SettingsWeb from './settings-web';
+import AddTransactionWeb from './add-transaction-web';
 
 // Format currency with commas
 const formatCurrency = (amount: number, currency: string) => {
@@ -31,7 +32,7 @@ export default function DashboardWeb() {
   const { user } = useAuthStore();
   const { budget, stats, loading, fetchBudget, fetchTransactions } = useBudgetStore();
   const [showToast, setShowToast] = useState(false);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'settings'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'settings' | 'add-transaction'>('dashboard');
 
   useEffect(() => {
     if (user) {
@@ -130,8 +131,11 @@ export default function DashboardWeb() {
   const monthlyMsg = getMonthlyMessage();
 
   if (currentView === 'settings') {
-    console.log('Rendering SettingsWeb component');
     return <SettingsWeb onBack={() => setCurrentView('dashboard')} />;
+  }
+
+  if (currentView === 'add-transaction') {
+    return <AddTransactionWeb onBack={() => setCurrentView('dashboard')} />;
   }
 
   return (
@@ -140,12 +144,24 @@ export default function DashboardWeb() {
         html, body {
           scrollbar-gutter: stable;
           overflow-y: scroll;
+          margin: 0;
+          padding: 0;
+          width: 100%;
+        }
+        * {
+          box-sizing: border-box;
         }
       `}</style>
       <div style={{ 
-        backgroundColor: '#f5f5f5', 
         minHeight: '100vh', 
-        padding: '16px',
+        backgroundColor: '#f5f5f5', 
+        padding: '20px',
+        boxSizing: 'border-box',
+        width: '100%',
+        maxWidth: '100vw',
+        margin: '0',
+        left: '0',
+        right: '0'
       }}>
         <div style={{ maxWidth: '600px', margin: '0 auto' }}>
           <div style={{ 
@@ -158,27 +174,64 @@ export default function DashboardWeb() {
             <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#2c3e50', margin: 0, flex: 1 }}>
               Budget It
             </h1>
-            <button
-            onClick={() => setCurrentView('settings')}
-            style={{
-              backgroundColor: '#3498db',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '10px 20px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'opacity 0.2s',
-              whiteSpace: 'nowrap',
-              flexShrink: 0
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-          >
-            ⚙️ Settings
-          </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => setCurrentView('add-transaction')}
+                style={{
+                  backgroundColor: '#27ae60',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '10px 20px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'opacity 0.2s',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+              >
+                + Add Expense
+              </button>
+              <button
+                onClick={() => setCurrentView('settings')}
+                style={{
+                  backgroundColor: '#3498db',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '10px 20px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'opacity 0.2s',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+              >
+                ⚙️ Settings
+              </button>
+            </div>
           </div>
+        
+        {/* Bank Account Balance Card */}
+        <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+          <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>Bank Account Balance</h2>
+          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#2c3e50', marginBottom: '4px' }}>
+            {formatCurrency(100000, budget.currency)}
+          </div>
+          <div style={{ fontSize: '12px', color: '#95a5a6', marginBottom: '12px' }}>
+            Available balance
+          </div>
+          <div style={{ backgroundColor: '#e8f5e8', borderRadius: '6px', padding: '8px 12px', textAlign: 'center' }}>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: '#27ae60' }}>
+              Healthy balance
+            </div>
+          </div>
+        </div>
+
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
           <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>Today's Spending</h2>
           <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#2c3e50', marginBottom: '4px' }}>
