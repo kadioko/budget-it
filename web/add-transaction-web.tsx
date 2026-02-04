@@ -92,13 +92,18 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
         date
       });
       
-      await addTransaction(
-        user.id,
-        transactionAmount,
-        category,
-        date,
-        note || undefined
-      );
+      try {
+        await addTransaction(
+          user.id,
+          transactionAmount,
+          category,
+          date,
+          note || undefined
+        );
+      } catch (error) {
+        console.error('Transaction add error:', error);
+        throw error;
+      }
       
       // Show success message
       const transactionTypeText = transactionType === 'income' ? 'Income' : 'Expense';

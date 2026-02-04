@@ -162,17 +162,19 @@ export const useBudgetStore = createStore<BudgetState>((set, get) => ({
   ) => {
     set({ loading: true, error: null });
     try {
+      const transactionData = {
+        user_id: userId,
+        amount,
+        category,
+        date,
+        note: note || null,
+      };
+      
+      console.log('Sending to Supabase:', transactionData);
+      
       const { data, error } = await supabase
         .from('transactions')
-        .insert([
-          {
-            user_id: userId,
-            amount,
-            category,
-            date,
-            note: note || null,
-          },
-        ])
+        .insert([transactionData])
         .select()
         .single();
 
