@@ -51,10 +51,10 @@ export const useBudgetStore = createStore<BudgetState>((set, get) => ({
         .from('budgets')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       console.log('Budget fetch result:', { data, error });
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       set({ budget: data || null });
     } catch (err: any) {
       console.error('Budget fetch error:', err);
