@@ -41,7 +41,11 @@ export default function DashboardScreen() {
           </Text>
           <TouchableOpacity
             style={styles.setupButton}
-            onPress={() => Alert.alert('Budget Setup', 'Please go to Settings to set up your budget targets.')}
+            onPress={() => {
+              console.log('Set Up Budget button pressed');
+              Alert.alert('Budget Setup', 'Please go to Settings to set up your budget targets.');
+            }}
+            activeOpacity={0.7}
           >
             <Text style={styles.setupButtonText}>Set Up Budget</Text>
           </TouchableOpacity>
