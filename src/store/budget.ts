@@ -46,18 +46,15 @@ export const useBudgetStore = createStore<BudgetState>((set, get) => ({
   fetchBudget: async (userId: string) => {
     set({ loading: true, error: null });
     try {
-      console.log('Fetching budget for user:', userId);
       const { data, error } = await supabase
         .from('budgets')
         .select('*')
         .eq('user_id', userId)
         .maybeSingle();
 
-      console.log('Budget fetch result:', { data, error });
       if (error) throw error;
       set({ budget: data || null });
     } catch (err: any) {
-      console.error('Budget fetch error:', err);
       set({ error: err.message });
     } finally {
       set({ loading: false });
