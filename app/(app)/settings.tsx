@@ -11,14 +11,17 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { useBudgetStore } from '@/store/budget';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'INR'];
 
-export default function SettingsScreen() {
-  const router = useRouter();
+interface SettingsScreenProps {
+  onNavigate?: (screen: string) => void;
+  onLogout?: () => Promise<void>;
+}
+
+export default function SettingsScreen({ onNavigate, onLogout }: SettingsScreenProps) {
   const { user, signOut } = useAuthStore();
   const { budget, loading, createBudget, updateBudget } = useBudgetStore();
 

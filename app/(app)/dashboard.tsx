@@ -7,12 +7,14 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { useBudgetStore } from '@/store/budget';
 
-export default function DashboardScreen() {
-  const router = useRouter();
+interface DashboardScreenProps {
+  onNavigate?: (screen: string) => void;
+}
+
+export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
   const { user } = useAuthStore();
   const { budget, stats, loading, fetchBudget, fetchTransactions } =
     useBudgetStore();
@@ -42,7 +44,7 @@ export default function DashboardScreen() {
           </Text>
           <TouchableOpacity
             style={styles.setupButton}
-            onPress={() => router.push('/(app)/settings')}
+            onPress={() => onNavigate?.('settings')}
           >
             <Text style={styles.setupButtonText}>Set Up Budget</Text>
           </TouchableOpacity>
