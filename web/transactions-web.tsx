@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
+import EditTransactionWeb from './edit-transaction-web';
 
 // Format currency with commas
 const formatCurrency = (amount: number, currency: string) => {
@@ -35,6 +36,7 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [runningBalance, setRunningBalance] = useState(0);
+  const [editingTransaction, setEditingTransaction] = useState<string | null>(null);
 
   // Get unique categories from transactions
   const categories = ['all', ...Array.from(new Set(transactions.map(t => t.category)))];
@@ -77,6 +79,26 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
       console.error('Failed to delete transaction:', error);
     }
   };
+
+  const handleEdit = (transactionId: string) => {
+    setEditingTransaction(transactionId);
+  };
+
+  const handleEditSave = () => {
+    setEditingTransaction(null);
+    fetchTransactions(user?.id || '');
+  };
+
+  // Show edit form if editing
+  if (editingTransaction) {
+    return (
+      <EditTransactionWeb 
+        transactionId={editingTransaction}
+        onBack={() => setEditingTransaction(null)}
+        onSave={handleEditSave}
+      />
+    );
+  }
 
   if (loading && transactions.length === 0) {
     return (
@@ -287,6 +309,24 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
                         }}>
                           {isIncome ? '+' : '-'}{formatCurrency(displayAmount, budget?.currency || 'TZS')}
                         </div>
+                        
+                        <button
+                          onClick={() => handleEdit(transaction.id)}
+                          style={{
+                            backgroundColor: '#f39c12',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '6px 10px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            transition: 'opacity 0.2s',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
+                          onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+                        >
+                          Edit
+                        </button>
                         
                         <button
                           onClick={() => setShowDeleteConfirm(transaction.id)}

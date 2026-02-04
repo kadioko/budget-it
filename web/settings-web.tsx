@@ -28,6 +28,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   const [monthStartDay, setMonthStartDay] = useState(
     budget?.month_start_day.toString() || '1'
   );
+  const [bankBalance, setBankBalance] = useState('0');
 
   useEffect(() => {
     if (budget) {
@@ -285,6 +286,61 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
           </button>
         </div>
 
+        {/* Bank Account Section */}
+        <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#2c3e50', marginBottom: '20px' }}>
+            💰 Bank Account
+          </h2>
+          
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ fontSize: '14px', fontWeight: '600', color: '#2c3e50', display: 'block', marginBottom: '8px' }}>
+              Initial Balance
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={bankBalance}
+              onChange={(e) => setBankBalance(e.target.value)}
+              placeholder="0.00"
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '1px solid #ddd',
+                borderRadius: '8px',
+                fontSize: '16px',
+                backgroundColor: '#fff'
+              }}
+            />
+            <div style={{ fontSize: '12px', color: '#7f8c8d', marginTop: '4px' }}>
+              Set your starting bank balance (this will be added to your running balance)
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              // This would save the bank balance - for now just show a message
+              alert(`Bank balance set to ${bankBalance} ${currency}`);
+            }}
+            style={{
+              width: '100%',
+              padding: '14px',
+              backgroundColor: '#27ae60',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'opacity 0.2s'
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+          >
+            Set Bank Balance
+          </button>
+        </div>
+
+        {/* Account Section */}
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
           <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#2c3e50', marginBottom: '16px' }}>
             Account

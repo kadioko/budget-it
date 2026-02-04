@@ -32,6 +32,13 @@ interface BudgetState {
     date: string,
     note?: string
   ) => Promise<void>;
+  updateTransaction: (
+    transactionId: string,
+    amount: number,
+    category: string,
+    date: string,
+    note?: string
+  ) => Promise<void>;
   deleteTransaction: (transactionId: string) => Promise<void>;
   calculateStats: () => void;
 }
@@ -171,6 +178,41 @@ export const useBudgetStore = createStore<BudgetState>((set, get) => ({
       if (error) throw error;
       const newTransactions = [data, ...get().transactions];
       set({ transactions: newTransactions });
+      get().calculateStats();
+    } catch (err: any) {
+      set({ error: err.message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  updateTransaction: async (
+    transactionId: string,
+    amount: number,
+    category: string,
+    date: string,
+    note?: string
+  ) => {
+    set({ loading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .update({
+          amount,
+          category,
+          date,
+          note: note || null,
+        })
+        .eq('id', transactionId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      const updatedTransactions = get().transactions.map((t) => 
+        t.id === transactionId ? data : t
+      );
+      set({ transactions: updatedTransactions });
       get().calculateStats();
     } catch (err: any) {
       set({ error: err.message });
