@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { useAuthStore } from './src/store/auth';
-import LoginScreen from './app/(auth)/login';
-import DashboardScreen from './app/(app)/dashboard';
+import { View, Text, StyleSheet } from 'react-native';
+import { useAuthStore } from '../src/store/auth';
+import LoginScreen from '../app/(auth)/login';
+import DashboardScreen from '../app/(app)/dashboard';
 
-export default function App() {
+export default function WebApp() {
   const { user, loading, checkAuth } = useAuthStore();
   const [mounted, setMounted] = useState(false);
 
@@ -16,7 +16,6 @@ export default function App() {
   if (!mounted || loading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#3498db" />
         <Text style={styles.loadingText}>Loading Budget It...</Text>
       </View>
     );
@@ -35,6 +34,5 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#2c3e50',
-    marginTop: 16,
   },
 });
