@@ -4,6 +4,7 @@ import { useAuthStore } from './src/store/auth';
 import LoginScreen from './app/(auth)/login';
 import SignupScreen from './app/(auth)/signup';
 import DashboardWeb from './web/dashboard-web';
+import DebugSupabase from './web/debug-supabase';
 
 export default function App() {
   const { user, loading, checkAuth } = useAuthStore();
@@ -43,7 +44,7 @@ export default function App() {
     );
   }
 
-  return <DashboardWeb />;
+  return <DebugSupabase />;
 }
 
 const styles = StyleSheet.create({
