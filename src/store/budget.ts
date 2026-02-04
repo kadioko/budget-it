@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { create as createStore } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { Budget, Transaction, BudgetStats } from '@/types/index';
 import { calculateBudgetStats } from '@/lib/budget-logic';
@@ -36,7 +36,7 @@ interface BudgetState {
   calculateStats: () => void;
 }
 
-export const useBudgetStore = create<BudgetState>((set, get) => ({
+export const useBudgetStore = createStore<BudgetState>((set, get) => ({
   budget: null,
   transactions: [],
   stats: null,
