@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'rea
 import { useAuthStore } from './src/store/auth';
 import LoginScreen from './app/(auth)/login';
 import SignupScreen from './app/(auth)/signup';
-import DashboardScreen from './app/(app)/dashboard';
+import DashboardWeb from './web/dashboard-web';
 
 export default function App() {
   const { user, loading, checkAuth } = useAuthStore();
@@ -43,7 +43,7 @@ export default function App() {
     );
   }
 
-  return <DashboardScreen />;
+  return <DashboardWeb />;
 }
 
 const styles = StyleSheet.create({

@@ -1,0 +1,75 @@
+/* Web-specific styles for Budget It */
+
+/* Make all pressable/touchable elements have pointer cursor */
+button,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+a {
+  cursor: pointer;
+}
+
+/* Ensure React Native web elements are clickable */
+div[role="button"],
+div[role="link"],
+div[role="menuitem"],
+div[role="tab"] {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Pressable component styling */
+div[data-testid*="pressable"],
+div[class*="Pressable"] {
+  cursor: pointer;
+}
+
+/* Ensure text inputs are clickable */
+input,
+textarea,
+select {
+  cursor: text;
+}
+
+/* Remove default button styling for custom buttons */
+button {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+}
+
+/* Ensure body takes full height */
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Prevent text selection on buttons */
+button,
+[role="button"] {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Add hover effects */
+button:hover,
+[role="button"]:hover {
+  opacity: 0.8;
+}
+
+/* Ensure proper touch target size on web */
+button,
+[role="button"],
+input[type="button"],
+input[type="submit"] {
+  min-height: 44px;
+  min-width: 44px;
+}
