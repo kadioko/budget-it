@@ -11,6 +11,7 @@ export type Budget = {
   monthly_target: number;
   currency: string;
   month_start_day: number;
+  bank_balance: number;
   created_at: string;
   updated_at: string;
 };

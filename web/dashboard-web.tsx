@@ -152,11 +152,12 @@ export default function DashboardWeb() {
     };
   };
 
-  // Calculate running balance from transactions
+  // Calculate running balance from transactions + bank balance
   const calculateRunningBalance = () => {
-    if (!transactions.length) return 0;
+    // Start with bank balance (default to 0 if not set)
+    let balance = budget?.bank_balance || 0;
     
-    let balance = 0;
+    // Add/subtract transactions
     const sortedTransactions = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     sortedTransactions.forEach(t => {
       balance -= t.amount; // Subtract because expenses are positive, income is negative

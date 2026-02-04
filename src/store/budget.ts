@@ -39,6 +39,7 @@ interface BudgetState {
     date: string,
     note?: string
   ) => Promise<void>;
+  updateBankBalance: (budgetId: string, bankBalance: number) => Promise<void>;
   deleteTransaction: (transactionId: string) => Promise<void>;
   calculateStats: () => void;
 }
@@ -214,6 +215,28 @@ export const useBudgetStore = createStore<BudgetState>((set, get) => ({
       );
       set({ transactions: updatedTransactions });
       get().calculateStats();
+    } catch (err: any) {
+      set({ error: err.message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  updateBankBalance: async (budgetId: string, bankBalance: number) => {
+    set({ loading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('budgets')
+        .update({
+          bank_balance: bankBalance,
+        })
+        .eq('id', budgetId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      set({ budget: data });
     } catch (err: any) {
       set({ error: err.message });
       throw err;

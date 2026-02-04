@@ -15,8 +15,8 @@ const formatCurrency = (amount: number, currency: string) => {
 };
 
 export default function SettingsWeb({ onBack }: { onBack: () => void }) {
-  const { user, signOut } = useAuthStore();
-  const { budget, loading, createBudget, updateBudget } = useBudgetStore();
+  const { user } = useAuthStore();
+  const { budget, loading, createBudget, updateBudget, updateBankBalance } = useBudgetStore();
 
   const [dailyTarget, setDailyTarget] = useState(
     budget?.daily_target.toString() || ''
@@ -28,7 +28,9 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   const [monthStartDay, setMonthStartDay] = useState(
     budget?.month_start_day.toString() || '1'
   );
-  const [bankBalance, setBankBalance] = useState('0');
+  const [bankBalance, setBankBalance] = useState(
+    budget?.bank_balance?.toString() || '0'
+  );
   const [showRecurring, setShowRecurring] = useState(false);
 
   useEffect(() => {
@@ -37,6 +39,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
       setMonthlyTarget(budget.monthly_target.toString());
       setCurrency(budget.currency);
       setMonthStartDay(budget.month_start_day.toString());
+      setBankBalance(budget.bank_balance?.toString() || '0');
     }
   }, [budget]);
 
@@ -318,26 +321,40 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
           </div>
 
           <button
-            onClick={() => {
-              // This would save the bank balance - for now just show a message
-              alert(`Bank balance set to ${bankBalance} ${currency}`);
+            onClick={async () => {
+              if (!budget) {
+                alert('Please set up your budget first');
+                return;
+              }
+              
+              try {
+                await updateBankBalance(budget.id, parseFloat(bankBalance) || 0);
+                alert(`Bank balance successfully set to ${formatCurrency(parseFloat(bankBalance) || 0, currency)}!`);
+              } catch (error: any) {
+                alert('Failed to update bank balance: ' + error.message);
+              }
             }}
+            disabled={loading}
             style={{
               width: '100%',
               padding: '14px',
-              backgroundColor: '#27ae60',
+              backgroundColor: loading ? '#95a5a6' : '#27ae60',
               color: '#fff',
               border: 'none',
               borderRadius: '8px',
               fontSize: '16px',
               fontWeight: '600',
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
               transition: 'opacity 0.2s'
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+            onMouseEnter={(e) => {
+              if (!loading) e.currentTarget.style.opacity = '0.8';
+            }}
+            onMouseLeave={(e) => {
+              if (!loading) e.currentTarget.style.opacity = '1';
+            }}
           >
-            Set Bank Balance
+            {loading ? 'Saving...' : 'Set Bank Balance'}
           </button>
         </div>
 
