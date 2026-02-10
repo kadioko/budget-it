@@ -59,18 +59,28 @@ export default function DashboardWeb() {
   const [toastMessage, setToastMessage] = useState('');
   const [currentView, setCurrentView] = useState<'dashboard' | 'settings' | 'add-transaction' | 'transactions' | 'analytics'>('dashboard');
 
+  const [dataReady, setDataReady] = useState(false);
+
   useEffect(() => {
     if (user) {
-      fetchBudget(user.id);
-      fetchTransactions(user.id);
+      Promise.all([
+        fetchBudget(user.id),
+        fetchTransactions(user.id),
+      ]).finally(() => setDataReady(true));
+      // Safety: force ready after 5 seconds
+      const timer = setTimeout(() => setDataReady(true), 5000);
+      return () => clearTimeout(timer);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  if (loading) {
+  if (!dataReady) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f5f5f5' }}>
-        <div>Loading...</div>
+      <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '24px', marginBottom: '16px' }}>💰</div>
+          <div style={{ fontSize: '16px', color: '#2c3e50' }}>Loading your budget...</div>
+        </div>
       </div>
     );
   }
@@ -131,8 +141,16 @@ export default function DashboardWeb() {
 
   if (!stats) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f5f5f5' }}>
-        <div>Loading stats...</div>
+      <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '16px', color: '#7f8c8d', marginBottom: '16px' }}>Calculating your stats...</div>
+          <button
+            onClick={() => setCurrentView('settings')}
+            style={{ backgroundColor: '#3498db', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '14px', cursor: 'pointer' }}
+          >
+            Go to Settings
+          </button>
+        </div>
       </div>
     );
   }
