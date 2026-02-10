@@ -15,7 +15,7 @@ const formatCurrency = (amount: number, currency: string) => {
 };
 
 export default function SettingsWeb({ onBack }: { onBack: () => void }) {
-  const { user } = useAuthStore();
+  const { user, signOut } = useAuthStore();
   const { budget, loading, createBudget, updateBudget, updateBankBalance } = useBudgetStore();
 
   const [dailyTarget, setDailyTarget] = useState(

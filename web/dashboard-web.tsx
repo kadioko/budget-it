@@ -64,7 +64,8 @@ export default function DashboardWeb() {
       fetchBudget(user.id);
       fetchTransactions(user.id);
     }
-  }, [user, fetchBudget, fetchTransactions]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   if (loading) {
     return (
@@ -74,9 +75,27 @@ export default function DashboardWeb() {
     );
   }
 
+  // Route to sub-views first (before budget/stats checks)
   if (currentView === 'settings') {
-    console.log('Rendering SettingsWeb component');
     return <SettingsWeb onBack={() => setCurrentView('dashboard')} />;
+  }
+
+  if (currentView === 'add-transaction') {
+    return <AddTransactionWeb onBack={() => {
+      setCurrentView('dashboard');
+      if (user) {
+        fetchTransactions(user.id);
+        fetchBudget(user.id);
+      }
+    }} />;
+  }
+
+  if (currentView === 'transactions') {
+    return <TransactionsWeb onBack={() => setCurrentView('dashboard')} />;
+  }
+
+  if (currentView === 'analytics') {
+    return <AnalyticsWeb onBack={() => setCurrentView('dashboard')} />;
   }
 
   if (!budget) {
@@ -152,43 +171,17 @@ export default function DashboardWeb() {
     };
   };
 
-  // Calculate running balance from transactions + bank balance (optimized with useMemo)
+  // Calculate running balance from transactions + bank balance
   const runningBalance = useMemo(() => {
-    // Start with bank balance (default to 0 if not set)
     let balance = budget?.bank_balance || 0;
-    
-    // Add/subtract transactions
-    const sortedTransactions = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    sortedTransactions.forEach(t => {
-      balance -= t.amount; // Subtract because expenses are positive, income is negative
+    transactions.forEach(t => {
+      balance -= t.amount;
     });
-    
     return balance;
   }, [budget?.bank_balance, transactions]);
+
   const dailyMsg = getDailyMessage();
   const monthlyMsg = getMonthlyMessage();
-
-  if (currentView === 'settings') {
-    return <SettingsWeb onBack={() => setCurrentView('dashboard')} />;
-  }
-
-  if (currentView === 'add-transaction') {
-    return <AddTransactionWeb onBack={() => {
-      setCurrentView('dashboard');
-      // Refresh transactions when returning to dashboard
-      if (user) {
-        fetchTransactions(user.id);
-      }
-    }} />;
-  }
-
-  if (currentView === 'transactions') {
-    return <TransactionsWeb onBack={() => setCurrentView('dashboard')} />;
-  }
-
-  if (currentView === 'analytics') {
-    return <AnalyticsWeb onBack={() => setCurrentView('dashboard')} />;
-  }
 
   return (
     <>
@@ -358,7 +351,7 @@ export default function DashboardWeb() {
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
           <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>Month to Date</h2>
           <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#2c3e50', marginBottom: '4px' }}>
-            {formatCurrency(stats.spentThisMonth, budget.currency)}
+            {formatCurrency(stats.spentMonthToDate, budget.currency)}
           </div>
           <div style={{ fontSize: '12px', color: '#95a5a6', marginBottom: '12px' }}>
             Target: {formatCurrency(budget.monthly_target, budget.currency)}
@@ -373,12 +366,12 @@ export default function DashboardWeb() {
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
           <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>Projected End of Month</h2>
           <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#2c3e50', marginBottom: '4px' }}>
-            {formatCurrency(stats.projectedEndOfMonth, budget.currency)}
+            {formatCurrency(stats.projectedMonthEnd, budget.currency)}
           </div>
           <div style={{ fontSize: '12px', color: '#95a5a6', marginBottom: '12px' }}>
             Target: {formatCurrency(budget.monthly_target, budget.currency)}
           </div>
-          {stats.projectedEndOfMonth > budget.monthly_target ? (
+          {stats.projectedMonthEnd > budget.monthly_target ? (
             <div style={{ backgroundColor: '#fadbd8', borderRadius: '6px', padding: '8px 12px', textAlign: 'center' }}>
               <div style={{ fontSize: '12px', fontWeight: '600', color: '#e74c3c' }}>
                 Projected over budget
