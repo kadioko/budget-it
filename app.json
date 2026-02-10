@@ -31,6 +31,12 @@
     "plugins": [
       "expo-router"
     ],
-    "scheme": "budgetit"
+    "scheme": "budgetit",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2ca70119-0d04-4e73-b01e-8105197aa476"
+      }
+    }
   }
 }
