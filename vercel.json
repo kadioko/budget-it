@@ -1,5 +1,10 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "npx expo export --platform web",
   "outputDirectory": "dist",
-  "framework": "create-react-app"
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
