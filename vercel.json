@@ -1,5 +1,5 @@
 {
-  "buildCommand": "echo \"EXPO_PUBLIC_SUPABASE_URL=$EXPO_PUBLIC_SUPABASE_URL\" > .env.local && echo \"EXPO_PUBLIC_SUPABASE_ANON_KEY=$EXPO_PUBLIC_SUPABASE_ANON_KEY\" >> .env.local && npx expo export --platform web",
+  "buildCommand": "bash build-web.sh",
   "outputDirectory": "dist",
   "rewrites": [
     {
