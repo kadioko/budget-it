@@ -22,7 +22,8 @@ export default function DashboardScreen() {
       fetchBudget(user.id);
       fetchTransactions(user.id);
     }
-  }, [user, fetchBudget, fetchTransactions]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   if (loading) {
     return (
