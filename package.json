@@ -8,7 +8,9 @@
     "web": "expo start --web",
     "build": "expo export --platform web",
     "test": "jest",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "keywords": [],
   "author": "",
