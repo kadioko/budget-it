@@ -44,9 +44,6 @@ interface BudgetState {
   calculateStats: () => void;
 }
 
-// Track concurrent loading operations
-let loadingCount = 0;
-
 export const useBudgetStore = create<BudgetState>((set, get) => ({
   budget: null,
   transactions: [],
@@ -55,7 +52,6 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
   error: null,
 
   fetchBudget: async (userId: string) => {
-    loadingCount++;
     set({ loading: true, error: null });
     try {
       const { data, error } = await supabase
@@ -70,16 +66,11 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
     } catch (err: any) {
       set({ error: err.message });
     } finally {
-      loadingCount--;
-      if (loadingCount <= 0) {
-        loadingCount = 0;
-        set({ loading: false });
-      }
+      set({ loading: false });
     }
   },
 
   fetchTransactions: async (userId: string) => {
-    loadingCount++;
     set({ loading: true, error: null });
     try {
       const { data, error } = await supabase
@@ -94,11 +85,7 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
     } catch (err: any) {
       set({ error: err.message });
     } finally {
-      loadingCount--;
-      if (loadingCount <= 0) {
-        loadingCount = 0;
-        set({ loading: false });
-      }
+      set({ loading: false });
     }
   },
 

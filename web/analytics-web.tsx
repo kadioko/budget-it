@@ -34,7 +34,8 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
     if (user) {
       fetchTransactions(user.id);
     }
-  }, [user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Calculate analytics data
   const calculateAnalytics = () => {

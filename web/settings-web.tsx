@@ -68,6 +68,11 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
       return;
     }
 
+    if (!user) {
+      alert('User not authenticated. Please sign in again.');
+      return;
+    }
+
     try {
       if (budget) {
         await updateBudget(budget.id, daily, monthly, currency, startDay);

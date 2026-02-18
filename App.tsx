@@ -84,8 +84,14 @@ function SignupForm({ onSwitch }: { onSwitch: () => void }) {
     }
     try {
       await signUp(email, password);
-      alert('Account created! Please check your email to verify, then sign in.');
-      onSwitch();
+      // If email confirmation is disabled, signUp auto-logs in (user state is set).
+      // If confirmation is required, user will be null and we redirect to login.
+      const { user: currentUser } = useAuthStore.getState();
+      if (!currentUser) {
+        alert('Account created! Please check your email to verify, then sign in.');
+        onSwitch();
+      }
+      // else: user is already set in the store, App will re-render to show dashboard
     } catch (err: any) {
       setLocalError(err.message || 'Signup failed');
     }

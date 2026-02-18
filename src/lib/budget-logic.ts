@@ -59,15 +59,28 @@ export function calculateStreak(
     a.date.localeCompare(b.date)
   );
 
+  // Only count streak from the earliest transaction date
+  const earliestDate = sortedTxns[0].date;
+
   let streak = 0;
   let currentDate = new Date(today);
   currentDate.setHours(0, 0, 0, 0);
 
   while (true) {
     const dateStr = currentDate.toISOString().split('T')[0];
-    const daySpent = sortedTxns
-      .filter((t) => t.date === dateStr)
-      .reduce((sum, t) => sum + t.amount, 0);
+
+    // Stop if we've gone before the first transaction
+    if (dateStr < earliestDate) break;
+
+    const dayTransactions = sortedTxns.filter((t) => t.date === dateStr);
+
+    // Only count days that have at least one transaction
+    if (dayTransactions.length === 0) {
+      currentDate.setDate(currentDate.getDate() - 1);
+      continue;
+    }
+
+    const daySpent = dayTransactions.reduce((sum, t) => sum + t.amount, 0);
 
     if (daySpent <= dailyTarget) {
       streak++;

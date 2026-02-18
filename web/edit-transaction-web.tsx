@@ -34,7 +34,7 @@ interface EditTransactionWebProps {
 
 export default function EditTransactionWeb({ transactionId, onBack, onSave }: EditTransactionWebProps) {
   const { user } = useAuthStore();
-  const { transactions, updateTransaction, loading } = useBudgetStore();
+  const { transactions, updateTransaction, loading, budget } = useBudgetStore();
   
   const [amount, setAmount] = useState('');
   const [displayAmount, setDisplayAmount] = useState('');
@@ -107,7 +107,7 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
       
       // Show success message
       const transactionTypeText = transactionType === 'income' ? 'Income' : 'Expense';
-      alert(`${transactionTypeText} of ${formatCurrency(Math.abs(parseFloat(amount)), 'TZS')} successfully updated!`);
+      alert(`${transactionTypeText} of ${formatCurrency(Math.abs(parseFloat(amount)), budget?.currency || 'USD')} successfully updated!`);
       
       onSave(); // Refresh the transactions list
       onBack(); // Go back to history

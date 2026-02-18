@@ -69,7 +69,8 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
     if (user) {
       fetchTransactions(user.id);
     }
-  }, [user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const handleDelete = async (transactionId: string) => {
     try {
@@ -86,7 +87,7 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
 
   const handleEditSave = () => {
     setEditingTransaction(null);
-    fetchTransactions(user?.id || '');
+    if (user?.id) fetchTransactions(user.id);
   };
 
   // Show edit form if editing

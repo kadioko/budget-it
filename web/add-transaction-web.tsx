@@ -28,7 +28,7 @@ const formatCurrency = (amount: number, currency: string) => {
 
 export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
   const { user } = useAuthStore();
-  const { addTransaction, loading } = useBudgetStore();
+  const { addTransaction, loading, budget } = useBudgetStore();
   
   const [amount, setAmount] = useState('');
   const [displayAmount, setDisplayAmount] = useState('');
@@ -95,7 +95,7 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
       // Show success message
       const transactionTypeText = transactionType === 'income' ? 'Income' : 'Expense';
       const actionText = transactionType === 'income' ? 'added to' : 'deducted from';
-      alert(`${transactionTypeText} of ${formatCurrency(Math.abs(parseFloat(amount)), 'TZS')} successfully ${actionText} your balance!`);
+      alert(`${transactionTypeText} of ${formatCurrency(Math.abs(parseFloat(amount)), budget?.currency || 'USD')} successfully ${actionText} your balance!`);
       
       onBack(); // Go back to dashboard
     } catch (err: any) {
