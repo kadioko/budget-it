@@ -2,6 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { useAuthStore } from './src/store/auth';
 import DashboardWeb from './web/dashboard-web';
 
+// Override Expo's react-native-web reset that sets body{overflow:hidden} and #root{display:flex;height:100%}
+// These break scrolling and layout for a standard web app.
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
+    html, body { height: auto !important; min-height: 100vh; overflow-x: hidden !important; overflow-y: auto !important; margin: 0; padding: 0; background: #f0f2f5; }
+    #root { display: block !important; height: auto !important; min-height: 100vh; flex: none !important; }
+  `;
+  document.head.appendChild(style);
+}
+
 const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '13px 16px',

@@ -26,7 +26,8 @@
       "package": "com.budgetit.app"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "template": "./web/index.html"
     },
     "plugins": [
       "expo-router"
