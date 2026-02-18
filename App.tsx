@@ -2,182 +2,264 @@ import React, { useEffect, useState } from 'react';
 import { useAuthStore } from './src/store/auth';
 import DashboardWeb from './web/dashboard-web';
 
-// Simple web-only login component (no React Native dependencies)
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '13px 16px',
+  fontSize: '15px',
+  borderRadius: '10px',
+  border: '1.5px solid #e0e0e0',
+  backgroundColor: '#fff',
+  boxSizing: 'border-box',
+  outline: 'none',
+  transition: 'border-color 0.2s',
+  color: '#2c3e50',
+};
+
+function PasswordInput({ value, onChange, placeholder, disabled }: {
+  value: string; onChange: (v: string) => void; placeholder: string; disabled: boolean;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div style={{ position: 'relative', width: '100%' }}>
+      <input
+        type={show ? 'text' : 'password'}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        style={{ ...inputStyle, paddingRight: '48px' }}
+        onFocus={(e) => (e.target.style.borderColor = '#3498db')}
+        onBlur={(e) => (e.target.style.borderColor = '#e0e0e0')}
+      />
+      <button
+        type="button"
+        onClick={() => setShow(!show)}
+        style={{
+          position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+          background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px',
+          color: '#95a5a6', padding: '4px',
+        }}
+        tabIndex={-1}
+      >
+        {show ? '🙈' : '👁️'}
+      </button>
+    </div>
+  );
+}
+
+function AuthCard({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <style>{`
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #1a252f 0%, #2c3e50 50%, #3498db 100%)',
+        padding: '20px',
+      }}>
+        <div style={{
+          width: '100%',
+          maxWidth: '420px',
+          backgroundColor: '#fff',
+          borderRadius: '20px',
+          padding: '40px 36px',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.25)',
+          animation: 'fadeIn 0.4s ease',
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <div style={{ fontSize: '40px', marginBottom: '12px' }}>💰</div>
+            <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#2c3e50', letterSpacing: '-0.5px' }}>Budget It</h1>
+            <p style={{ fontSize: '14px', color: '#95a5a6', marginTop: '6px' }}>Track your spending, save smarter</p>
+          </div>
+          {children}
+        </div>
+      </div>
+    </>
+  );
+}
+
 function LoginForm({ onSwitch }: { onSwitch: () => void }) {
-  const { signIn, loading, error } = useAuthStore();
+  const { signIn, loading } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [localError, setLocalError] = useState('');
+  const [error, setError] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLocalError('');
-    if (!email || !password) {
-      setLocalError('Please fill in all fields');
-      return;
-    }
+    setError('');
+    if (!email || !password) { setError('Please fill in all fields'); return; }
     try {
       await signIn(email, password);
     } catch (err: any) {
-      setLocalError(err.message || 'Login failed');
+      setError(err.message || 'Login failed. Check your credentials.');
     }
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' }}>
-      <div style={{ width: '100%', maxWidth: '400px', padding: '20px' }}>
-        <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#2c3e50', textAlign: 'center', marginBottom: '8px' }}>Budget It</h1>
-        <p style={{ fontSize: '14px', color: '#7f8c8d', textAlign: 'center', marginBottom: '40px' }}>Track your spending, save smarter</p>
-        <form onSubmit={handleLogin}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={loading}
-            style={{ width: '100%', padding: '12px 16px', marginBottom: '12px', fontSize: '16px', borderRadius: '8px', border: '1px solid #e0e0e0', backgroundColor: '#fff', boxSizing: 'border-box' }}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={loading}
-            style={{ width: '100%', padding: '12px 16px', marginBottom: '12px', fontSize: '16px', borderRadius: '8px', border: '1px solid #e0e0e0', backgroundColor: '#fff', boxSizing: 'border-box' }}
-          />
-          {(localError || error) && (
-            <div style={{ color: '#e74c3c', fontSize: '12px', marginBottom: '12px' }}>{localError || error}</div>
-          )}
-          <button
-            type="submit"
-            disabled={loading}
-            style={{ width: '100%', padding: '14px', backgroundColor: loading ? '#95a5a6' : '#3498db', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer' }}
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
-          <span style={{ color: '#7f8c8d', fontSize: '14px' }}>Don't have an account? </span>
-          <button onClick={onSwitch} style={{ color: '#3498db', fontSize: '14px', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer' }}>Sign up</button>
-        </div>
+    <AuthCard>
+      <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#2c3e50', marginBottom: '24px', textAlign: 'center' }}>Welcome back</h2>
+      <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <input
+          type="email"
+          placeholder="Email address"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          disabled={loading}
+          style={inputStyle}
+          onFocus={(e) => (e.target.style.borderColor = '#3498db')}
+          onBlur={(e) => (e.target.style.borderColor = '#e0e0e0')}
+          autoComplete="email"
+        />
+        <PasswordInput value={password} onChange={setPassword} placeholder="Password" disabled={loading} />
+        {error && (
+          <div style={{ backgroundColor: '#fdf2f2', border: '1px solid #f5c6c6', color: '#c0392b', padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}>
+            ⚠️ {error}
+          </div>
+        )}
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            width: '100%', padding: '14px',
+            background: loading ? '#bdc3c7' : 'linear-gradient(135deg, #3498db, #2980b9)',
+            color: '#fff', border: 'none', borderRadius: '10px',
+            fontSize: '16px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer',
+            marginTop: '4px', boxShadow: loading ? 'none' : '0 4px 12px rgba(52,152,219,0.35)',
+            transition: 'all 0.2s',
+          }}
+        >
+          {loading ? '⏳ Signing in...' : 'Sign In'}
+        </button>
+      </form>
+      <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '14px', color: '#7f8c8d' }}>
+        Don't have an account?{' '}
+        <button onClick={onSwitch} style={{ color: '#3498db', fontWeight: '700', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px' }}>
+          Sign up free
+        </button>
       </div>
-    </div>
+    </AuthCard>
   );
 }
 
 function SignupForm({ onSwitch }: { onSwitch: () => void }) {
-  const { signUp, loading, error } = useAuthStore();
+  const { signUp, loading } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [localError, setLocalError] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLocalError('');
-    if (!email || !password) {
-      setLocalError('Please fill in all fields');
-      return;
-    }
-    if (password.length < 6) {
-      setLocalError('Password must be at least 6 characters');
-      return;
-    }
+    setError(''); setSuccess('');
+    if (!email || !password) { setError('Please fill in all fields'); return; }
+    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
+    if (password !== confirm) { setError('Passwords do not match'); return; }
     try {
       await signUp(email, password);
-      // If email confirmation is disabled, signUp auto-logs in (user state is set).
-      // If confirmation is required, user will be null and we redirect to login.
       const { user: currentUser } = useAuthStore.getState();
       if (!currentUser) {
-        alert('Account created! Please check your email to verify, then sign in.');
-        onSwitch();
+        setSuccess('Account created! Check your email to verify, then sign in.');
+        setTimeout(() => onSwitch(), 3000);
       }
-      // else: user is already set in the store, App will re-render to show dashboard
     } catch (err: any) {
-      setLocalError(err.message || 'Signup failed');
+      setError(err.message || 'Signup failed');
     }
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' }}>
-      <div style={{ width: '100%', maxWidth: '400px', padding: '20px' }}>
-        <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#2c3e50', textAlign: 'center', marginBottom: '8px' }}>Budget It</h1>
-        <p style={{ fontSize: '14px', color: '#7f8c8d', textAlign: 'center', marginBottom: '40px' }}>Create your account</p>
-        <form onSubmit={handleSignup}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={loading}
-            style={{ width: '100%', padding: '12px 16px', marginBottom: '12px', fontSize: '16px', borderRadius: '8px', border: '1px solid #e0e0e0', backgroundColor: '#fff', boxSizing: 'border-box' }}
-          />
-          <input
-            type="password"
-            placeholder="Password (min 6 characters)"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={loading}
-            style={{ width: '100%', padding: '12px 16px', marginBottom: '12px', fontSize: '16px', borderRadius: '8px', border: '1px solid #e0e0e0', backgroundColor: '#fff', boxSizing: 'border-box' }}
-          />
-          {(localError || error) && (
-            <div style={{ color: '#e74c3c', fontSize: '12px', marginBottom: '12px' }}>{localError || error}</div>
-          )}
-          <button
-            type="submit"
-            disabled={loading}
-            style={{ width: '100%', padding: '14px', backgroundColor: loading ? '#95a5a6' : '#27ae60', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer' }}
-          >
-            {loading ? 'Creating account...' : 'Sign Up'}
-          </button>
-        </form>
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
-          <span style={{ color: '#7f8c8d', fontSize: '14px' }}>Already have an account? </span>
-          <button onClick={onSwitch} style={{ color: '#3498db', fontSize: '14px', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer' }}>Sign in</button>
-        </div>
+    <AuthCard>
+      <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#2c3e50', marginBottom: '24px', textAlign: 'center' }}>Create your account</h2>
+      <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <input
+          type="email"
+          placeholder="Email address"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          disabled={loading}
+          style={inputStyle}
+          onFocus={(e) => (e.target.style.borderColor = '#27ae60')}
+          onBlur={(e) => (e.target.style.borderColor = '#e0e0e0')}
+          autoComplete="email"
+        />
+        <PasswordInput value={password} onChange={setPassword} placeholder="Password (min 6 characters)" disabled={loading} />
+        <PasswordInput value={confirm} onChange={setConfirm} placeholder="Confirm password" disabled={loading} />
+        {error && (
+          <div style={{ backgroundColor: '#fdf2f2', border: '1px solid #f5c6c6', color: '#c0392b', padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}>
+            ⚠️ {error}
+          </div>
+        )}
+        {success && (
+          <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}>
+            ✅ {success}
+          </div>
+        )}
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            width: '100%', padding: '14px',
+            background: loading ? '#bdc3c7' : 'linear-gradient(135deg, #27ae60, #219a52)',
+            color: '#fff', border: 'none', borderRadius: '10px',
+            fontSize: '16px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer',
+            marginTop: '4px', boxShadow: loading ? 'none' : '0 4px 12px rgba(39,174,96,0.35)',
+            transition: 'all 0.2s',
+          }}
+        >
+          {loading ? '⏳ Creating account...' : 'Create Account'}
+        </button>
+      </form>
+      <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '14px', color: '#7f8c8d' }}>
+        Already have an account?{' '}
+        <button onClick={onSwitch} style={{ color: '#3498db', fontWeight: '700', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px' }}>
+          Sign in
+        </button>
       </div>
-    </div>
+    </AuthCard>
   );
 }
 
 export default function App() {
-  const { user, loading, checkAuth } = useAuthStore();
+  const { user, checkAuth } = useAuthStore();
   const [ready, setReady] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<'login' | 'signup'>('login');
 
   useEffect(() => {
     let cancelled = false;
     const init = async () => {
-      try {
-        await checkAuth();
-      } catch (e) {
-        console.error('Auth init failed:', e);
-      } finally {
-        if (!cancelled) setReady(true);
-      }
+      try { await checkAuth(); } catch {}
+      finally { if (!cancelled) setReady(true); }
     };
     init();
-    // Safety net: force ready after 4 seconds no matter what
-    const timer = setTimeout(() => {
-      if (!cancelled) setReady(true);
-    }, 4000);
+    const timer = setTimeout(() => { if (!cancelled) setReady(true); }, 4000);
     return () => { cancelled = true; clearTimeout(timer); };
   }, []);
 
   if (!ready) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '24px', marginBottom: '16px' }}>💰</div>
-          <div style={{ fontSize: '16px', color: '#2c3e50' }}>Loading Budget It...</div>
+      <>
+        <style>{`* { box-sizing: border-box; margin: 0; padding: 0; } @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }`}</style>
+        <div style={{
+          minHeight: '100vh', display: 'flex', flexDirection: 'column',
+          justifyContent: 'center', alignItems: 'center',
+          background: 'linear-gradient(135deg, #1a252f 0%, #2c3e50 50%, #3498db 100%)',
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '20px', animation: 'pulse 1.5s infinite' }}>💰</div>
+          <div style={{ fontSize: '22px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>Budget It</div>
+          <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>Loading your finances...</div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (!user) {
-    if (currentScreen === 'login') {
-      return <LoginForm onSwitch={() => setCurrentScreen('signup')} />;
-    }
+    if (currentScreen === 'login') return <LoginForm onSwitch={() => setCurrentScreen('signup')} />;
     return <SignupForm onSwitch={() => setCurrentScreen('login')} />;
   }
 
