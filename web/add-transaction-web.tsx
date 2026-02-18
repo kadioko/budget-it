@@ -36,6 +36,7 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
 
   // Format amount with commas
@@ -92,12 +93,11 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
         note || undefined
       );
       
-      // Show success message
+      // Show inline success then navigate back
       const transactionTypeText = transactionType === 'income' ? 'Income' : 'Expense';
       const actionText = transactionType === 'income' ? 'added to' : 'deducted from';
-      alert(`${transactionTypeText} of ${formatCurrency(Math.abs(parseFloat(amount)), budget?.currency || 'USD')} successfully ${actionText} your balance!`);
-      
-      onBack(); // Go back to dashboard
+      setSuccess(`${transactionTypeText} of ${formatCurrency(Math.abs(parseFloat(amount)), budget?.currency || 'USD')} successfully ${actionText} your balance!`);
+      setTimeout(() => onBack(), 1400);
     } catch (err: any) {
       setError(err.message || 'Failed to add transaction');
     }
@@ -286,15 +286,13 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
             </div>
 
             {error && (
-              <div style={{
-                backgroundColor: '#fadbd8',
-                color: '#e74c3c',
-                padding: '12px',
-                borderRadius: '8px',
-                marginBottom: '20px',
-                fontSize: '14px'
-              }}>
-                {error}
+              <div style={{ backgroundColor: '#fadbd8', color: '#e74c3c', padding: '12px', borderRadius: '8px', marginBottom: '12px', fontSize: '14px', fontWeight: '600' }}>
+                ⚠️ {error}
+              </div>
+            )}
+            {success && (
+              <div style={{ backgroundColor: '#d5f4e6', color: '#1e8449', padding: '12px', borderRadius: '8px', marginBottom: '12px', fontSize: '14px', fontWeight: '600' }}>
+                ✅ {success}
               </div>
             )}
 

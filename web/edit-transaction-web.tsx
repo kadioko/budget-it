@@ -42,6 +42,7 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
 
   // Find the transaction to edit
@@ -105,12 +106,9 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
         note || undefined
       );
       
-      // Show success message
       const transactionTypeText = transactionType === 'income' ? 'Income' : 'Expense';
-      alert(`${transactionTypeText} of ${formatCurrency(Math.abs(parseFloat(amount)), budget?.currency || 'USD')} successfully updated!`);
-      
-      onSave(); // Refresh the transactions list
-      onBack(); // Go back to history
+      setSuccess(`${transactionTypeText} of ${formatCurrency(Math.abs(parseFloat(amount)), budget?.currency || 'USD')} successfully updated!`);
+      setTimeout(() => { onSave(); onBack(); }, 1400);
     } catch (err: any) {
       setError(err.message || 'Failed to update transaction');
     }
@@ -335,15 +333,13 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
             </div>
 
             {error && (
-              <div style={{
-                backgroundColor: '#fadbd8',
-                color: '#e74c3c',
-                padding: '12px',
-                borderRadius: '8px',
-                marginBottom: '20px',
-                fontSize: '14px'
-              }}>
-                {error}
+              <div style={{ backgroundColor: '#fadbd8', color: '#e74c3c', padding: '12px', borderRadius: '8px', marginBottom: '12px', fontSize: '14px', fontWeight: '600' }}>
+                ⚠️ {error}
+              </div>
+            )}
+            {success && (
+              <div style={{ backgroundColor: '#d5f4e6', color: '#1e8449', padding: '12px', borderRadius: '8px', marginBottom: '12px', fontSize: '14px', fontWeight: '600' }}>
+                ✅ {success}
               </div>
             )}
 
