@@ -85,6 +85,26 @@ export default function DashboardWeb() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [currentView, setCurrentView] = useState<'dashboard' | 'settings' | 'add-transaction' | 'transactions' | 'analytics'>('dashboard');
   const [dataReady, setDataReady] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme-preference') as 'light' | 'dark' | 'system' | null;
+    if (savedTheme) {
+      setTheme(savedTheme);
+      if (savedTheme !== 'system') {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(nextTheme);
+    localStorage.setItem('theme-preference', nextTheme);
+    document.documentElement.setAttribute('data-theme', nextTheme);
+  };
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => setToast({ message, type });
 
@@ -190,15 +210,22 @@ export default function DashboardWeb() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Sticky top nav */}
-      <div style={{ background: 'linear-gradient(135deg, #1a252f 0%, #2c3e50 100%)', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,0,0,0.25)' }}>
+      <div style={{ background: 'var(--bg-card)', position: 'sticky', top: 0, zIndex: 100, borderBottom: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
         <div style={{ maxWidth: '720px', margin: '0 auto', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span style={{ fontSize: '22px' }}>💰</span>
-            <span style={{ fontSize: '17px', fontWeight: '800', color: '#fff', letterSpacing: '-0.3px' }}>Budget It</span>
+            <span style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text-main)', letterSpacing: '-0.3px' }}>Budget It</span>
           </div>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
+            <button 
+              onClick={toggleTheme} 
+              style={{ background: 'transparent', border: 'none', fontSize: '18px', cursor: 'pointer', padding: '4px', marginRight: '4px' }}
+              title="Toggle Dark Mode"
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
             {([
-              { label: '+ Add', view: 'add-transaction', bg: '#3498db' },
+              { label: '+ Add', view: 'add-transaction', bg: 'var(--primary)' },
               { label: '📋 History', view: 'transactions', bg: '#8e44ad' },
               { label: '📈 Analytics', view: 'analytics', bg: '#d35400' },
               { label: '⚙️ Settings', view: 'settings', bg: '#636e72' },
