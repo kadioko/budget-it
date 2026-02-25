@@ -1,5 +1,7 @@
 # Budget It - Architecture & Design Decisions
 
+**Live App (Web):** [https://budget-it-theta.vercel.app/](https://budget-it-theta.vercel.app/)
+
 ## Overview
 
 Budget It is a cross-platform personal finance tracker built with a monolithic Expo app, Supabase backend, and Zustand state management. The architecture prioritizes simplicity, type safety, and rapid iteration.
