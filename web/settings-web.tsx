@@ -8,9 +8,9 @@ const formatCurrency = (amount: number, currency: string) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount);
 
 const fieldStyle: React.CSSProperties = {
-  width: '100%', padding: '12px 14px', border: '2px solid #c5cdd6',
+  width: '100%', padding: '12px 14px', border: '2px solid #9ca3af',
   borderRadius: '10px', fontSize: '15px', backgroundColor: '#fff',
-  outline: 'none', color: '#1a2332', boxSizing: 'border-box',
+  outline: 'none', color: '#111827', boxSizing: 'border-box',
 };
 
 function Msg({ text, type }: { text: string; type: 'success' | 'error' }) {
@@ -179,7 +179,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   };
 
   const lbl: React.CSSProperties = { fontSize: '12px', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' };
-  const card: React.CSSProperties = { backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '24px', marginBottom: '16px', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-color)' };
+  const card: React.CSSProperties = { backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '24px', marginBottom: '16px', boxShadow: 'var(--shadow-md)', border: '1px solid #9ca3af' };
   const sectionTitle: React.CSSProperties = { fontSize: '16px', fontWeight: '700', color: 'var(--text-main)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' };
 
   return (
@@ -226,7 +226,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
               <div style={{ display: 'flex', gap: '8px' }}>
                 {['USD', 'EUR', 'GBP', 'TZS'].map(c => (
                   <button key={c} className="curr-btn" onClick={() => setCurrency(c)}
-                    style={{ flex: 1, padding: '10px 0', border: currency === c ? '2px solid var(--primary)' : '2px solid var(--border-color)', borderRadius: '8px', background: currency === c ? 'var(--primary)' : '#f4f6f9', color: currency === c ? '#fff' : '#1a2332', fontWeight: '700', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s' }}>
+                    style={{ flex: 1, padding: '10px 0', border: currency === c ? '2px solid var(--primary)' : '2px solid #9ca3af', borderRadius: '8px', background: currency === c ? 'var(--primary)' : '#e6ebf1', color: currency === c ? '#fff' : '#111827', fontWeight: '800', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' }}>
                     {c}
                   </button>
                 ))}
@@ -243,7 +243,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
           </div>
 
           <button onClick={handleSaveBudget} disabled={loading}
-            style={{ width: '100%', padding: '14px', background: loading ? 'var(--text-muted)' : 'var(--primary)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: loading ? 'none' : '0 4px 12px rgba(52,152,219,0.3)' }}>
+            style={{ width: '100%', padding: '16px', background: loading ? 'var(--text-muted)' : 'var(--primary)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '800', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: loading ? 'none' : '0 4px 12px rgba(52,152,219,0.4)', marginTop: '8px' }}>
             {loading ? 'Saving...' : '💾 Save Budget Settings'}
           </button>
           {budgetMsg && <Msg text={budgetMsg.text} type={budgetMsg.type} />}
