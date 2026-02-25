@@ -28,31 +28,27 @@ const formatCurrency = (amount: number, currency: string) => {
 
 export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
   const { user } = useAuthStore();
-  const { addTransaction, loading, budget } = useBudgetStore();
+  const { addTransaction, loading, envelopes, budget } = useBudgetStore();
   
   const [amount, setAmount] = useState('');
   const [displayAmount, setDisplayAmount] = useState('');
   const [category, setCategory] = useState('Food');
+  const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [note, setNote] = useState('');
+  const [envelopeId, setEnvelopeId] = useState(envelopes.find(e => e.is_default)?.id || envelopes[0]?.id || '');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
 
-  // Format amount with commas
+  const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Other'];
+  const INCOME_CATEGORIES = ['Salary', 'Business', 'Investment', 'Gift', 'Other'];
+
   const formatAmountWithCommas = (value: string) => {
-    // Remove all non-digit and non-decimal characters
     const cleanValue = value.replace(/[^\d.]/g, '');
-    
-    // Split into integer and decimal parts
     const parts = cleanValue.split('.');
     let integerPart = parts[0] || '0';
     const decimalPart = parts[1] || '';
-    
-    // Add commas to integer part
     integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    
-    // Return formatted value
     if (decimalPart) {
       return `${integerPart}.${decimalPart}`;
     }
@@ -62,7 +58,6 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setDisplayAmount(formatAmountWithCommas(value));
-    // Store the clean value for submission
     const cleanValue = value.replace(/[^\d.]/g, '');
     setAmount(cleanValue);
   };
@@ -82,18 +77,16 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
     }
 
     try {
-      // For income, we store as negative amount to increase balance
-      const transactionAmount = transactionType === 'income' ? -Math.abs(parseFloat(amount)) : parseFloat(amount);
-      
+      const finalAmount = transactionType === 'expense' ? parseFloat(amount) : -parseFloat(amount);
       await addTransaction(
         user.id,
-        transactionAmount,
+        finalAmount,
         category,
         date,
-        note || undefined
+        note || undefined,
+        envelopeId || null
       );
       
-      // Show inline success then navigate back
       const transactionTypeText = transactionType === 'income' ? 'Income' : 'Expense';
       const actionText = transactionType === 'income' ? 'added to' : 'deducted from';
       setSuccess(`${transactionTypeText} of ${formatCurrency(Math.abs(parseFloat(amount)), budget?.currency || 'USD')} successfully ${actionText} your balance!`);
@@ -109,9 +102,11 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
         html, body {
           scrollbar-gutter: stable;
           overflow-y: scroll;
-          margin: 0;
-          padding: 0;
-          width: 100%;
+          background: var(--bg-main);
+          color: var(--text-main);
+        }
+        input:focus, select:focus {
+          border-color: var(--primary) !important;
         }
         * {
           box-sizing: border-box;
@@ -119,14 +114,14 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
       `}</style>
       <div style={{ 
         minHeight: '100vh', 
-        backgroundColor: '#f5f5f5', 
         padding: '20px',
         boxSizing: 'border-box',
         width: '100%',
         maxWidth: '100vw',
         margin: '0',
         left: '0',
-        right: '0'
+        right: '0',
+        backgroundColor: 'var(--bg-main)',
       }}>
       <div style={{ maxWidth: '600px', margin: '0 auto' }}>
         <div style={{ 
@@ -139,7 +134,7 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
             onClick={onBack}
             style={{
               backgroundColor: 'transparent',
-              color: '#3498db',
+              color: 'var(--text-main)',
               border: 'none',
               fontSize: '16px',
               cursor: 'pointer',
@@ -148,15 +143,20 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
           >
             ← Back
           </button>
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#2c3e50', margin: 0 }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>
             Add {transactionType === 'income' ? 'Income' : 'Expense'}
           </h1>
         </div>
 
-        <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <div style={{ 
+          backgroundColor: 'var(--bg-card)', 
+          padding: '24px', 
+          borderRadius: '12px', 
+          boxShadow: 'var(--shadow-md)'
+        }}>
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#2c3e50', marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: 'var(--text-main)', marginBottom: '8px' }}>
                 Transaction Type
               </label>
               <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
@@ -166,9 +166,9 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
                   style={{
                     flex: 1,
                     padding: '12px',
-                    backgroundColor: transactionType === 'expense' ? '#e74c3c' : '#fff',
-                    color: transactionType === 'expense' ? '#fff' : '#e74c3c',
-                    border: '2px solid #e74c3c',
+                    backgroundColor: transactionType === 'expense' ? 'var(--danger)' : 'var(--bg-secondary)',
+                    color: transactionType === 'expense' ? '#fff' : 'var(--text-secondary)',
+                    border: transactionType === 'expense' ? 'none' : '2px solid var(--border-color)',
                     borderRadius: '8px',
                     fontSize: '14px',
                     fontWeight: '600',
@@ -184,9 +184,9 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
                   style={{
                     flex: 1,
                     padding: '12px',
-                    backgroundColor: transactionType === 'income' ? '#27ae60' : '#fff',
-                    color: transactionType === 'income' ? '#fff' : '#27ae60',
-                    border: '2px solid #27ae60',
+                    backgroundColor: transactionType === 'income' ? 'var(--success)' : 'var(--bg-secondary)',
+                    color: transactionType === 'income' ? '#fff' : 'var(--text-secondary)',
+                    border: transactionType === 'income' ? 'none' : '2px solid var(--border-color)',
                     borderRadius: '8px',
                     fontSize: '14px',
                     fontWeight: '600',
@@ -200,7 +200,7 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#2c3e50', marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: 'var(--text-main)', marginBottom: '8px' }}>
                 Amount
               </label>
               <input
@@ -211,17 +211,46 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  border: '1px solid #ddd',
+                  border: '1px solid var(--border-color)',
                   borderRadius: '8px',
                   fontSize: '16px',
-                  backgroundColor: '#fff',
+                  backgroundColor: 'var(--bg-card)',
+                  color: 'var(--text-main)',
                 }}
                 required
               />
             </div>
 
+            {envelopes.length > 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: 'var(--text-main)', marginBottom: '8px' }}>
+                  Envelope / Account
+                </label>
+                <select
+                  value={envelopeId}
+                  onChange={(e) => setEnvelopeId(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    backgroundColor: 'var(--bg-card)',
+                    color: 'var(--text-main)',
+                  }}
+                >
+                  <option value="">Default Bank Account</option>
+                  {envelopes.map((env) => (
+                    <option key={env.id} value={env.id}>
+                      {env.icon} {env.name} ({formatCurrency(env.balance, env.currency)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#2c3e50', marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: 'var(--text-main)', marginBottom: '8px' }}>
                 Category
               </label>
               <select
@@ -230,10 +259,11 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  border: '1px solid #ddd',
+                  border: '1px solid var(--border-color)',
                   borderRadius: '8px',
                   fontSize: '16px',
-                  backgroundColor: '#fff',
+                  backgroundColor: 'var(--bg-card)',
+                  color: 'var(--text-main)',
                 }}
               >
                 {(transactionType === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map((cat: string) => (

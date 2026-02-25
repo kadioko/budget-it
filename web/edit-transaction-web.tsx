@@ -34,13 +34,14 @@ interface EditTransactionWebProps {
 
 export default function EditTransactionWeb({ transactionId, onBack, onSave }: EditTransactionWebProps) {
   const { user } = useAuthStore();
-  const { transactions, updateTransaction, loading, budget } = useBudgetStore();
+  const { transactions, updateTransaction, loading, budget, envelopes } = useBudgetStore();
   
   const [amount, setAmount] = useState('');
   const [displayAmount, setDisplayAmount] = useState('');
   const [category, setCategory] = useState('Food');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [note, setNote] = useState('');
+  const [envelopeId, setEnvelopeId] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
@@ -77,6 +78,7 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
       setDate(transaction.date);
       setNote(transaction.note || '');
       setTransactionType(transaction.amount < 0 ? 'income' : 'expense');
+      setEnvelopeId(transaction.envelope_id || '');
     }
   }, [transaction]);
 
@@ -103,7 +105,8 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
         transactionAmount,
         category,
         date,
-        note || undefined
+        note || undefined,
+        envelopeId || null
       );
       
       const transactionTypeText = transactionType === 'income' ? 'Income' : 'Expense';
@@ -226,6 +229,20 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-main)' }}>Amount *</label>
               <input type="text" value={displayAmount} onChange={handleAmountChange} placeholder="0.00" required style={fieldStyle} />
             </div>
+
+            {envelopes.length > 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-main)' }}>Envelope / Account</label>
+                <select value={envelopeId} onChange={(e) => setEnvelopeId(e.target.value)} style={fieldStyle}>
+                  <option value="">Default Bank Account</option>
+                  {envelopes.map((env) => (
+                    <option key={env.id} value={env.id}>
+                      {env.icon} {env.name} ({formatCurrency(env.balance, env.currency)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-main)' }}>Category *</label>

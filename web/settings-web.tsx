@@ -28,7 +28,7 @@ function Msg({ text, type }: { text: string; type: 'success' | 'error' }) {
 
 export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   const { user, signOut } = useAuthStore();
-  const { budget, loading, createBudget, updateBudget, updateBankBalance, recurringTransactions, fetchRecurringTransactions, addRecurringTransaction, deleteRecurringTransaction } = useBudgetStore();
+  const { budget, loading, createBudget, updateBudget, updateBankBalance, recurringTransactions, fetchRecurringTransactions, addRecurringTransaction, deleteRecurringTransaction, envelopes, fetchEnvelopes, createEnvelope, deleteEnvelope } = useBudgetStore();
 
   const [dailyTarget, setDailyTarget] = useState(
     budget?.daily_target.toString() || ''
@@ -46,6 +46,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   const [budgetMsg, setBudgetMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [balanceMsg, setBalanceMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [recurringMsg, setRecurringMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [envMsg, setEnvMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [signOutConfirm, setSignOutConfirm] = useState(false);
 
   // New Recurring Transaction Form State
@@ -57,12 +58,19 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   const [recNextDate, setRecNextDate] = useState(new Date().toISOString().split('T')[0]);
   const [recNote, setRecNote] = useState('');
 
+  // New Envelope Form State
+  const [showEnvelopeForm, setShowEnvelopeForm] = useState(false);
+  const [envName, setEnvName] = useState('');
+  const [envIcon, setEnvIcon] = useState('💰');
+  const [envBalance, setEnvBalance] = useState('');
+
   const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Rent', 'Other'];
   const INCOME_CATEGORIES = ['Salary', 'Business', 'Investment', 'Gift', 'Other'];
 
   useEffect(() => {
     if (user?.id) {
       fetchRecurringTransactions(user.id);
+      fetchEnvelopes(user.id);
     }
   }, [user?.id]);
 
@@ -139,6 +147,27 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
       await deleteRecurringTransaction(id);
     } catch (error) {
       console.error('Failed to delete recurring transaction', error);
+    }
+  };
+
+  const handleAddEnvelope = async () => {
+    setEnvMsg(null);
+    if (!envName) {
+      setEnvMsg({ text: 'Please enter a name for the envelope', type: 'error' });
+      return;
+    }
+    const bal = parseFloat(envBalance) || 0;
+    if (!user) return;
+
+    try {
+      await createEnvelope(user.id, envName, envIcon || '💰', bal, budget?.currency || 'USD');
+      setEnvMsg({ text: 'Envelope added!', type: 'success' });
+      setShowEnvelopeForm(false);
+      setEnvName('');
+      setEnvIcon('💰');
+      setEnvBalance('');
+    } catch (error: any) {
+      setEnvMsg({ text: error.message || 'Failed to add envelope', type: 'error' });
     }
   };
 
@@ -220,7 +249,86 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
           {budgetMsg && <Msg text={budgetMsg.text} type={budgetMsg.type} />}
         </div>
 
-        {/* Bank Balance */}
+        {/* Envelopes Section */}
+        <div style={card}>
+          <div style={sectionTitle}><span>💌</span> Envelopes & Accounts</div>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.4' }}>
+            Manage multiple accounts or budgeting envelopes (e.g., Wallet, Bank, Vacation Fund).
+          </div>
+          
+          {envelopes.length > 0 && (
+            <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {envelopes.map(env => (
+                <div key={env.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', border: '1px solid var(--border-light)', borderRadius: '8px', backgroundColor: 'var(--bg-tertiary)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ fontSize: '24px' }}>{env.icon}</div>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {env.name}
+                        {env.is_default && <span style={{ fontSize: '10px', backgroundColor: 'var(--primary)', color: '#fff', padding: '2px 6px', borderRadius: '4px' }}>DEFAULT</span>}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        {formatCurrency(env.balance, env.currency)}
+                      </div>
+                    </div>
+                  </div>
+                  {!env.is_default && (
+                    <button onClick={async () => {
+                      if(window.confirm('Are you sure you want to delete this envelope? Transactions will lose this envelope reference.')) {
+                        try {
+                          await deleteEnvelope(env.id);
+                        } catch(e) {
+                          alert('Failed to delete envelope');
+                        }
+                      }
+                    }} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '16px', padding: '4px' }} title="Delete">
+                      🗑️
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!showEnvelopeForm ? (
+            <button
+              onClick={() => setShowEnvelopeForm(true)}
+              style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #16a085, #2ecc71)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(46,204,113,0.35)' }}>
+              + Add Envelope
+            </button>
+          ) : (
+            <div style={{ backgroundColor: 'var(--bg-secondary)', borderRadius: '12px', padding: '16px', border: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-main)', margin: 0 }}>New Envelope</h3>
+                <button onClick={() => setShowEnvelopeForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '18px' }}>×</button>
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={lbl}>Name</label>
+                <input type="text" value={envName} onChange={e => setEnvName(e.target.value)} placeholder="e.g. Wallet, Cash, Vacation" style={fieldStyle} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label style={lbl}>Icon (Emoji)</label>
+                  <input type="text" value={envIcon} onChange={e => setEnvIcon(e.target.value)} placeholder="e.g. 💰" style={fieldStyle} />
+                </div>
+                <div>
+                  <label style={lbl}>Initial Balance</label>
+                  <input type="number" value={envBalance} onChange={e => setEnvBalance(e.target.value)} placeholder="0.00" style={fieldStyle} step="0.01" />
+                </div>
+              </div>
+
+              <button onClick={handleAddEnvelope} disabled={loading}
+                style={{ width: '100%', padding: '12px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer' }}>
+                {loading ? 'Adding...' : 'Save Envelope'}
+              </button>
+              {envMsg && <Msg text={envMsg.text} type={envMsg.type} />}
+            </div>
+          )}
+        </div>
+
+        {/* Bank Balance (Legacy / Default) */}
         <div style={card}>
           <div style={sectionTitle}><span>🏦</span> Bank Account Balance</div>
           <label style={lbl}>Starting Balance ({currency})</label>
