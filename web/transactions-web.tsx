@@ -112,6 +112,7 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
             margin: 0;
             padding: 0;
             width: 100%;
+            background: var(--bg-main);
           }
           * {
             box-sizing: border-box;
@@ -119,7 +120,7 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
         `}</style>
         <div style={{ 
           minHeight: '100vh', 
-          backgroundColor: '#f5f5f5', 
+          backgroundColor: 'var(--bg-main)', 
           padding: '20px',
           boxSizing: 'border-box',
           width: '100%',
@@ -130,7 +131,7 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
         }}>
           <div style={{ maxWidth: '600px', margin: '0 auto' }}>
             <div style={{ textAlign: 'center', padding: '40px' }}>
-              <div style={{ fontSize: '18px', color: '#7f8c8d' }}>Loading transactions...</div>
+              <div style={{ fontSize: '18px', color: 'var(--text-secondary)' }}>Loading transactions...</div>
             </div>
           </div>
         </div>
@@ -147,14 +148,20 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
           margin: 0;
           padding: 0;
           width: 100%;
+          background: var(--bg-main);
+          color: var(--text-main);
         }
         * {
           box-sizing: border-box;
         }
+        input:focus, select:focus {
+          border-color: var(--primary) !important;
+          outline: none;
+        }
       `}</style>
       <div style={{ 
         minHeight: '100vh', 
-        backgroundColor: '#f5f5f5', 
+        backgroundColor: 'var(--bg-main)', 
         padding: '20px',
         boxSizing: 'border-box',
         width: '100%',
@@ -165,155 +172,125 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
       }}>
         <div style={{ maxWidth: '600px', margin: '0 auto' }}>
           {/* Header */}
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            marginBottom: '24px',
-            gap: '16px'
-          }}>
-            <button
-              onClick={onBack}
-              style={{
-                backgroundColor: 'transparent',
-                color: '#3498db',
-                border: 'none',
-                fontSize: '16px',
-                cursor: 'pointer',
-                padding: '8px'
-              }}
-            >
-              ← Back
-            </button>
-            <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#2c3e50', margin: 0 }}>
-              Transaction History
-            </h1>
-          </div>
-
-          {/* Balance Card */}
-          <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>💰 Running Balance</h2>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: runningBalance >= 0 ? '#27ae60' : '#e74c3c', marginBottom: '4px' }}>
-              {formatCurrency(Math.abs(runningBalance), budget?.currency || 'TZS')}
-            </div>
-            <div style={{ fontSize: '12px', color: '#95a5a6' }}>
-              {runningBalance >= 0 ? 'Positive balance' : 'Negative balance'}
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value as any)}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <button
+                onClick={onBack}
                 style={{
-                  flex: 1,
-                  minWidth: '120px',
-                  padding: '8px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  fontSize: '14px',
+                  background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer',
+                  marginRight: '16px', padding: '8px', color: 'var(--text-main)'
                 }}
               >
-                <option value="all">All Types</option>
-                <option value="income">Income</option>
-                <option value="expense">Expenses</option>
-              </select>
-              
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                style={{
-                  flex: 1,
-                  minWidth: '120px',
-                  padding: '8px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                }}
-              >
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>
-                    {cat === 'all' ? 'All Categories' : cat}
-                  </option>
-                ))}
-              </select>
+                ←
+              </button>
+              <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>Transaction History</h1>
             </div>
             
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase' }}>Total Balance</div>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: (budget?.bank_balance || 0) + runningBalance >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                {formatCurrency((budget?.bank_balance || 0) + runningBalance, budget?.currency || 'TZS')}
+              </div>
+            </div>
+          </div>
+
+          {/* Filters & Search */}
+          <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '16px', boxShadow: 'var(--shadow-md)', marginBottom: '24px' }}>
             <input
               type="text"
               placeholder="Search transactions..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
-                width: '100%',
-                padding: '8px',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: '14px',
+                width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)',
+                marginBottom: '12px', fontSize: '14px', boxSizing: 'border-box',
+                backgroundColor: 'var(--bg-main)', color: 'var(--text-main)'
               }}
             />
+            
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as any)}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)',
+                  fontSize: '14px', backgroundColor: 'var(--bg-main)', color: 'var(--text-main)'
+                }}
+              >
+                <option value="all">All Types</option>
+                <option value="expense">Expenses</option>
+                <option value="income">Income</option>
+              </select>
+              
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)',
+                  fontSize: '14px', backgroundColor: 'var(--bg-main)', color: 'var(--text-main)'
+                }}
+              >
+                {categories.map(c => (
+                  <option key={c} value={c}>{c === 'all' ? 'All Categories' : c}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {/* Transactions List */}
-          <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+          {/* Transaction List */}
+          <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: '16px', boxShadow: 'var(--shadow-md)', overflow: 'hidden' }}>
             {filteredTransactions.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#7f8c8d' }}>
-                <div style={{ fontSize: '16px', marginBottom: '8px' }}>No transactions found</div>
-                <div style={{ fontSize: '14px' }}>
-                  {transactions.length === 0 ? 'Add your first transaction to get started!' : 'Try adjusting your filters'}
-                </div>
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <div style={{ fontSize: '40px', marginBottom: '16px' }}>📭</div>
+                <div style={{ fontSize: '16px', fontWeight: 'bold' }}>No transactions found</div>
+                <div style={{ fontSize: '14px', marginTop: '8px' }}>Try changing your filters or add a new transaction.</div>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {filteredTransactions.slice(0, visibleCount).map((transaction) => {
-                  const isIncome = transaction.amount < 0;
-                  const displayAmount = Math.abs(transaction.amount);
-                  
+              <div>
+                {filteredTransactions.slice(0, visibleCount).map((t, index) => {
+                  const isExpense = t.amount > 0;
                   return (
-                    <div key={transaction.id} style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '12px',
-                      border: '1px solid #ecf0f1',
-                      borderRadius: '8px',
-                      backgroundColor: '#fafafa'
+                    <div key={t.id} style={{
+                      padding: '16px',
+                      borderBottom: index < filteredTransactions.length - 1 ? '1px solid var(--border-light)' : 'none',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      backgroundColor: 'var(--bg-card)'
                     }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                           <span style={{
-                            backgroundColor: isIncome ? '#d5f4e6' : '#fadbd8',
-                            color: isIncome ? '#27ae60' : '#e74c3c',
+                            backgroundColor: !isExpense ? 'var(--success-bg)' : 'var(--danger-bg)',
+                            color: !isExpense ? 'var(--success-text)' : 'var(--danger-text)',
                             padding: '4px 8px',
                             borderRadius: '4px',
                             fontSize: '12px',
                             fontWeight: '600'
                           }}>
-                            {isIncome ? '💰' : '💸'} {transaction.category}
+                            {!isExpense ? '💰' : '💸'} {t.category}
                           </span>
-                          <span style={{ fontSize: '12px', color: '#7f8c8d' }}>
-                            {new Date(transaction.date).toLocaleDateString()}
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            {new Date(t.date).toLocaleDateString()}
                           </span>
                         </div>
-                        {transaction.note && (
-                          <div style={{ fontSize: '14px', color: '#7f8c8d', marginBottom: '4px' }}>
-                            {transaction.note}
+                        {t.note && (
+                          <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                            {t.note}
                           </div>
                         )}
                       </div>
                       
+
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div style={{
                           fontSize: '16px',
                           fontWeight: 'bold',
-                          color: isIncome ? '#27ae60' : '#e74c3c'
+                          color: !isExpense ? 'var(--success)' : 'var(--danger)'
                         }}>
-                          {isIncome ? '+' : '-'}{formatCurrency(displayAmount, budget?.currency || 'TZS')}
+                          {!isExpense ? '+' : '-'}{formatCurrency(Math.abs(t.amount), budget?.currency || 'TZS')}
                         </div>
                         
                         <button
-                          onClick={() => handleEdit(transaction.id)}
+                          onClick={() => handleEdit(t.id)}
                           style={{
                             backgroundColor: '#f39c12',
                             color: '#fff',
@@ -322,28 +299,22 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
                             padding: '6px 10px',
                             fontSize: '12px',
                             cursor: 'pointer',
-                            transition: 'opacity 0.2s',
                           }}
-                          onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
-                          onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
                         >
                           Edit
                         </button>
                         
                         <button
-                          onClick={() => setShowDeleteConfirm(transaction.id)}
+                          onClick={() => setShowDeleteConfirm(t.id)}
                           style={{
-                            backgroundColor: '#e74c3c',
+                            backgroundColor: 'var(--danger)',
                             color: '#fff',
                             border: 'none',
                             borderRadius: '4px',
                             padding: '6px 10px',
                             fontSize: '12px',
                             cursor: 'pointer',
-                            transition: 'opacity 0.2s',
                           }}
-                          onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
-                          onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
                         >
                           Delete
                         </button>
@@ -358,17 +329,17 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
                     style={{
                       marginTop: '16px',
                       padding: '12px',
-                      backgroundColor: '#f8f9fa',
-                      border: '1px solid #e0e0e0',
+                      backgroundColor: 'var(--bg-secondary)',
+                      border: '1px solid var(--border-color)',
                       borderRadius: '8px',
-                      color: '#2c3e50',
+                      color: 'var(--text-main)',
                       fontSize: '14px',
                       fontWeight: '600',
                       cursor: 'pointer',
                       transition: 'all 0.2s',
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#eef2f5')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#f8f9fa')}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-secondary)')}
                   >
                     Load More Transactions... ({filteredTransactions.length - visibleCount} remaining)
                   </button>
@@ -385,36 +356,40 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: 'rgba(0,0,0,0.5)',
+              backgroundColor: 'rgba(0,0,0,0.6)',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              zIndex: 1000
+              zIndex: 1000,
+              backdropFilter: 'blur(2px)'
             }}>
               <div style={{
-                backgroundColor: '#fff',
-                borderRadius: '12px',
+                backgroundColor: 'var(--bg-card)',
+                borderRadius: '16px',
                 padding: '24px',
                 maxWidth: '400px',
-                width: '90%'
+                width: '90%',
+                boxShadow: 'var(--shadow-xl)',
+                border: '1px solid var(--border-color)'
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#2c3e50', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-main)', margin: '0 0 16px 0' }}>
                   Delete Transaction
                 </h3>
-                <p style={{ fontSize: '14px', color: '#7f8c8d', marginBottom: '24px' }}>
+                <p style={{ fontSize: '15px', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: 1.5 }}>
                   Are you sure you want to delete this transaction? This action cannot be undone.
                 </p>
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                   <button
                     onClick={() => setShowDeleteConfirm(null)}
                     style={{
-                      backgroundColor: '#95a5a6',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '6px',
                       padding: '10px 20px',
+                      backgroundColor: 'transparent',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '8px',
+                      color: 'var(--text-main)',
                       fontSize: '14px',
-                      cursor: 'pointer',
+                      fontWeight: '600',
+                      cursor: 'pointer'
                     }}
                   >
                     Cancel
@@ -422,13 +397,14 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
                   <button
                     onClick={() => handleDelete(showDeleteConfirm)}
                     style={{
-                      backgroundColor: '#e74c3c',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '6px',
                       padding: '10px 20px',
+                      backgroundColor: 'var(--danger)',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#fff',
                       fontSize: '14px',
-                      cursor: 'pointer',
+                      fontWeight: '600',
+                      cursor: 'pointer'
                     }}
                   >
                     Delete

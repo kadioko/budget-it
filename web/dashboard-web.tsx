@@ -27,11 +27,11 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
   const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
   const isOver = value > max;
   return (
-    <div style={{ width: '100%', height: '8px', backgroundColor: '#ecf0f1', borderRadius: '4px', overflow: 'hidden', marginTop: '8px' }}>
+    <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px', overflow: 'hidden', marginTop: '8px' }}>
       <div style={{
         height: '100%',
         width: `${pct}%`,
-        backgroundColor: isOver ? '#e74c3c' : color,
+        backgroundColor: isOver ? 'var(--danger)' : color,
         borderRadius: '4px',
         transition: 'width 0.6s ease',
       }} />
@@ -46,15 +46,15 @@ function StatCard({ title, value, subtitle, color, progress, progressMax, progre
 }) {
   return (
     <div style={{
-      backgroundColor: '#fff', borderRadius: '16px', padding: '20px',
-      boxShadow: '0 2px 12px rgba(0,0,0,0.07)', borderLeft: `4px solid ${color}`,
+      backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '20px',
+      boxShadow: 'var(--shadow-md)', borderLeft: `4px solid ${color}`,
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-        <div style={{ fontSize: '13px', fontWeight: '600', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{title}</div>
+        <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{title}</div>
         <div style={{ fontSize: '22px' }}>{icon}</div>
       </div>
-      <div style={{ fontSize: '26px', fontWeight: '800', color: '#2c3e50', lineHeight: 1.2 }}>{value}</div>
-      <div style={{ fontSize: '12px', color: '#95a5a6', marginTop: '4px' }}>{subtitle}</div>
+      <div style={{ fontSize: '26px', fontWeight: '800', color: 'var(--text-main)', lineHeight: 1.2 }}>{value}</div>
+      <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '4px' }}>{subtitle}</div>
       {progress !== undefined && progressMax !== undefined && (
         <ProgressBar value={progress} max={progressMax} color={progressColor || color} />
       )}
@@ -68,9 +68,9 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
   return (
     <div style={{
       position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)',
-      backgroundColor: type === 'success' ? '#27ae60' : '#e74c3c',
+      backgroundColor: type === 'success' ? 'var(--success)' : 'var(--danger)',
       color: '#fff', padding: '12px 24px', borderRadius: '12px',
-      boxShadow: '0 8px 24px rgba(0,0,0,0.2)', fontSize: '14px', fontWeight: '600',
+      boxShadow: 'var(--shadow-lg)', fontSize: '14px', fontWeight: '600',
       zIndex: 9999, whiteSpace: 'nowrap', maxWidth: '90vw',
       animation: 'slideUp 0.3s ease',
     }}>
@@ -157,10 +157,10 @@ export default function DashboardWeb() {
       <>
         <style>{`* { box-sizing: border-box; margin: 0; padding: 0; } @keyframes fadeIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }`}</style>
         <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(135deg, #1a252f 0%, #2c3e50 50%, #3498db 100%)', padding: '20px' }}>
-          <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '48px 40px', maxWidth: '420px', width: '100%', textAlign: 'center', boxShadow: '0 24px 64px rgba(0,0,0,0.25)', animation: 'fadeIn 0.4s ease' }}>
+          <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: '20px', padding: '48px 40px', maxWidth: '420px', width: '100%', textAlign: 'center', boxShadow: 'var(--shadow-xl)', animation: 'fadeIn 0.4s ease' }}>
             <div style={{ fontSize: '56px', marginBottom: '20px' }}>🎯</div>
-            <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#2c3e50', marginBottom: '12px' }}>Welcome to Budget It!</h1>
-            <p style={{ fontSize: '15px', color: '#7f8c8d', marginBottom: '32px', lineHeight: 1.6 }}>Set up your daily and monthly spending targets to start tracking your finances.</p>
+            <h1 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-main)', marginBottom: '12px' }}>Welcome to Budget It!</h1>
+            <p style={{ fontSize: '15px', color: 'var(--text-secondary)', marginBottom: '32px', lineHeight: 1.6 }}>Set up your daily and monthly spending targets to start tracking your finances.</p>
             <button onClick={() => setCurrentView('settings')} style={{ width: '100%', padding: '16px', background: 'linear-gradient(135deg, #3498db, #2980b9)', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(52,152,219,0.4)' }}>
               Set Up My Budget →
             </button>
@@ -269,45 +269,45 @@ export default function DashboardWeb() {
 
         {/* Budget status pills */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
-          <div style={{ backgroundColor: stats.isOverDailyBudget ? '#fadbd8' : '#d5f4e6', borderRadius: '12px', padding: '14px 16px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', color: stats.isOverDailyBudget ? '#c0392b' : '#1e8449', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Daily Budget</div>
-            <div style={{ fontSize: '20px', fontWeight: '800', color: stats.isOverDailyBudget ? '#e74c3c' : '#27ae60' }}>
+          <div style={{ backgroundColor: stats.isOverDailyBudget ? 'var(--danger-bg)' : 'var(--success-bg)', borderRadius: '12px', padding: '14px 16px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: stats.isOverDailyBudget ? 'var(--danger-text)' : 'var(--success-text)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Daily Budget</div>
+            <div style={{ fontSize: '20px', fontWeight: '800', color: stats.isOverDailyBudget ? 'var(--danger)' : 'var(--success)' }}>
               {stats.isOverDailyBudget
                 ? `−${formatCurrency(stats.spentToday - budget.daily_target, cur)}`
                 : `+${formatCurrency(stats.dailyRemaining, cur)}`}
             </div>
-            <div style={{ fontSize: '11px', color: stats.isOverDailyBudget ? '#e74c3c' : '#27ae60', marginTop: '2px' }}>
+            <div style={{ fontSize: '11px', color: stats.isOverDailyBudget ? 'var(--danger)' : 'var(--success)', marginTop: '2px' }}>
               {stats.isOverDailyBudget ? 'over limit' : 'remaining today'}
             </div>
           </div>
-          <div style={{ backgroundColor: stats.isOverMonthlyBudget ? '#fadbd8' : '#d5f4e6', borderRadius: '12px', padding: '14px 16px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', color: stats.isOverMonthlyBudget ? '#c0392b' : '#1e8449', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Monthly Budget</div>
-            <div style={{ fontSize: '20px', fontWeight: '800', color: stats.isOverMonthlyBudget ? '#e74c3c' : '#27ae60' }}>
+          <div style={{ backgroundColor: stats.isOverMonthlyBudget ? 'var(--danger-bg)' : 'var(--success-bg)', borderRadius: '12px', padding: '14px 16px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: stats.isOverMonthlyBudget ? 'var(--danger-text)' : 'var(--success-text)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Monthly Budget</div>
+            <div style={{ fontSize: '20px', fontWeight: '800', color: stats.isOverMonthlyBudget ? 'var(--danger)' : 'var(--success)' }}>
               {stats.isOverMonthlyBudget
                 ? `−${formatCurrency(stats.spentMonthToDate - budget.monthly_target, cur)}`
                 : `+${formatCurrency(stats.monthlyRemaining, cur)}`}
             </div>
-            <div style={{ fontSize: '11px', color: stats.isOverMonthlyBudget ? '#e74c3c' : '#27ae60', marginTop: '2px' }}>
+            <div style={{ fontSize: '11px', color: stats.isOverMonthlyBudget ? 'var(--danger)' : 'var(--success)', marginTop: '2px' }}>
               {stats.isOverMonthlyBudget ? 'over limit' : 'remaining this month'}
             </div>
           </div>
         </div>
 
         {/* Recent transactions */}
-        <div style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.07)' }}>
+        <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '20px', boxShadow: 'var(--shadow-md)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#2c3e50', margin: 0 }}>Recent Transactions</h2>
+            <h2 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-main)', margin: 0 }}>Recent Transactions</h2>
             <button onClick={() => setCurrentView('transactions')}
-              style={{ fontSize: '12px', color: '#3498db', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>
+              style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>
               View all →
             </button>
           </div>
           {recentTransactions.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '24px 0', color: '#b2bec3' }}>
+            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)' }}>
               <div style={{ fontSize: '32px', marginBottom: '8px' }}>📭</div>
               <div style={{ fontSize: '14px' }}>No transactions yet</div>
               <button onClick={() => setCurrentView('add-transaction')}
-                style={{ marginTop: '12px', padding: '8px 20px', background: '#3498db', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                style={{ marginTop: '12px', padding: '8px 20px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
                 Add your first transaction
               </button>
             </div>
@@ -316,17 +316,17 @@ export default function DashboardWeb() {
               {recentTransactions.map(t => {
                 const isIncome = t.amount < 0;
                 return (
-                  <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', backgroundColor: '#f8f9fa', borderRadius: '10px' }}>
+                  <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', backgroundColor: 'var(--bg-secondary)', borderRadius: '10px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: isIncome ? '#d5f4e6' : '#fadbd8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: isIncome ? 'var(--success-bg)' : 'var(--danger-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>
                         {isIncome ? '💰' : '💸'}
                       </div>
                       <div>
-                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#2c3e50' }}>{t.category}</div>
-                        <div style={{ fontSize: '11px', color: '#95a5a6' }}>{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{t.note ? ` · ${t.note}` : ''}</div>
+                        <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-main)' }}>{t.category}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{t.note ? ` · ${t.note}` : ''}</div>
                       </div>
                     </div>
-                    <div style={{ fontSize: '14px', fontWeight: '700', color: isIncome ? '#27ae60' : '#e74c3c' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: isIncome ? 'var(--success)' : 'var(--danger)' }}>
                       {isIncome ? '+' : '−'}{formatCurrency(Math.abs(t.amount), cur)}
                     </div>
                   </div>

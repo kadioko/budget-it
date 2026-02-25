@@ -131,19 +131,19 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
     
     return (
       <div style={{ marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#2c3e50', marginBottom: '16px' }}>{title}</h3>
+        <h3 style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text-main)', marginBottom: '16px' }}>{title}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {data.map((item, index) => (
             <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ 
                 width: '120px', 
                 fontSize: '14px', 
-                color: '#7f8c8d',
+                color: 'var(--text-secondary)',
                 textAlign: 'right'
               }}>
                 {item.label}
               </div>
-              <div style={{ flex: 1, backgroundColor: '#ecf0f1', borderRadius: '4px', height: '24px' }}>
+              <div style={{ flex: 1, backgroundColor: 'var(--bg-secondary)', borderRadius: '4px', height: '24px' }}>
                 <div style={{
                   width: `${(item.value / maxValue) * 100}%`,
                   height: '100%',
@@ -156,7 +156,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
                 width: '80px', 
                 fontSize: '14px', 
                 fontWeight: '600',
-                color: '#2c3e50',
+                color: 'var(--text-main)',
                 textAlign: 'right'
               }}>
                 {formatCurrency(item.value, budget?.currency || 'TZS')}
@@ -178,6 +178,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
             margin: 0;
             padding: 0;
             width: 100%;
+            background: var(--bg-main);
           }
           * {
             box-sizing: border-box;
@@ -185,7 +186,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
         `}</style>
         <div style={{ 
           minHeight: '100vh', 
-          backgroundColor: '#f5f5f5', 
+          backgroundColor: 'var(--bg-main)', 
           padding: '20px',
           boxSizing: 'border-box',
           width: '100%',
@@ -196,7 +197,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
         }}>
           <div style={{ maxWidth: '600px', margin: '0 auto' }}>
             <div style={{ textAlign: 'center', padding: '40px' }}>
-              <div style={{ fontSize: '18px', color: '#7f8c8d' }}>Loading analytics...</div>
+              <div style={{ fontSize: '18px', color: 'var(--text-secondary)' }}>Loading analytics...</div>
             </div>
           </div>
         </div>
@@ -214,6 +215,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
             margin: 0;
             padding: 0;
             width: 100%;
+            background: var(--bg-main);
           }
           * {
             box-sizing: border-box;
@@ -221,7 +223,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
         `}</style>
         <div style={{ 
           minHeight: '100vh', 
-          backgroundColor: '#f5f5f5', 
+          backgroundColor: 'var(--bg-main)', 
           padding: '20px',
           boxSizing: 'border-box',
           width: '100%',
@@ -232,8 +234,8 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
         }}>
           <div style={{ maxWidth: '600px', margin: '0 auto' }}>
             <div style={{ textAlign: 'center', padding: '40px' }}>
-              <div style={{ fontSize: '18px', color: '#7f8c8d' }}>No data available for analytics</div>
-              <div style={{ fontSize: '14px', color: '#95a5a6', marginTop: '8px' }}>
+              <div style={{ fontSize: '18px', color: 'var(--text-secondary)' }}>No data available for analytics</div>
+              <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginTop: '8px' }}>
                 Add some transactions to see your spending analytics!
               </div>
             </div>

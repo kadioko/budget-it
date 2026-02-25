@@ -149,17 +149,17 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
     } catch {}
   };
 
-  const lbl: React.CSSProperties = { fontSize: '12px', fontWeight: '700', color: '#636e72', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' };
-  const card: React.CSSProperties = { backgroundColor: '#fff', borderRadius: '16px', padding: '24px', marginBottom: '16px', boxShadow: '0 2px 12px rgba(0,0,0,0.07)' };
-  const sectionTitle: React.CSSProperties = { fontSize: '16px', fontWeight: '700', color: '#2c3e50', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' };
+  const lbl: React.CSSProperties = { fontSize: '12px', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' };
+  const card: React.CSSProperties = { backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '24px', marginBottom: '16px', boxShadow: 'var(--shadow-md)' };
+  const sectionTitle: React.CSSProperties = { fontSize: '16px', fontWeight: '700', color: 'var(--text-main)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' };
 
   return (
     <>
       <style>{`
         *, *::before, *::after { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; }
+        html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-main); color: var(--text-main); }
         @keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-        input:focus, select:focus { border-color: #3498db !important; box-shadow: 0 0 0 3px rgba(52,152,219,0.15) !important; }
+        input:focus, select:focus { border-color: var(--primary) !important; box-shadow: 0 0 0 3px rgba(52,152,219,0.15) !important; }
         .curr-btn:hover { opacity: 0.8; }
       `}</style>
 
@@ -173,52 +173,49 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
         </div>
       </div>
 
-      <div style={{ maxWidth: '600px', margin: '0 auto', padding: '24px 16px 48px', animation: 'fadeIn 0.3s ease' }}>
-
+      <div style={{ maxWidth: '720px', margin: '0 auto', padding: '20px 16px 60px', animation: 'fadeIn 0.4s ease' }}>
+        
         {/* Budget Targets */}
         <div style={card}>
           <div style={sectionTitle}><span>🎯</span> Budget Targets</div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div>
-              <label style={lbl}>Daily Target ({currency})</label>
+              <label style={lbl}>Daily Limit ({currency})</label>
               <input type="number" value={dailyTarget} onChange={e => setDailyTarget(e.target.value)}
-                placeholder="e.g. 50000" disabled={loading} style={fieldStyle} step="0.01" min="0" />
+                placeholder="e.g. 50" style={fieldStyle} min="1" step="any" />
             </div>
             <div>
-              <label style={lbl}>Monthly Target ({currency})</label>
+              <label style={lbl}>Monthly Limit ({currency})</label>
               <input type="number" value={monthlyTarget} onChange={e => setMonthlyTarget(e.target.value)}
-                placeholder="e.g. 1500000" disabled={loading} style={fieldStyle} step="0.01" min="0" />
+                placeholder="e.g. 1500" style={fieldStyle} min="1" step="any" />
             </div>
           </div>
 
-          <div style={{ marginBottom: '16px' }}>
-            <label style={lbl}>Currency</label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
-              {CURRENCIES.map(curr => (
-                <button key={curr} className="curr-btn" onClick={() => setCurrency(curr)} disabled={loading}
-                  style={{
-                    padding: '8px 4px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.15s',
-                    border: currency === curr ? '2px solid #3498db' : '1.5px solid #e0e0e0',
-                    backgroundColor: currency === curr ? '#ebf5fb' : '#fff',
-                    color: currency === curr ? '#2980b9' : '#636e72',
-                  }}>
-                  {curr}
-                </button>
-              ))}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+            <div>
+              <label style={lbl}>Currency</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {['USD', 'EUR', 'GBP', 'TZS'].map(c => (
+                  <button key={c} className="curr-btn" onClick={() => setCurrency(c)}
+                    style={{ flex: 1, padding: '10px 0', border: currency === c ? '2px solid var(--primary)' : '1px solid var(--border-color)', borderRadius: '8px', background: currency === c ? 'var(--primary)' : 'var(--bg-secondary)', color: currency === c ? '#fff' : 'var(--text-secondary)', fontWeight: '700', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s' }}>
+                    {c}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-
-          <div style={{ marginBottom: '20px' }}>
-            <label style={lbl}>Month Start Day (1–28)</label>
-            <input type="number" value={monthStartDay} onChange={e => setMonthStartDay(e.target.value)}
-              placeholder="1" disabled={loading} style={fieldStyle} min="1" max="28" />
-            <div style={{ fontSize: '11px', color: '#b2bec3', marginTop: '4px' }}>Day of month your budget period resets</div>
+            <div>
+              <label style={lbl}>Month Starts On (Day)</label>
+              <select value={monthStartDay} onChange={e => setMonthStartDay(e.target.value)} style={fieldStyle}>
+                {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+                  <option key={d} value={d}>{d}{d === 1 ? 'st' : d === 2 ? 'nd' : d === 3 ? 'rd' : 'th'}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <button onClick={handleSaveBudget} disabled={loading}
-            style={{ width: '100%', padding: '14px', background: loading ? '#bdc3c7' : 'linear-gradient(135deg, #3498db, #2980b9)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: loading ? 'none' : '0 4px 12px rgba(52,152,219,0.35)' }}>
-            {loading ? 'Saving...' : budget ? '💾 Update Budget' : '🚀 Create Budget'}
+            style={{ width: '100%', padding: '14px', background: loading ? 'var(--text-muted)' : 'var(--primary)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: loading ? 'none' : '0 4px 12px rgba(52,152,219,0.3)' }}>
+            {loading ? 'Saving...' : '💾 Save Budget Settings'}
           </button>
           {budgetMsg && <Msg text={budgetMsg.text} type={budgetMsg.type} />}
         </div>
@@ -229,11 +226,11 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
           <label style={lbl}>Starting Balance ({currency})</label>
           <input type="number" step="0.01" value={bankBalance} onChange={e => setBankBalance(e.target.value)}
             placeholder="0.00" style={{ ...fieldStyle, marginBottom: '12px' }} />
-          <div style={{ fontSize: '11px', color: '#b2bec3', marginBottom: '16px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '16px' }}>
             Your initial balance — transactions will be deducted from this
           </div>
           <button onClick={handleSaveBalance} disabled={loading}
-            style={{ width: '100%', padding: '14px', background: loading ? '#bdc3c7' : 'linear-gradient(135deg, #27ae60, #219a52)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: loading ? 'none' : '0 4px 12px rgba(39,174,96,0.35)' }}>
+            style={{ width: '100%', padding: '14px', background: loading ? 'var(--text-muted)' : 'var(--success)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: loading ? 'none' : '0 4px 12px rgba(39,174,96,0.35)' }}>
             {loading ? 'Saving...' : '💾 Save Balance'}
           </button>
           {balanceMsg && <Msg text={balanceMsg.text} type={balanceMsg.type} />}
@@ -242,7 +239,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
         {/* Recurring Transactions Section */}
         <div style={card}>
           <div style={sectionTitle}><span>🔄</span> Recurring Transactions</div>
-          <div style={{ fontSize: '13px', color: '#7f8c8d', marginBottom: '16px', lineHeight: '1.4' }}>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.4' }}>
             Set up automatic income (like salary) or expenses (like rent) to be added on a schedule.
           </div>
           
@@ -250,25 +247,25 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
           {recurringTransactions.length > 0 && (
             <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {recurringTransactions.map(rt => (
-                <div key={rt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', border: '1px solid #ecf0f1', borderRadius: '8px', backgroundColor: '#fafafa' }}>
+                <div key={rt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', border: '1px solid var(--border-light)', borderRadius: '8px', backgroundColor: 'var(--bg-tertiary)' }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                      <span style={{ backgroundColor: rt.type === 'income' ? '#d5f4e6' : '#fadbd8', color: rt.type === 'income' ? '#27ae60' : '#e74c3c', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>
+                      <span style={{ backgroundColor: rt.type === 'income' ? 'var(--success-bg)' : 'var(--danger-bg)', color: rt.type === 'income' ? 'var(--success)' : 'var(--danger)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>
                         {rt.type === 'income' ? '💰' : '💸'} {rt.category}
                       </span>
-                      <span style={{ fontSize: '12px', color: '#7f8c8d', fontWeight: '600', textTransform: 'capitalize' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'capitalize' }}>
                         Every {rt.frequency.replace('ly', '')}
                       </span>
                     </div>
-                    <div style={{ fontSize: '12px', color: '#95a5a6' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
                       Next: {new Date(rt.next_date).toLocaleDateString()}
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ fontSize: '15px', fontWeight: 'bold', color: rt.type === 'income' ? '#27ae60' : '#e74c3c' }}>
+                    <div style={{ fontSize: '15px', fontWeight: 'bold', color: rt.type === 'income' ? 'var(--success)' : 'var(--danger)' }}>
                       {rt.type === 'income' ? '+' : '-'}{formatCurrency(rt.amount, budget?.currency || 'USD')}
                     </div>
-                    <button onClick={() => handleDeleteRecurring(rt.id)} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontSize: '16px', padding: '4px' }} title="Delete">
+                    <button onClick={() => handleDeleteRecurring(rt.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '16px', padding: '4px' }} title="Delete">
                       🗑️
                     </button>
                   </div>
@@ -284,19 +281,19 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
               + Add Recurring Transaction
             </button>
           ) : (
-            <div style={{ backgroundColor: '#f8f9fa', borderRadius: '12px', padding: '16px', border: '1px solid #e0e0e0' }}>
+            <div style={{ backgroundColor: 'var(--bg-secondary)', borderRadius: '12px', padding: '16px', border: '1px solid var(--border-color)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#2c3e50', margin: 0 }}>New Recurring</h3>
-                <button onClick={() => setShowRecurringForm(false)} style={{ background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer', fontSize: '18px' }}>×</button>
+                <h3 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-main)', margin: 0 }}>New Recurring</h3>
+                <button onClick={() => setShowRecurringForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '18px' }}>×</button>
               </div>
 
               <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
                 <button onClick={() => { setRecType('expense'); setRecCategory(EXPENSE_CATEGORIES[0]); }}
-                  style={{ flex: 1, padding: '10px', borderRadius: '8px', border: recType === 'expense' ? '2px solid #e74c3c' : '1px solid #ddd', background: recType === 'expense' ? '#fadbd8' : '#fff', color: recType === 'expense' ? '#c0392b' : '#7f8c8d', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}>
+                  style={{ flex: 1, padding: '10px', borderRadius: '8px', border: recType === 'expense' ? '2px solid var(--danger)' : '1px solid var(--border-color)', background: recType === 'expense' ? 'var(--danger-bg)' : 'var(--bg-card)', color: recType === 'expense' ? 'var(--danger)' : 'var(--text-secondary)', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}>
                   Expense
                 </button>
                 <button onClick={() => { setRecType('income'); setRecCategory(INCOME_CATEGORIES[0]); }}
-                  style={{ flex: 1, padding: '10px', borderRadius: '8px', border: recType === 'income' ? '2px solid #27ae60' : '1px solid #ddd', background: recType === 'income' ? '#d5f4e6' : '#fff', color: recType === 'income' ? '#166534' : '#7f8c8d', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}>
+                  style={{ flex: 1, padding: '10px', borderRadius: '8px', border: recType === 'income' ? '2px solid var(--success)' : '1px solid var(--border-color)', background: recType === 'income' ? 'var(--success-bg)' : 'var(--bg-card)', color: recType === 'income' ? 'var(--success)' : 'var(--text-secondary)', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}>
                   Income
                 </button>
               </div>
@@ -334,7 +331,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
               </div>
 
               <button onClick={handleAddRecurring} disabled={loading}
-                style={{ width: '100%', padding: '12px', background: '#2c3e50', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer' }}>
+                style={{ width: '100%', padding: '12px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer' }}>
                 {loading ? 'Adding...' : 'Save Recurring'}
               </button>
               {recurringMsg && <Msg text={recurringMsg.text} type={recurringMsg.type} />}
@@ -345,35 +342,29 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
         {/* Account Info */}
         <div style={card}>
           <div style={sectionTitle}><span>👤</span> Account</div>
-          <div style={{ backgroundColor: '#f8f9fa', borderRadius: '10px', padding: '14px 16px', marginBottom: '20px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', color: '#b2bec3', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Signed in as</div>
-            <div style={{ fontSize: '15px', fontWeight: '600', color: '#2c3e50' }}>{user?.email}</div>
+          <div style={{ backgroundColor: 'var(--bg-secondary)', borderRadius: '10px', padding: '14px 16px', marginBottom: '20px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Signed in as</div>
+            <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--text-main)' }}>{user?.email}</div>
           </div>
 
           {!signOutConfirm ? (
             <button onClick={() => setSignOutConfirm(true)}
-              style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #e74c3c, #c0392b)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(231,76,60,0.3)' }}>
+              style={{ width: '100%', padding: '12px', background: 'var(--bg-tertiary)', color: 'var(--danger)', border: '2px solid var(--danger-border)', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>
               Sign Out
             </button>
           ) : (
-            <div style={{ backgroundColor: '#fdf2f2', border: '1px solid #f5c6c6', borderRadius: '12px', padding: '16px' }}>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: '#c0392b', marginBottom: '12px', textAlign: 'center' }}>
-                Are you sure you want to sign out?
-              </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button onClick={() => setSignOutConfirm(false)}
-                  style={{ flex: 1, padding: '12px', background: '#fff', color: '#636e72', border: '1.5px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>
-                  Cancel
-                </button>
-                <button onClick={handleSignOut}
-                  style={{ flex: 1, padding: '12px', background: '#e74c3c', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>
-                  Yes, Sign Out
-                </button>
-              </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setSignOutConfirm(false)}
+                style={{ flex: 1, padding: '12px', background: 'var(--bg-tertiary)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={handleSignOut}
+                style={{ flex: 1, padding: '12px', background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(231,76,60,0.3)' }}>
+                Confirm Sign Out
+              </button>
             </div>
           )}
         </div>
-
       </div>
     </>
   );

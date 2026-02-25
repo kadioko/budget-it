@@ -124,6 +124,7 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
             margin: 0;
             padding: 0;
             width: 100%;
+            background: var(--bg-main);
           }
           * {
             box-sizing: border-box;
@@ -131,7 +132,7 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
         `}</style>
         <div style={{ 
           minHeight: '100vh', 
-          backgroundColor: '#f5f5f5', 
+          backgroundColor: 'var(--bg-main)', 
           padding: '20px',
           boxSizing: 'border-box',
           width: '100%',
@@ -142,7 +143,7 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
         }}>
           <div style={{ maxWidth: '600px', margin: '0 auto' }}>
             <div style={{ textAlign: 'center', padding: '40px' }}>
-              <div style={{ fontSize: '18px', color: '#7f8c8d' }}>Transaction not found</div>
+              <div style={{ fontSize: '18px', color: 'var(--text-secondary)' }}>Transaction not found</div>
             </div>
           </div>
         </div>
@@ -150,195 +151,124 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
     );
   }
 
+  const fieldStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '16px',
+    border: '2px solid var(--border-color)',
+    borderRadius: '12px',
+    fontSize: '16px',
+    backgroundColor: 'var(--bg-card)',
+    color: 'var(--text-main)',
+    outline: 'none',
+    transition: 'border-color 0.2s',
+    boxSizing: 'border-box',
+  };
+
   return (
     <>
       <style>{`
         html, body {
           scrollbar-gutter: stable;
           overflow-y: scroll;
-          margin: 0;
-          padding: 0;
-          width: 100%;
+          background: var(--bg-main);
+          color: var(--text-main);
         }
-        * {
-          box-sizing: border-box;
+        input:focus, select:focus {
+          border-color: var(--primary) !important;
         }
       `}</style>
-      <div style={{ 
-        minHeight: '100vh', 
-        backgroundColor: '#f5f5f5', 
-        padding: '20px',
-        boxSizing: 'border-box',
-        width: '100%',
-        maxWidth: '100vw',
-        margin: '0',
-        left: '0',
-        right: '0'
-      }}>
-      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          marginBottom: '24px',
-          gap: '16px'
-        }}>
-          <button
-            onClick={onBack}
-            style={{
-              backgroundColor: 'transparent',
-              color: '#3498db',
-              border: 'none',
-              fontSize: '16px',
-              cursor: 'pointer',
-              padding: '8px'
-            }}
-          >
-            ← Back
-          </button>
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#2c3e50', margin: 0 }}>
-            Edit {transactionType === 'income' ? 'Income' : 'Expense'}
-          </h1>
-        </div>
+      <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)', padding: '20px', boxSizing: 'border-box', width: '100%' }}>
+        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px' }}>
+            <button
+              onClick={onBack}
+              style={{
+                background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer',
+                marginRight: '16px', padding: '8px', color: 'var(--text-main)'
+              }}
+            >
+              ←
+            </button>
+            <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>Edit Transaction</h1>
+          </div>
 
-        <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-          <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#2c3e50', marginBottom: '8px' }}>
-                Transaction Type
-              </label>
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
-                <button
-                  type="button"
-                  onClick={() => setTransactionType('expense')}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    backgroundColor: transactionType === 'expense' ? '#e74c3c' : '#fff',
-                    color: transactionType === 'expense' ? '#fff' : '#e74c3c',
-                    border: '2px solid #e74c3c',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  💸 Expense
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTransactionType('income')}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    backgroundColor: transactionType === 'income' ? '#27ae60' : '#fff',
-                    color: transactionType === 'income' ? '#fff' : '#27ae60',
-                    border: '2px solid #27ae60',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  💰 Income
-                </button>
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#2c3e50', marginBottom: '8px' }}>
-                Amount
-              </label>
-              <input
-                type="text"
-                value={displayAmount}
-                onChange={handleAmountChange}
-                placeholder="0.00"
+          <form onSubmit={handleSubmit} style={{ backgroundColor: 'var(--bg-card)', padding: '24px', borderRadius: '16px', boxShadow: 'var(--shadow-md)' }}>
+            
+            {/* Type Toggle */}
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+              <button
+                type="button"
+                onClick={() => { setTransactionType('expense'); if (!EXPENSE_CATEGORIES.includes(category)) setCategory(''); }}
                 style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  backgroundColor: '#fff',
-                }}
-                required
-              />
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#2c3e50', marginBottom: '8px' }}>
-                Category
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  backgroundColor: '#fff',
+                  flex: 1, padding: '14px', borderRadius: '12px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s',
+                  backgroundColor: transactionType === 'expense' ? 'var(--danger)' : 'var(--bg-secondary)',
+                  color: transactionType === 'expense' ? '#fff' : 'var(--text-secondary)',
+                  border: transactionType === 'expense' ? 'none' : '2px solid var(--border-color)',
                 }}
               >
-                {(transactionType === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map((cat: string) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
+                Expense
+              </button>
+              <button
+                type="button"
+                onClick={() => { setTransactionType('income'); if (!INCOME_CATEGORIES.includes(category)) setCategory(''); }}
+                style={{
+                  flex: 1, padding: '14px', borderRadius: '12px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s',
+                  backgroundColor: transactionType === 'income' ? 'var(--success)' : 'var(--bg-secondary)',
+                  color: transactionType === 'income' ? '#fff' : 'var(--text-secondary)',
+                  border: transactionType === 'income' ? 'none' : '2px solid var(--border-color)',
+                }}
+              >
+                Income
+              </button>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-main)' }}>Amount *</label>
+              <input type="text" value={displayAmount} onChange={handleAmountChange} placeholder="0.00" required style={fieldStyle} />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-main)' }}>Category *</label>
+              <select value={category} onChange={(e) => setCategory(e.target.value)} required style={fieldStyle}>
+                <option value="" disabled>Select a category</option>
+                {(transactionType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
                 ))}
+                {/* Keep existing category if it's custom/old */}
+                {category && !(transactionType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).includes(category) && (
+                  <option value={category}>{category}</option>
+                )}
               </select>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#2c3e50', marginBottom: '8px' }}>
-                Date
-              </label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  backgroundColor: '#fff',
-                }}
-                required
-              />
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-main)' }}>Date *</label>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required style={fieldStyle} />
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#2c3e50', marginBottom: '8px' }}>
-                Note (optional)
-              </label>
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Add a note about this transaction..."
-                rows={3}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  backgroundColor: '#fff',
-                  resize: 'vertical',
-                }}
-              />
+            <div style={{ marginBottom: '32px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-main)' }}>Note (Optional)</label>
+              <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="What was this for?" style={fieldStyle} />
             </div>
 
             {error && (
-              <div style={{ backgroundColor: '#fadbd8', color: '#e74c3c', padding: '12px', borderRadius: '8px', marginBottom: '12px', fontSize: '14px', fontWeight: '600' }}>
+              <div style={{
+                padding: '16px', borderRadius: '12px', marginBottom: '24px', fontWeight: 'bold',
+                backgroundColor: 'var(--danger-bg)',
+                color: 'var(--danger-text)',
+                border: '1px solid var(--danger-border)'
+              }}>
                 ⚠️ {error}
               </div>
             )}
+            
             {success && (
-              <div style={{ backgroundColor: '#d5f4e6', color: '#1e8449', padding: '12px', borderRadius: '8px', marginBottom: '12px', fontSize: '14px', fontWeight: '600' }}>
+              <div style={{
+                padding: '16px', borderRadius: '12px', marginBottom: '24px', fontWeight: 'bold',
+                backgroundColor: 'var(--success-bg)',
+                color: 'var(--success-text)',
+                border: '1px solid var(--success-border)'
+              }}>
                 ✅ {success}
               </div>
             )}
@@ -347,25 +277,16 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
               type="submit"
               disabled={loading}
               style={{
-                width: '100%',
-                padding: '14px',
-                backgroundColor: loading ? '#95a5a6' : '#f39c12',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'opacity 0.2s',
+                width: '100%', padding: '16px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none',
+                borderRadius: '12px', fontSize: '18px', fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.7 : 1, transition: 'background-color 0.2s'
               }}
-              onMouseEnter={(e) => !loading && (e.currentTarget.style.opacity = '0.9')}
-              onMouseLeave={(e) => !loading && (e.currentTarget.style.opacity = '1')}
             >
-              {loading ? 'Updating...' : 'Update Transaction'}
+              {loading ? 'Saving...' : 'Update Transaction'}
             </button>
+            
           </form>
         </div>
-      </div>
       </div>
     </>
   );
