@@ -191,12 +191,12 @@ export default function DashboardWeb() {
 
       {/* Sticky top nav */}
       <div style={{ background: 'var(--bg-card)', position: 'sticky', top: 0, zIndex: 100, borderBottom: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
-        <div style={{ maxWidth: '720px', margin: '0 auto', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+        <div style={{ maxWidth: '720px', margin: '0 auto', padding: '12px 16px', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span style={{ fontSize: '22px' }}>💰</span>
             <span style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text-main)', letterSpacing: '-0.3px' }}>Budget It</span>
           </div>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', flex: '1 1 auto' }}>
             {([
               { label: '+ Add', view: 'add-transaction', bg: 'var(--primary)' },
               { label: '📋 History', view: 'transactions', bg: '#8e44ad' },
@@ -204,7 +204,7 @@ export default function DashboardWeb() {
               { label: '⚙️ Settings', view: 'settings', bg: '#636e72' },
             ] as const).map(({ label, view, bg }) => (
               <button key={view} className="nav-btn" onClick={() => setCurrentView(view)}
-                style={{ backgroundColor: bg, color: '#fff', border: 'none', borderRadius: '8px', padding: '7px 12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                style={{ backgroundColor: bg, color: '#fff', border: 'none', borderRadius: '8px', padding: '7px 12px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', flex: '1 1 auto', maxWidth: 'max-content' }}>
                 {label}
               </button>
             ))}
