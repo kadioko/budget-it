@@ -48,7 +48,7 @@ function StatCard({ title, value, subtitle, color, progress, progressMax, progre
     <div style={{
       backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '20px',
       boxShadow: 'var(--shadow-md)', borderLeft: `5px solid ${color}`,
-      border: '1px solid #9ca3af', borderLeftWidth: '5px', borderLeftColor: color,
+      border: '1px solid var(--border-color)', borderLeftWidth: '5px', borderLeftColor: color,
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
         <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{title}</div>
@@ -274,32 +274,32 @@ export default function DashboardWeb() {
 
         {/* Budget status pills */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
-          <div style={{ backgroundColor: stats.isOverDailyBudget ? 'var(--danger-bg)' : 'var(--success-bg)', borderRadius: '14px', padding: '16px 18px', border: `2px solid ${stats.isOverDailyBudget ? 'var(--danger-border)' : 'var(--success-border)'}`, boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ fontSize: '11px', fontWeight: '800', color: stats.isOverDailyBudget ? 'var(--danger-text)' : 'var(--success-text)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Daily Budget</div>
-            <div style={{ fontSize: '22px', fontWeight: '900', color: stats.isOverDailyBudget ? 'var(--danger)' : 'var(--success)', lineHeight: 1.2 }}>
+          <div style={{ backgroundColor: stats.isOverDailyBudget ? 'var(--danger-bg)' : 'var(--success-bg)', borderRadius: '14px', padding: '16px 18px', border: `1px solid ${stats.isOverDailyBudget ? 'var(--danger-border)' : 'var(--success-border)'}`, boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: stats.isOverDailyBudget ? 'var(--danger-text)' : 'var(--success-text)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Daily Budget</div>
+            <div style={{ fontSize: '22px', fontWeight: '800', color: stats.isOverDailyBudget ? 'var(--danger)' : 'var(--success)', lineHeight: 1.2 }}>
               {stats.isOverDailyBudget
                 ? `−${formatCurrency(stats.spentToday - budget.daily_target, cur)}`
                 : `+${formatCurrency(stats.dailyRemaining, cur)}`}
             </div>
-            <div style={{ fontSize: '12px', color: stats.isOverDailyBudget ? 'var(--danger-text)' : 'var(--success-text)', marginTop: '4px', fontWeight: '700' }}>
+            <div style={{ fontSize: '12px', color: stats.isOverDailyBudget ? 'var(--danger-text)' : 'var(--success-text)', marginTop: '4px', fontWeight: '500' }}>
               {stats.isOverDailyBudget ? '⚠️ over limit' : '✅ remaining today'}
             </div>
           </div>
-          <div style={{ backgroundColor: stats.isOverMonthlyBudget ? 'var(--danger-bg)' : 'var(--success-bg)', borderRadius: '14px', padding: '16px 18px', border: `2px solid ${stats.isOverMonthlyBudget ? 'var(--danger-border)' : 'var(--success-border)'}`, boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ fontSize: '11px', fontWeight: '800', color: stats.isOverMonthlyBudget ? 'var(--danger-text)' : 'var(--success-text)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Monthly Budget</div>
-            <div style={{ fontSize: '22px', fontWeight: '900', color: stats.isOverMonthlyBudget ? 'var(--danger)' : 'var(--success)', lineHeight: 1.2 }}>
+          <div style={{ backgroundColor: stats.isOverMonthlyBudget ? 'var(--danger-bg)' : 'var(--success-bg)', borderRadius: '14px', padding: '16px 18px', border: `1px solid ${stats.isOverMonthlyBudget ? 'var(--danger-border)' : 'var(--success-border)'}`, boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: stats.isOverMonthlyBudget ? 'var(--danger-text)' : 'var(--success-text)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Monthly Budget</div>
+            <div style={{ fontSize: '22px', fontWeight: '800', color: stats.isOverMonthlyBudget ? 'var(--danger)' : 'var(--success)', lineHeight: 1.2 }}>
               {stats.isOverMonthlyBudget
                 ? `−${formatCurrency(stats.spentMonthToDate - budget.monthly_target, cur)}`
                 : `+${formatCurrency(stats.monthlyRemaining, cur)}`}
             </div>
-            <div style={{ fontSize: '12px', color: stats.isOverMonthlyBudget ? 'var(--danger-text)' : 'var(--success-text)', marginTop: '4px', fontWeight: '700' }}>
+            <div style={{ fontSize: '12px', color: stats.isOverMonthlyBudget ? 'var(--danger-text)' : 'var(--success-text)', marginTop: '4px', fontWeight: '500' }}>
               {stats.isOverMonthlyBudget ? '⚠️ over limit' : '✅ remaining this month'}
             </div>
           </div>
         </div>
 
         {/* Recent transactions */}
-        <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '20px', boxShadow: 'var(--shadow-md)', border: '1px solid #9ca3af' }}>
+        <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '20px', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-color)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h2 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-main)', margin: 0 }}>Recent Transactions</h2>
             <button onClick={() => setCurrentView('transactions')}

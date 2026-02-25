@@ -11,7 +11,6 @@ const fieldStyle: React.CSSProperties = {
   width: '100%', padding: '12px 14px', border: '1px solid var(--border-color)',
   borderRadius: '10px', fontSize: '15px', backgroundColor: '#fff',
   outline: 'none', color: 'var(--text-main)', boxSizing: 'border-box',
-  boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
 };
 
 function Msg({ text, type }: { text: string; type: 'success' | 'error' }) {
@@ -180,7 +179,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   };
 
   const lbl: React.CSSProperties = { fontSize: '12px', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' };
-  const card: React.CSSProperties = { backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '24px', marginBottom: '16px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.08)', border: '1px solid var(--border-color)' };
+  const card: React.CSSProperties = { backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '24px', marginBottom: '16px', boxShadow: 'var(--shadow-md)' };
   const sectionTitle: React.CSSProperties = { fontSize: '16px', fontWeight: '700', color: 'var(--text-main)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' };
 
   return (
@@ -224,10 +223,10 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
             <div>
               <label style={lbl}>Currency</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {['USD', 'EUR', 'GBP', 'TZS'].map(c => (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'INR', 'TZS'].map(c => (
                   <button key={c} className="curr-btn" onClick={() => setCurrency(c)}
-                    style={{ flex: 1, padding: '10px 0', border: currency === c ? '2px solid var(--primary)' : '1px solid var(--border-color)', borderRadius: '8px', background: currency === c ? 'var(--primary)' : 'var(--bg-secondary)', color: currency === c ? '#fff' : 'var(--text-main)', fontWeight: '600', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: currency === c ? '0 4px 6px -1px rgba(41,128,185,0.2)' : '0 1px 2px 0 rgb(0 0 0 / 0.05)' }}>
+                    style={{ flex: '1 1 calc(20% - 8px)', padding: '10px 0', border: currency === c ? '2px solid var(--primary)' : '1px solid var(--border-color)', borderRadius: '8px', background: currency === c ? 'var(--primary)' : 'var(--bg-card)', color: currency === c ? '#fff' : 'var(--text-main)', fontWeight: '600', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' }}>
                     {c}
                   </button>
                 ))}
@@ -244,7 +243,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
           </div>
 
           <button onClick={handleSaveBudget} disabled={loading}
-            style={{ width: '100%', padding: '16px', background: loading ? 'var(--text-muted)' : 'var(--primary)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: loading ? 'none' : '0 4px 6px -1px rgba(41,128,185,0.4), 0 2px 4px -2px rgba(41,128,185,0.4)', marginTop: '8px' }}>
+            style={{ width: '100%', padding: '14px', background: loading ? 'var(--text-muted)' : 'var(--primary)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: loading ? 'none' : '0 4px 12px rgba(52,152,219,0.3)', marginTop: '8px' }}>
             {loading ? 'Saving...' : '💾 Save Budget Settings'}
           </button>
           {budgetMsg && <Msg text={budgetMsg.text} type={budgetMsg.type} />}
@@ -294,7 +293,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
           {!showEnvelopeForm ? (
             <button
               onClick={() => setShowEnvelopeForm(true)}
-              style={{ width: '100%', padding: '16px', background: 'linear-gradient(135deg, #16a085, #2ecc71)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(46,204,113,0.4)' }}>
+              style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #16a085, #2ecc71)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(46,204,113,0.35)' }}>
               + Add Envelope
             </button>
           ) : (
@@ -339,7 +338,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
             Your initial balance — transactions will be deducted from this
           </div>
           <button onClick={handleSaveBalance} disabled={loading}
-            style={{ width: '100%', padding: '16px', background: loading ? 'var(--text-muted)' : 'var(--success)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: loading ? 'none' : '0 4px 6px -1px rgba(30,132,73,0.4)', marginTop: '8px' }}>
+            style={{ width: '100%', padding: '14px', background: loading ? 'var(--text-muted)' : 'var(--success)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: loading ? 'none' : '0 4px 12px rgba(39,174,96,0.35)', marginTop: '8px' }}>
             {loading ? 'Saving...' : '💾 Save Balance'}
           </button>
           {balanceMsg && <Msg text={balanceMsg.text} type={balanceMsg.type} />}
@@ -386,7 +385,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
           {!showRecurringForm ? (
             <button
               onClick={() => setShowRecurringForm(true)}
-              style={{ width: '100%', padding: '16px', background: 'linear-gradient(135deg, #9b59b6, #8e44ad)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(155,89,182,0.4)' }}>
+              style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #9b59b6, #8e44ad)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(155,89,182,0.35)' }}>
               + Add Recurring Transaction
             </button>
           ) : (
@@ -458,7 +457,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
 
           {!signOutConfirm ? (
             <button onClick={() => setSignOutConfirm(true)}
-              style={{ width: '100%', padding: '12px', background: 'var(--bg-tertiary)', color: 'var(--danger)', border: '2px solid var(--danger-border)', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>
+              style={{ width: '100%', padding: '14px', background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(231,76,60,0.3)' }}>
               Sign Out
             </button>
           ) : (
