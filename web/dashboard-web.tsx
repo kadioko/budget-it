@@ -48,7 +48,6 @@ function StatCard({ title, value, subtitle, color, progress, progressMax, progre
     <div style={{
       backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '20px',
       boxShadow: 'var(--shadow-md)', borderLeft: `5px solid ${color}`,
-      border: '1px solid var(--border-color)', borderLeftWidth: '5px', borderLeftColor: color,
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
         <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{title}</div>
@@ -181,7 +180,7 @@ export default function DashboardWeb() {
     <>
       <style>{`
         *, *::before, *::after { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-main, #e8ecf0); }
+        html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-main, #f0f2f5); }
         @keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(16px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
         .nav-btn:hover { opacity: 0.88 !important; transform: translateY(-1px) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.25) !important; }
@@ -299,7 +298,7 @@ export default function DashboardWeb() {
         </div>
 
         {/* Recent transactions */}
-        <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '20px', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-color)' }}>
+        <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '20px', boxShadow: 'var(--shadow-md)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h2 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-main)', margin: 0 }}>Recent Transactions</h2>
             <button onClick={() => setCurrentView('transactions')}

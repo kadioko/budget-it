@@ -179,7 +179,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   };
 
   const lbl: React.CSSProperties = { fontSize: '12px', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' };
-  const card: React.CSSProperties = { backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '24px', marginBottom: '16px', boxShadow: 'var(--shadow-md)' };
+  const card: React.CSSProperties = { backgroundColor: '#fff', borderRadius: '16px', padding: '24px', marginBottom: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.1), 0 4px 16px rgba(0,0,0,0.08)' };
   const sectionTitle: React.CSSProperties = { fontSize: '16px', fontWeight: '700', color: 'var(--text-main)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' };
 
   return (
@@ -220,26 +220,22 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-            <div>
-              <label style={lbl}>Currency</label>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'INR', 'TZS'].map(c => (
-                  <button key={c} className="curr-btn" onClick={() => setCurrency(c)}
-                    style={{ flex: '1 1 calc(20% - 8px)', padding: '10px 0', border: currency === c ? '2px solid var(--primary)' : '1px solid var(--border-color)', borderRadius: '8px', background: currency === c ? 'var(--primary)' : 'var(--bg-card)', color: currency === c ? '#fff' : 'var(--text-main)', fontWeight: '600', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' }}>
-                    {c}
-                  </button>
-                ))}
-              </div>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={lbl}>Currency</label>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'INR', 'TZS'].map(c => (
+                <button key={c} className="curr-btn" onClick={() => setCurrency(c)}
+                  style={{ flex: '1 1 calc(20% - 8px)', minWidth: '56px', padding: '10px 0', border: currency === c ? '2px solid var(--primary)' : '1.5px solid #ddd', borderRadius: '8px', background: currency === c ? 'var(--primary)' : '#fff', color: currency === c ? '#fff' : 'var(--text-main)', fontWeight: '600', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: currency === c ? '0 2px 8px rgba(52,152,219,0.3)' : 'none' }}>
+                  {c}
+                </button>
+              ))}
             </div>
-            <div>
-              <label style={lbl}>Month Starts On (Day)</label>
-              <select value={monthStartDay} onChange={e => setMonthStartDay(e.target.value)} style={fieldStyle}>
-                {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
-                  <option key={d} value={d}>{d}{d === 1 ? 'st' : d === 2 ? 'nd' : d === 3 ? 'rd' : 'th'}</option>
-                ))}
-              </select>
-            </div>
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <label style={lbl}>Month Start Day (1-28)</label>
+            <input type="number" min="1" max="28" value={monthStartDay} onChange={e => setMonthStartDay(e.target.value)} style={fieldStyle} placeholder="1" />
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>Day of month your budget period resets</div>
           </div>
 
           <button onClick={handleSaveBudget} disabled={loading}
