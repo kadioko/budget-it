@@ -1,6 +1,6 @@
 # Budget It - Personal Finance Tracker
 
-**Live App (Web):** [https://budget-it-theta.vercel.app/](https://budget-it-theta.vercel.app/)
+**Live App (Web):** [https://budgetit.xyz](https://budgetit.xyz)
 
 A cross-platform personal finance tracker built with Expo, React Native, and Supabase. Track daily and monthly spending targets, log expenses, and get instant feedback on your budget status.
 

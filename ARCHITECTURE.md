@@ -1,6 +1,6 @@
 # Budget It - Architecture & Design Decisions
 
-**Live App (Web):** [https://budget-it-theta.vercel.app/](https://budget-it-theta.vercel.app/)
+**Live App (Web):** [https://budgetit.xyz](https://budgetit.xyz)
 
 ## Overview
 
