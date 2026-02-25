@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { supabase } from '@/lib/supabase';
-import { Budget, Transaction, BudgetStats, RecurringTransaction } from '@/types/index';
+import { Budget, Transaction, BudgetStats, RecurringTransaction, Envelope } from '@/types/index';
 import { calculateBudgetStats } from '@/lib/budget-logic';
 
 interface PendingAction {
@@ -15,6 +15,7 @@ interface PendingAction {
 
 interface BudgetState {
   budget: Budget | null;
+  envelopes: Envelope[];
   transactions: Transaction[];
   recurringTransactions: RecurringTransaction[];
   stats: BudgetStats | null;
@@ -26,6 +27,10 @@ interface BudgetState {
   setOfflineStatus: (status: boolean) => void;
   syncOfflineActions: () => Promise<void>;
   fetchBudget: (userId: string) => Promise<void>;
+  fetchEnvelopes: (userId: string) => Promise<void>;
+  createEnvelope: (userId: string, name: string, icon: string, balance: number, currency: string, is_default?: boolean) => Promise<void>;
+  updateEnvelope: (envelopeId: string, name: string, icon: string, balance: number, currency: string) => Promise<void>;
+  deleteEnvelope: (envelopeId: string) => Promise<void>;
   fetchTransactions: (userId: string) => Promise<void>;
   fetchRecurringTransactions: (userId: string) => Promise<void>;
   createBudget: (
@@ -42,21 +47,23 @@ interface BudgetState {
     currency: string,
     monthStartDay: number
   ) => Promise<void>;
+  updateBankBalance: (budgetId: string, bankBalance: number) => Promise<void>;
   addTransaction: (
     userId: string,
     amount: number,
     category: string,
     date: string,
-    note?: string
+    note?: string,
+    envelopeId?: string | null
   ) => Promise<void>;
   updateTransaction: (
     transactionId: string,
     amount: number,
     category: string,
     date: string,
-    note?: string
+    note?: string,
+    envelopeId?: string | null
   ) => Promise<void>;
-  updateBankBalance: (budgetId: string, bankBalance: number) => Promise<void>;
   deleteTransaction: (transactionId: string) => Promise<void>;
   addRecurringTransaction: (
     userId: string,
@@ -77,6 +84,7 @@ export const useBudgetStore = create<BudgetState>()(
   persist(
     (set, get) => ({
       budget: null,
+      envelopes: [],
       transactions: [],
       recurringTransactions: [],
       stats: null,
@@ -140,6 +148,112 @@ export const useBudgetStore = create<BudgetState>()(
       get().calculateStats();
     } catch (err: any) {
       set({ error: err.message });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  fetchEnvelopes: async (userId: string) => {
+    set({ loading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('envelopes')
+        .select('*')
+        .eq('user_id', userId)
+        .order('is_default', { ascending: false })
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      set({ envelopes: data || [] });
+    } catch (err: any) {
+      set({ error: err.message });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  createEnvelope: async (
+    userId: string,
+    name: string,
+    icon: string,
+    balance: number,
+    currency: string,
+    is_default: boolean = false
+  ) => {
+    set({ loading: true, error: null });
+    try {
+      const existing = get().envelopes;
+      const isFirst = existing.length === 0;
+      
+      const { data, error } = await supabase
+        .from('envelopes')
+        .insert([{
+          user_id: userId,
+          name,
+          icon,
+          balance,
+          currency,
+          is_default: isFirst || is_default,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      set({ envelopes: [...existing, data] });
+    } catch (err: any) {
+      set({ error: err.message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  updateEnvelope: async (
+    envelopeId: string,
+    name: string,
+    icon: string,
+    balance: number,
+    currency: string
+  ) => {
+    set({ loading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('envelopes')
+        .update({ name, icon, balance, currency })
+        .eq('id', envelopeId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      const updated = get().envelopes.map(e => e.id === envelopeId ? data : e);
+      set({ envelopes: updated });
+    } catch (err: any) {
+      set({ error: err.message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  deleteEnvelope: async (envelopeId: string) => {
+    set({ loading: true, error: null });
+    try {
+      const envelopeToDelete = get().envelopes.find(e => e.id === envelopeId);
+      if (envelopeToDelete?.is_default) {
+        throw new Error("Cannot delete default envelope");
+      }
+
+      const { error } = await supabase
+        .from('envelopes')
+        .delete()
+        .eq('id', envelopeId);
+
+      if (error) throw error;
+      const filtered = get().envelopes.filter(e => e.id !== envelopeId);
+      set({ envelopes: filtered });
+    } catch (err: any) {
+      set({ error: err.message });
+      throw err;
     } finally {
       set({ loading: false });
     }
@@ -252,7 +366,8 @@ export const useBudgetStore = create<BudgetState>()(
     amount: number,
     category: string,
     date: string,
-    note?: string
+    note?: string,
+    envelopeId?: string | null
   ) => {
     set({ loading: true, error: null });
     try {
@@ -264,6 +379,7 @@ export const useBudgetStore = create<BudgetState>()(
           category,
           date,
           note: note || null,
+          envelope_id: envelopeId || null,
           created_at: new Date().toISOString()
         };
         set(state => ({
@@ -271,7 +387,7 @@ export const useBudgetStore = create<BudgetState>()(
           pendingActions: [...state.pendingActions, {
             id: `act-${Date.now()}`,
             type: 'ADD_TRANSACTION',
-            payload: { userId, amount, category, date, note },
+            payload: { userId, amount, category, date, note, envelopeId },
             timestamp: new Date().toISOString()
           }]
         }));
@@ -287,12 +403,29 @@ export const useBudgetStore = create<BudgetState>()(
           category,
           date,
           note: note || null,
+          envelope_id: envelopeId || null,
         }])
         .select()
         .single();
 
       if (error) throw error;
       const newTransactions = [data, ...get().transactions];
+      
+      // Update envelope balance if applicable
+      if (envelopeId) {
+        const envelope = get().envelopes.find(e => e.id === envelopeId);
+        if (envelope) {
+          const newBalance = envelope.balance + amount;
+          await get().updateEnvelope(envelope.id, envelope.name, envelope.icon, newBalance, envelope.currency);
+        }
+      } else {
+        // Fallback to bank_balance
+        const budget = get().budget;
+        if (budget) {
+          await get().updateBankBalance(budget.id, budget.bank_balance + amount);
+        }
+      }
+
       set({ transactions: newTransactions });
       get().calculateStats();
     } catch (err: any) {
@@ -308,10 +441,14 @@ export const useBudgetStore = create<BudgetState>()(
     amount: number,
     category: string,
     date: string,
-    note?: string
+    note?: string,
+    envelopeId?: string | null
   ) => {
     set({ loading: true, error: null });
     try {
+      const existingTx = get().transactions.find(t => t.id === transactionId);
+      if (!existingTx) throw new Error("Transaction not found");
+
       const { data, error } = await supabase
         .from('transactions')
         .update({
@@ -319,16 +456,48 @@ export const useBudgetStore = create<BudgetState>()(
           category,
           date,
           note: note || null,
+          envelope_id: envelopeId || null,
         })
         .eq('id', transactionId)
         .select()
         .single();
 
       if (error) throw error;
-      const updatedTransactions = get().transactions.map((t) => 
+
+      // Handle balance updates
+      const diff = amount - existingTx.amount;
+      
+      if (existingTx.envelope_id === envelopeId) {
+        if (envelopeId) {
+          const env = get().envelopes.find(e => e.id === envelopeId);
+          if (env) await get().updateEnvelope(env.id, env.name, env.icon, env.balance + diff, env.currency);
+        } else {
+          const budget = get().budget;
+          if (budget) await get().updateBankBalance(budget.id, budget.bank_balance + diff);
+        }
+      } else {
+        // Changed destination! Refund old, apply to new.
+        if (existingTx.envelope_id) {
+           const oldEnv = get().envelopes.find(e => e.id === existingTx.envelope_id);
+           if (oldEnv) await get().updateEnvelope(oldEnv.id, oldEnv.name, oldEnv.icon, oldEnv.balance - existingTx.amount, oldEnv.currency);
+        } else {
+           const budget = get().budget;
+           if (budget) await get().updateBankBalance(budget.id, budget.bank_balance - existingTx.amount);
+        }
+
+        if (envelopeId) {
+           const newEnv = get().envelopes.find(e => e.id === envelopeId);
+           if (newEnv) await get().updateEnvelope(newEnv.id, newEnv.name, newEnv.icon, newEnv.balance + amount, newEnv.currency);
+        } else {
+           const budget = get().budget;
+           if (budget) await get().updateBankBalance(budget.id, budget.bank_balance + amount);
+        }
+      }
+
+      const updated = get().transactions.map((t) =>
         t.id === transactionId ? data : t
       );
-      set({ transactions: updatedTransactions });
+      set({ transactions: updated });
       get().calculateStats();
     } catch (err: any) {
       set({ error: err.message });
