@@ -4,6 +4,17 @@ export type Profile = {
   display_name: string | null;
 };
 
+export type Envelope = {
+  id: string;
+  user_id: string;
+  name: string;
+  icon: string;
+  balance: number;
+  currency: string;
+  is_default: boolean;
+  created_at: string;
+};
+
 export type Budget = {
   id: string;
   user_id: string;
@@ -23,6 +34,7 @@ export type Transaction = {
   category: string;
   date: string;
   note: string | null;
+  envelope_id?: string | null;
   created_at: string;
 };
 
