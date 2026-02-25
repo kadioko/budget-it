@@ -37,6 +37,7 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [runningBalance, setRunningBalance] = useState(0);
   const [editingTransaction, setEditingTransaction] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(20);
 
   // Get unique categories from transactions
   const categories = ['all', ...Array.from(new Set(transactions.map(t => t.category)))];
@@ -265,7 +266,7 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {filteredTransactions.map((transaction) => {
+                {filteredTransactions.slice(0, visibleCount).map((transaction) => {
                   const isIncome = transaction.amount < 0;
                   const displayAmount = Math.abs(transaction.amount);
                   
@@ -350,6 +351,28 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
                     </div>
                   );
                 })}
+                
+                {visibleCount < filteredTransactions.length && (
+                  <button
+                    onClick={() => setVisibleCount(prev => prev + 20)}
+                    style={{
+                      marginTop: '16px',
+                      padding: '12px',
+                      backgroundColor: '#f8f9fa',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '8px',
+                      color: '#2c3e50',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#eef2f5')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#f8f9fa')}
+                  >
+                    Load More Transactions... ({filteredTransactions.length - visibleCount} remaining)
+                  </button>
+                )}
               </div>
             )}
           </div>

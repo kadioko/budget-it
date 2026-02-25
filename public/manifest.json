@@ -1,0 +1,17 @@
+{
+  "name": "Budget It",
+  "short_name": "Budget It",
+  "description": "A personal finance tracker to manage your daily and monthly budget.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f0f2f5",
+  "theme_color": "#2c3e50",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

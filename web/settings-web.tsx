@@ -28,7 +28,7 @@ function Msg({ text, type }: { text: string; type: 'success' | 'error' }) {
 
 export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   const { user, signOut } = useAuthStore();
-  const { budget, loading, createBudget, updateBudget, updateBankBalance } = useBudgetStore();
+  const { budget, loading, createBudget, updateBudget, updateBankBalance, recurringTransactions, fetchRecurringTransactions, addRecurringTransaction, deleteRecurringTransaction } = useBudgetStore();
 
   const [dailyTarget, setDailyTarget] = useState(
     budget?.daily_target.toString() || ''
@@ -45,7 +45,26 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   );
   const [budgetMsg, setBudgetMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [balanceMsg, setBalanceMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [recurringMsg, setRecurringMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [signOutConfirm, setSignOutConfirm] = useState(false);
+
+  // New Recurring Transaction Form State
+  const [showRecurringForm, setShowRecurringForm] = useState(false);
+  const [recAmount, setRecAmount] = useState('');
+  const [recCategory, setRecCategory] = useState('Salary');
+  const [recType, setRecType] = useState<'income' | 'expense'>('income');
+  const [recFrequency, setRecFrequency] = useState<'monthly' | 'weekly' | 'daily'>('monthly');
+  const [recNextDate, setRecNextDate] = useState(new Date().toISOString().split('T')[0]);
+  const [recNote, setRecNote] = useState('');
+
+  const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Rent', 'Other'];
+  const INCOME_CATEGORIES = ['Salary', 'Business', 'Investment', 'Gift', 'Other'];
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchRecurringTransactions(user.id);
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (budget) {
@@ -88,6 +107,38 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
       setBalanceMsg({ text: 'Bank balance updated successfully!', type: 'success' });
     } catch (error: any) {
       setBalanceMsg({ text: error.message || 'Failed to update balance', type: 'error' });
+    }
+  };
+
+  const handleAddRecurring = async () => {
+    setRecurringMsg(null);
+    const amount = parseFloat(recAmount);
+    if (!recAmount || isNaN(amount) || amount <= 0) {
+      setRecurringMsg({ text: 'Please enter a valid amount', type: 'error' });
+      return;
+    }
+    if (!recNextDate) {
+      setRecurringMsg({ text: 'Please select a start date', type: 'error' });
+      return;
+    }
+    if (!user) return;
+
+    try {
+      await addRecurringTransaction(user.id, amount, recCategory, recType, recFrequency, recNextDate, recNote);
+      setRecurringMsg({ text: 'Recurring transaction added!', type: 'success' });
+      setShowRecurringForm(false);
+      setRecAmount('');
+      setRecNote('');
+    } catch (error: any) {
+      setRecurringMsg({ text: error.message || 'Failed to add recurring transaction', type: 'error' });
+    }
+  };
+
+  const handleDeleteRecurring = async (id: string) => {
+    try {
+      await deleteRecurringTransaction(id);
+    } catch (error) {
+      console.error('Failed to delete recurring transaction', error);
     }
   };
 
@@ -186,6 +237,109 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
             {loading ? 'Saving...' : '💾 Save Balance'}
           </button>
           {balanceMsg && <Msg text={balanceMsg.text} type={balanceMsg.type} />}
+        </div>
+
+        {/* Recurring Transactions Section */}
+        <div style={card}>
+          <div style={sectionTitle}><span>🔄</span> Recurring Transactions</div>
+          <div style={{ fontSize: '13px', color: '#7f8c8d', marginBottom: '16px', lineHeight: '1.4' }}>
+            Set up automatic income (like salary) or expenses (like rent) to be added on a schedule.
+          </div>
+          
+          {/* List of existing recurring transactions */}
+          {recurringTransactions.length > 0 && (
+            <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {recurringTransactions.map(rt => (
+                <div key={rt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', border: '1px solid #ecf0f1', borderRadius: '8px', backgroundColor: '#fafafa' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <span style={{ backgroundColor: rt.type === 'income' ? '#d5f4e6' : '#fadbd8', color: rt.type === 'income' ? '#27ae60' : '#e74c3c', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>
+                        {rt.type === 'income' ? '💰' : '💸'} {rt.category}
+                      </span>
+                      <span style={{ fontSize: '12px', color: '#7f8c8d', fontWeight: '600', textTransform: 'capitalize' }}>
+                        Every {rt.frequency.replace('ly', '')}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#95a5a6' }}>
+                      Next: {new Date(rt.next_date).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ fontSize: '15px', fontWeight: 'bold', color: rt.type === 'income' ? '#27ae60' : '#e74c3c' }}>
+                      {rt.type === 'income' ? '+' : '-'}{formatCurrency(rt.amount, budget?.currency || 'USD')}
+                    </div>
+                    <button onClick={() => handleDeleteRecurring(rt.id)} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontSize: '16px', padding: '4px' }} title="Delete">
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!showRecurringForm ? (
+            <button
+              onClick={() => setShowRecurringForm(true)}
+              style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #9b59b6, #8e44ad)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(155,89,182,0.35)' }}>
+              + Add Recurring Transaction
+            </button>
+          ) : (
+            <div style={{ backgroundColor: '#f8f9fa', borderRadius: '12px', padding: '16px', border: '1px solid #e0e0e0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#2c3e50', margin: 0 }}>New Recurring</h3>
+                <button onClick={() => setShowRecurringForm(false)} style={{ background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer', fontSize: '18px' }}>×</button>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                <button onClick={() => { setRecType('expense'); setRecCategory(EXPENSE_CATEGORIES[0]); }}
+                  style={{ flex: 1, padding: '10px', borderRadius: '8px', border: recType === 'expense' ? '2px solid #e74c3c' : '1px solid #ddd', background: recType === 'expense' ? '#fadbd8' : '#fff', color: recType === 'expense' ? '#c0392b' : '#7f8c8d', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}>
+                  Expense
+                </button>
+                <button onClick={() => { setRecType('income'); setRecCategory(INCOME_CATEGORIES[0]); }}
+                  style={{ flex: 1, padding: '10px', borderRadius: '8px', border: recType === 'income' ? '2px solid #27ae60' : '1px solid #ddd', background: recType === 'income' ? '#d5f4e6' : '#fff', color: recType === 'income' ? '#166534' : '#7f8c8d', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}>
+                  Income
+                </button>
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={lbl}>Amount ({currency})</label>
+                <input type="number" value={recAmount} onChange={e => setRecAmount(e.target.value)} placeholder="0.00" style={fieldStyle} step="0.01" min="0" />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label style={lbl}>Category</label>
+                  <select value={recCategory} onChange={e => setRecCategory(e.target.value)} style={fieldStyle}>
+                    {(recType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>Frequency</label>
+                  <select value={recFrequency} onChange={e => setRecFrequency(e.target.value as any)} style={fieldStyle}>
+                    <option value="monthly">Monthly</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="daily">Daily</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={lbl}>Start Date (Next occurrence)</label>
+                <input type="date" value={recNextDate} onChange={e => setRecNextDate(e.target.value)} style={fieldStyle} />
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={lbl}>Note (Optional)</label>
+                <input type="text" value={recNote} onChange={e => setRecNote(e.target.value)} placeholder="e.g. Rent, Salary, Netflix" style={fieldStyle} />
+              </div>
+
+              <button onClick={handleAddRecurring} disabled={loading}
+                style={{ width: '100%', padding: '12px', background: '#2c3e50', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer' }}>
+                {loading ? 'Adding...' : 'Save Recurring'}
+              </button>
+              {recurringMsg && <Msg text={recurringMsg.text} type={recurringMsg.type} />}
+            </div>
+          )}
         </div>
 
         {/* Account Info */}

@@ -26,6 +26,18 @@ export type Transaction = {
   created_at: string;
 };
 
+export type RecurringTransaction = {
+  id: string;
+  user_id: string;
+  amount: number;
+  category: string;
+  type: 'income' | 'expense';
+  note: string | null;
+  frequency: 'monthly' | 'weekly' | 'daily';
+  next_date: string;
+  created_at: string;
+};
+
 export type BudgetStats = {
   spentToday: number;
   spentMonthToDate: number;

@@ -1,6 +1,27 @@
 import React, { useState, useEffect } from 'react';
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title
+} from 'chart.js';
+import { Doughnut, Bar } from 'react-chartjs-2';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
+
+ChartJS.register(
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title
+);
 
 // Format currency with commas
 const formatCurrency = (amount: number, currency: string) => {
@@ -226,13 +247,27 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
   const categoryData = Object.entries(analytics.categoryBreakdown)
     .filter(([_, data]) => data.type === 'expense')
     .map(([category, data]) => ({ label: category, value: data.total }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 5); // Top 5 categories
+    .sort((a, b) => b.value - a.value);
+
+  const topCategories = categoryData.slice(0, 5);
 
   const incomeData = Object.entries(analytics.categoryBreakdown)
     .filter(([_, data]) => data.type === 'income')
     .map(([category, data]) => ({ label: category, value: data.total }))
     .sort((a, b) => b.value - a.value);
+
+  const chartColors = ['#e74c3c', '#3498db', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#34495e'];
+
+  const doughnutData = {
+    labels: categoryData.map(d => d.label),
+    datasets: [
+      {
+        data: categoryData.map(d => d.value),
+        backgroundColor: chartColors.slice(0, categoryData.length),
+        borderWidth: 0,
+      },
+    ],
+  };
 
   return (
     <>
@@ -347,11 +382,18 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
             <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#2c3e50', marginBottom: '20px' }}>Spending Analysis</h2>
             
             {categoryData.length > 0 && (
-              <SimpleBarChart 
-                data={categoryData} 
-                title="Top Spending Categories" 
-                color="#e74c3c" 
-              />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '32px' }}>
+                <div style={{ width: '250px', height: '250px', marginBottom: '16px' }}>
+                  <Doughnut data={doughnutData} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } } }} />
+                </div>
+                <div style={{ width: '100%' }}>
+                  <SimpleBarChart 
+                    data={topCategories} 
+                    title="Top Spending Categories" 
+                    color="#e74c3c" 
+                  />
+                </div>
+              </div>
             )}
             
             {incomeData.length > 0 && (

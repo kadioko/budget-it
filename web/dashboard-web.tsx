@@ -80,7 +80,7 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
 
 export default function DashboardWeb() {
   const { user } = useAuthStore();
-  const { budget, stats, transactions, fetchBudget, fetchTransactions } = useBudgetStore();
+  const { budget, stats, transactions, fetchBudget, fetchTransactions, processRecurringTransactions } = useBudgetStore();
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [currentView, setCurrentView] = useState<'dashboard' | 'settings' | 'add-transaction' | 'transactions' | 'analytics'>('dashboard');
   const [dataReady, setDataReady] = useState(false);
@@ -89,7 +89,11 @@ export default function DashboardWeb() {
 
   useEffect(() => {
     if (user) {
-      Promise.all([fetchBudget(user.id), fetchTransactions(user.id)]).finally(() => setDataReady(true));
+      Promise.all([
+        fetchBudget(user.id), 
+        fetchTransactions(user.id),
+        processRecurringTransactions(user.id)
+      ]).finally(() => setDataReady(true));
       const timer = setTimeout(() => setDataReady(true), 5000);
       return () => clearTimeout(timer);
     }

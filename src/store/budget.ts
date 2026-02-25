@@ -1,16 +1,18 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
-import { Budget, Transaction, BudgetStats } from '@/types/index';
+import { Budget, Transaction, BudgetStats, RecurringTransaction } from '@/types/index';
 import { calculateBudgetStats } from '@/lib/budget-logic';
 
 interface BudgetState {
   budget: Budget | null;
   transactions: Transaction[];
+  recurringTransactions: RecurringTransaction[];
   stats: BudgetStats | null;
   loading: boolean;
   error: string | null;
   fetchBudget: (userId: string) => Promise<void>;
   fetchTransactions: (userId: string) => Promise<void>;
+  fetchRecurringTransactions: (userId: string) => Promise<void>;
   createBudget: (
     userId: string,
     dailyTarget: number,
@@ -41,12 +43,24 @@ interface BudgetState {
   ) => Promise<void>;
   updateBankBalance: (budgetId: string, bankBalance: number) => Promise<void>;
   deleteTransaction: (transactionId: string) => Promise<void>;
+  addRecurringTransaction: (
+    userId: string,
+    amount: number,
+    category: string,
+    type: 'income' | 'expense',
+    frequency: 'monthly' | 'weekly' | 'daily',
+    nextDate: string,
+    note?: string
+  ) => Promise<void>;
+  deleteRecurringTransaction: (id: string) => Promise<void>;
+  processRecurringTransactions: (userId: string) => Promise<void>;
   calculateStats: () => void;
 }
 
 export const useBudgetStore = create<BudgetState>((set, get) => ({
   budget: null,
   transactions: [],
+  recurringTransactions: [],
   stats: null,
   loading: false,
   error: null,
@@ -82,6 +96,24 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
       if (error) throw error;
       set({ transactions: data || [] });
       get().calculateStats();
+    } catch (err: any) {
+      set({ error: err.message });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  fetchRecurringTransactions: async (userId: string) => {
+    set({ loading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('recurring_transactions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      set({ recurringTransactions: data || [] });
     } catch (err: any) {
       set({ error: err.message });
     } finally {
@@ -261,6 +293,116 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
       throw err;
     } finally {
       set({ loading: false });
+    }
+  },
+
+  addRecurringTransaction: async (
+    userId: string,
+    amount: number,
+    category: string,
+    type: 'income' | 'expense',
+    frequency: 'monthly' | 'weekly' | 'daily',
+    nextDate: string,
+    note?: string
+  ) => {
+    set({ loading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('recurring_transactions')
+        .insert([{
+          user_id: userId,
+          amount,
+          category,
+          type,
+          frequency,
+          next_date: nextDate,
+          note: note || null,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      const newRecurring = [data, ...get().recurringTransactions];
+      set({ recurringTransactions: newRecurring });
+    } catch (err: any) {
+      set({ error: err.message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  deleteRecurringTransaction: async (id: string) => {
+    set({ loading: true, error: null });
+    try {
+      const { error } = await supabase
+        .from('recurring_transactions')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      const filtered = get().recurringTransactions.filter((t) => t.id !== id);
+      set({ recurringTransactions: filtered });
+    } catch (err: any) {
+      set({ error: err.message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  processRecurringTransactions: async (userId: string) => {
+    try {
+      // 1. Fetch recurring transactions for user
+      const { data: recurring, error: fetchErr } = await supabase
+        .from('recurring_transactions')
+        .select('*')
+        .eq('user_id', userId);
+        
+      if (fetchErr) throw fetchErr;
+      if (!recurring || recurring.length === 0) return;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // 2. Find ones that are due (next_date <= today)
+      for (const rt of recurring) {
+        let nextDate = new Date(rt.next_date);
+        
+        while (nextDate <= today) {
+          // Add the transaction
+          const amount = rt.type === 'income' ? -Math.abs(rt.amount) : Math.abs(rt.amount);
+          await get().addTransaction(
+            userId,
+            amount,
+            rt.category,
+            nextDate.toISOString().split('T')[0],
+            rt.note ? `${rt.note} (Auto-added)` : '(Auto-added)'
+          );
+
+          // Calculate next date
+          if (rt.frequency === 'monthly') {
+            nextDate.setMonth(nextDate.getMonth() + 1);
+          } else if (rt.frequency === 'weekly') {
+            nextDate.setDate(nextDate.getDate() + 7);
+          } else if (rt.frequency === 'daily') {
+            nextDate.setDate(nextDate.getDate() + 1);
+          }
+        }
+
+        // 3. Update the recurring transaction with new next_date
+        if (nextDate.toISOString().split('T')[0] !== rt.next_date) {
+          await supabase
+            .from('recurring_transactions')
+            .update({ next_date: nextDate.toISOString().split('T')[0] })
+            .eq('id', rt.id);
+        }
+      }
+      
+      // Refresh state
+      await get().fetchRecurringTransactions(userId);
+    } catch (err) {
+      console.error('Failed to process recurring transactions:', err);
     }
   },
 
