@@ -85,26 +85,6 @@ export default function DashboardWeb() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [currentView, setCurrentView] = useState<'dashboard' | 'settings' | 'add-transaction' | 'transactions' | 'analytics'>('dashboard');
   const [dataReady, setDataReady] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme-preference') as 'light' | 'dark' | 'system' | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      if (savedTheme !== 'system') {
-        document.documentElement.setAttribute('data-theme', savedTheme);
-      } else {
-        document.documentElement.removeAttribute('data-theme');
-      }
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const nextTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(nextTheme);
-    localStorage.setItem('theme-preference', nextTheme);
-    document.documentElement.setAttribute('data-theme', nextTheme);
-  };
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => setToast({ message, type });
 
@@ -217,13 +197,6 @@ export default function DashboardWeb() {
             <span style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text-main)', letterSpacing: '-0.3px' }}>Budget It</span>
           </div>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
-            <button 
-              onClick={toggleTheme} 
-              style={{ background: 'transparent', border: 'none', fontSize: '18px', cursor: 'pointer', padding: '4px', marginRight: '4px' }}
-              title="Toggle Dark Mode"
-            >
-              {theme === 'dark' ? '☀️' : '🌙'}
-            </button>
             {([
               { label: '+ Add', view: 'add-transaction', bg: 'var(--primary)' },
               { label: '📋 History', view: 'transactions', bg: '#8e44ad' },
