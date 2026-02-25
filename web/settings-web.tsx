@@ -8,9 +8,9 @@ const formatCurrency = (amount: number, currency: string) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount);
 
 const fieldStyle: React.CSSProperties = {
-  width: '100%', padding: '12px 14px', border: '1.5px solid #e0e0e0',
+  width: '100%', padding: '12px 14px', border: '2px solid #c5cdd6',
   borderRadius: '10px', fontSize: '15px', backgroundColor: '#fff',
-  outline: 'none', color: '#2c3e50', boxSizing: 'border-box',
+  outline: 'none', color: '#1a2332', boxSizing: 'border-box',
 };
 
 function Msg({ text, type }: { text: string; type: 'success' | 'error' }) {
@@ -179,7 +179,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   };
 
   const lbl: React.CSSProperties = { fontSize: '12px', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' };
-  const card: React.CSSProperties = { backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '24px', marginBottom: '16px', boxShadow: 'var(--shadow-md)' };
+  const card: React.CSSProperties = { backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '24px', marginBottom: '16px', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-color)' };
   const sectionTitle: React.CSSProperties = { fontSize: '16px', fontWeight: '700', color: 'var(--text-main)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' };
 
   return (
@@ -226,7 +226,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
               <div style={{ display: 'flex', gap: '8px' }}>
                 {['USD', 'EUR', 'GBP', 'TZS'].map(c => (
                   <button key={c} className="curr-btn" onClick={() => setCurrency(c)}
-                    style={{ flex: 1, padding: '10px 0', border: currency === c ? '2px solid var(--primary)' : '1px solid var(--border-color)', borderRadius: '8px', background: currency === c ? 'var(--primary)' : 'var(--bg-secondary)', color: currency === c ? '#fff' : 'var(--text-secondary)', fontWeight: '700', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s' }}>
+                    style={{ flex: 1, padding: '10px 0', border: currency === c ? '2px solid var(--primary)' : '2px solid var(--border-color)', borderRadius: '8px', background: currency === c ? 'var(--primary)' : '#f4f6f9', color: currency === c ? '#fff' : '#1a2332', fontWeight: '700', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s' }}>
                     {c}
                   </button>
                 ))}
