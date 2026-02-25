@@ -48,6 +48,7 @@ function StatCard({ title, value, subtitle, color, progress, progressMax, progre
     <div style={{
       backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '20px',
       boxShadow: 'var(--shadow-md)', borderLeft: `4px solid ${color}`,
+      border: '1px solid var(--border-color)', borderLeftWidth: '4px', borderLeftColor: color,
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
         <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{title}</div>
@@ -180,31 +181,35 @@ export default function DashboardWeb() {
     <>
       <style>{`
         *, *::before, *::after { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; }
+        html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-main, #e8ecf0); }
         @keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(16px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        .nav-btn:hover { opacity: 0.82 !important; transform: translateY(-1px) !important; }
+        .nav-btn:hover { opacity: 0.88 !important; transform: translateY(-1px) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.25) !important; }
         .nav-btn { transition: all 0.15s ease !important; }
+        .nav-btn-add { background: linear-gradient(135deg, #27ae60, #1e8449) !important; box-shadow: 0 2px 8px rgba(39,174,96,0.4) !important; }
       `}</style>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Sticky top nav */}
-      <div style={{ background: 'var(--bg-card)', position: 'sticky', top: 0, zIndex: 100, borderBottom: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
-        <div style={{ maxWidth: '720px', margin: '0 auto', padding: '12px 16px', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+      <div style={{ background: '#1e2d3d', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,0,0,0.25)' }}>
+        <div style={{ maxWidth: '760px', margin: '0 auto', padding: '12px 16px', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span style={{ fontSize: '22px' }}>💰</span>
-            <span style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text-main)', letterSpacing: '-0.3px' }}>Budget It</span>
+            <span style={{ fontSize: '17px', fontWeight: '800', color: '#ffffff', letterSpacing: '-0.3px' }}>Budget It</span>
           </div>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', flex: '1 1 auto' }}>
+          {isOffline && (
+            <div style={{ fontSize: '11px', fontWeight: '700', color: '#f39c12', backgroundColor: 'rgba(243,156,18,0.15)', border: '1px solid rgba(243,156,18,0.3)', borderRadius: '6px', padding: '3px 8px' }}>⚡ Offline</div>
+          )}
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', flex: '1 1 auto' }}>
             {([
-              { label: '+ Add', view: 'add-transaction', bg: 'var(--primary)' },
-              { label: '📋 History', view: 'transactions', bg: '#8e44ad' },
-              { label: '📈 Analytics', view: 'analytics', bg: '#d35400' },
-              { label: '⚙️ Settings', view: 'settings', bg: '#636e72' },
-            ] as const).map(({ label, view, bg }) => (
+              { label: '+ Add', view: 'add-transaction', bg: 'linear-gradient(135deg, #27ae60, #1e8449)', shadow: 'rgba(39,174,96,0.4)' },
+              { label: '📋 History', view: 'transactions', bg: 'linear-gradient(135deg, #8e44ad, #6c3483)', shadow: 'rgba(142,68,173,0.4)' },
+              { label: '📈 Analytics', view: 'analytics', bg: 'linear-gradient(135deg, #e67e22, #ca6f1e)', shadow: 'rgba(230,126,34,0.4)' },
+              { label: '⚙️ Settings', view: 'settings', bg: 'linear-gradient(135deg, #5d6d7e, #4d5d6e)', shadow: 'rgba(93,109,126,0.4)' },
+            ] as const).map(({ label, view, bg, shadow }) => (
               <button key={view} className="nav-btn" onClick={() => setCurrentView(view)}
-                style={{ backgroundColor: bg, color: '#fff', border: 'none', borderRadius: '8px', padding: '7px 12px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', flex: '1 1 auto', maxWidth: 'max-content' }}>
+                style={{ background: bg, color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: `0 2px 8px ${shadow}` }}>
                 {label}
               </button>
             ))}
@@ -212,18 +217,18 @@ export default function DashboardWeb() {
         </div>
       </div>
 
-      <div style={{ maxWidth: '720px', margin: '0 auto', padding: '20px 16px 48px', animation: 'fadeIn 0.3s ease' }}>
+      <div style={{ maxWidth: '760px', margin: '0 auto', padding: '24px 16px 60px', animation: 'fadeIn 0.3s ease' }}>
 
         {/* Date + user info */}
-        <div style={{ marginBottom: '16px' }}>
-          <div style={{ fontSize: '13px', color: '#636e72', fontWeight: '500' }}>{getDateInfo()}</div>
-          <div style={{ fontSize: '12px', color: '#b2bec3', marginTop: '2px' }}>
-            {getDaysUntilEndOfMonth()} days left in month · {user?.email}
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ fontSize: '14px', color: 'var(--text-main)', fontWeight: '600' }}>{getDateInfo()}</div>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '3px' }}>
+            {getDaysUntilEndOfMonth()} days left in month · <span style={{ color: 'var(--text-tertiary)' }}>{user?.email}</span>
           </div>
         </div>
 
         {/* Hero balance card */}
-        <div style={{ background: 'linear-gradient(135deg, #2c3e50 0%, #3498db 100%)', borderRadius: '20px', padding: '24px 22px', marginBottom: '14px', boxShadow: '0 8px 24px rgba(52,152,219,0.3)', color: '#fff' }}>
+        <div style={{ background: 'linear-gradient(135deg, #1a2332 0%, #2c3e50 50%, #2980b9 100%)', borderRadius: '20px', padding: '28px 24px', marginBottom: '16px', boxShadow: '0 8px 32px rgba(30,45,61,0.35)', color: '#fff' }}>
           <div style={{ fontSize: '11px', fontWeight: '700', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>Account Balance</div>
           <div style={{ fontSize: '38px', fontWeight: '900', letterSpacing: '-1px', marginBottom: '4px', color: runningBalance >= 0 ? '#fff' : '#ff7675' }}>
             {runningBalance < 0 ? '-' : ''}{formatCurrency(Math.abs(runningBalance), cur)}
@@ -236,7 +241,7 @@ export default function DashboardWeb() {
         </div>
 
         {/* Stats grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px', marginBottom: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
           <StatCard
             title="Today's Spending" icon={stats.isOverDailyBudget ? '⚠️' : '☀️'}
             value={formatCurrency(stats.spentToday, cur)}
@@ -268,33 +273,33 @@ export default function DashboardWeb() {
         </div>
 
         {/* Budget status pills */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
-          <div style={{ backgroundColor: stats.isOverDailyBudget ? 'var(--danger-bg)' : 'var(--success-bg)', borderRadius: '12px', padding: '14px 16px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', color: stats.isOverDailyBudget ? 'var(--danger-text)' : 'var(--success-text)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Daily Budget</div>
-            <div style={{ fontSize: '20px', fontWeight: '800', color: stats.isOverDailyBudget ? 'var(--danger)' : 'var(--success)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+          <div style={{ backgroundColor: stats.isOverDailyBudget ? 'var(--danger-bg)' : 'var(--success-bg)', borderRadius: '14px', padding: '16px 18px', border: `1px solid ${stats.isOverDailyBudget ? 'var(--danger-border)' : 'var(--success-border)'}`, boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: stats.isOverDailyBudget ? 'var(--danger-text)' : 'var(--success-text)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Daily Budget</div>
+            <div style={{ fontSize: '22px', fontWeight: '800', color: stats.isOverDailyBudget ? 'var(--danger)' : 'var(--success)', lineHeight: 1.2 }}>
               {stats.isOverDailyBudget
                 ? `−${formatCurrency(stats.spentToday - budget.daily_target, cur)}`
                 : `+${formatCurrency(stats.dailyRemaining, cur)}`}
             </div>
-            <div style={{ fontSize: '11px', color: stats.isOverDailyBudget ? 'var(--danger)' : 'var(--success)', marginTop: '2px' }}>
-              {stats.isOverDailyBudget ? 'over limit' : 'remaining today'}
+            <div style={{ fontSize: '12px', color: stats.isOverDailyBudget ? 'var(--danger-text)' : 'var(--success-text)', marginTop: '4px', fontWeight: '500' }}>
+              {stats.isOverDailyBudget ? '⚠️ over limit' : '✅ remaining today'}
             </div>
           </div>
-          <div style={{ backgroundColor: stats.isOverMonthlyBudget ? 'var(--danger-bg)' : 'var(--success-bg)', borderRadius: '12px', padding: '14px 16px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', color: stats.isOverMonthlyBudget ? 'var(--danger-text)' : 'var(--success-text)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Monthly Budget</div>
-            <div style={{ fontSize: '20px', fontWeight: '800', color: stats.isOverMonthlyBudget ? 'var(--danger)' : 'var(--success)' }}>
+          <div style={{ backgroundColor: stats.isOverMonthlyBudget ? 'var(--danger-bg)' : 'var(--success-bg)', borderRadius: '14px', padding: '16px 18px', border: `1px solid ${stats.isOverMonthlyBudget ? 'var(--danger-border)' : 'var(--success-border)'}`, boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: stats.isOverMonthlyBudget ? 'var(--danger-text)' : 'var(--success-text)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Monthly Budget</div>
+            <div style={{ fontSize: '22px', fontWeight: '800', color: stats.isOverMonthlyBudget ? 'var(--danger)' : 'var(--success)', lineHeight: 1.2 }}>
               {stats.isOverMonthlyBudget
                 ? `−${formatCurrency(stats.spentMonthToDate - budget.monthly_target, cur)}`
                 : `+${formatCurrency(stats.monthlyRemaining, cur)}`}
             </div>
-            <div style={{ fontSize: '11px', color: stats.isOverMonthlyBudget ? 'var(--danger)' : 'var(--success)', marginTop: '2px' }}>
-              {stats.isOverMonthlyBudget ? 'over limit' : 'remaining this month'}
+            <div style={{ fontSize: '12px', color: stats.isOverMonthlyBudget ? 'var(--danger-text)' : 'var(--success-text)', marginTop: '4px', fontWeight: '500' }}>
+              {stats.isOverMonthlyBudget ? '⚠️ over limit' : '✅ remaining this month'}
             </div>
           </div>
         </div>
 
         {/* Recent transactions */}
-        <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '20px', boxShadow: 'var(--shadow-md)' }}>
+        <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '20px', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-color)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h2 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-main)', margin: 0 }}>Recent Transactions</h2>
             <button onClick={() => setCurrentView('transactions')}
