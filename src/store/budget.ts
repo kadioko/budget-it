@@ -1,7 +1,17 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 import { supabase } from '@/lib/supabase';
 import { Budget, Transaction, BudgetStats, RecurringTransaction } from '@/types/index';
 import { calculateBudgetStats } from '@/lib/budget-logic';
+
+interface PendingAction {
+  id: string;
+  type: 'ADD_TRANSACTION' | 'DELETE_TRANSACTION' | 'UPDATE_BUDGET';
+  payload: any;
+  timestamp: string;
+}
 
 interface BudgetState {
   budget: Budget | null;
@@ -10,6 +20,11 @@ interface BudgetState {
   stats: BudgetStats | null;
   loading: boolean;
   error: string | null;
+  lastSync: string | null;
+  pendingActions: PendingAction[];
+  isOffline: boolean;
+  setOfflineStatus: (status: boolean) => void;
+  syncOfflineActions: () => Promise<void>;
   fetchBudget: (userId: string) => Promise<void>;
   fetchTransactions: (userId: string) => Promise<void>;
   fetchRecurringTransactions: (userId: string) => Promise<void>;
@@ -55,15 +70,61 @@ interface BudgetState {
   deleteRecurringTransaction: (id: string) => Promise<void>;
   processRecurringTransactions: (userId: string) => Promise<void>;
   calculateStats: () => void;
+  clearData: () => void;
 }
 
-export const useBudgetStore = create<BudgetState>((set, get) => ({
-  budget: null,
-  transactions: [],
-  recurringTransactions: [],
-  stats: null,
-  loading: false,
-  error: null,
+export const useBudgetStore = create<BudgetState>()(
+  persist(
+    (set, get) => ({
+      budget: null,
+      transactions: [],
+      recurringTransactions: [],
+      stats: null,
+      loading: false,
+      error: null,
+      lastSync: null,
+      pendingActions: [],
+      isOffline: false,
+
+      setOfflineStatus: (status: boolean) => set({ isOffline: status }),
+
+      syncOfflineActions: async () => {
+        const { pendingActions, isOffline } = get();
+        if (isOffline || pendingActions.length === 0) return;
+
+        set({ loading: true });
+        try {
+          const sortedActions = [...pendingActions].sort((a, b) => 
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          );
+
+          for (const action of sortedActions) {
+            if (action.type === 'ADD_TRANSACTION') {
+              const { userId, amount, category, date, note } = action.payload;
+              await supabase.from('transactions').insert([{ user_id: userId, amount, category, date, note }]);
+            } else if (action.type === 'DELETE_TRANSACTION') {
+              await supabase.from('transactions').delete().eq('id', action.payload.transactionId);
+            }
+          }
+          
+          set({ pendingActions: [], lastSync: new Date().toISOString() });
+          
+          // Refresh data after sync
+          const userId = get().budget?.user_id;
+          if (userId) {
+            await get().fetchTransactions(userId);
+            await get().fetchBudget(userId);
+          }
+        } catch (error) {
+          console.error('Sync failed:', error);
+        } finally {
+          set({ loading: false });
+        }
+      },
+
+      clearData: () => {
+        set({ budget: null, transactions: [], recurringTransactions: [], stats: null, lastSync: null, pendingActions: [] });
+      },
 
   fetchBudget: async (userId: string) => {
     set({ loading: true, error: null });
@@ -195,6 +256,29 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
   ) => {
     set({ loading: true, error: null });
     try {
+      if (get().isOffline) {
+        const newTx = {
+          id: `temp-${Date.now()}`,
+          user_id: userId,
+          amount,
+          category,
+          date,
+          note: note || null,
+          created_at: new Date().toISOString()
+        };
+        set(state => ({
+          transactions: [newTx, ...state.transactions],
+          pendingActions: [...state.pendingActions, {
+            id: `act-${Date.now()}`,
+            type: 'ADD_TRANSACTION',
+            payload: { userId, amount, category, date, note },
+            timestamp: new Date().toISOString()
+          }]
+        }));
+        get().calculateStats();
+        return;
+      }
+
       const { data, error } = await supabase
         .from('transactions')
         .insert([{
@@ -279,6 +363,30 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
   deleteTransaction: async (transactionId: string) => {
     set({ loading: true, error: null });
     try {
+      if (get().isOffline) {
+        // If it's a temporary offline transaction, just remove it
+        if (transactionId.startsWith('temp-')) {
+          set(state => ({
+            transactions: state.transactions.filter(t => t.id !== transactionId),
+            // Optionally remove the pending action that created it if we want to be clean, 
+            // but just filtering is fine for now
+          }));
+        } else {
+          // If it's a real transaction from DB, add a delete pending action
+          set(state => ({
+            transactions: state.transactions.filter(t => t.id !== transactionId),
+            pendingActions: [...state.pendingActions, {
+              id: `act-${Date.now()}`,
+              type: 'DELETE_TRANSACTION',
+              payload: { transactionId },
+              timestamp: new Date().toISOString()
+            }]
+          }));
+        }
+        get().calculateStats();
+        return;
+      }
+
       const { error } = await supabase
         .from('transactions')
         .delete()
@@ -420,4 +528,10 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
       set({ stats: null });
     }
   },
-}));
+}),
+{
+  name: 'budget-storage',
+  storage: createJSONStorage(() => AsyncStorage),
+}
+)
+);

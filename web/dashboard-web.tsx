@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import NetInfo from '@react-native-community/netinfo';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
 import SettingsWeb from './settings-web';
@@ -80,12 +81,30 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
 
 export default function DashboardWeb() {
   const { user } = useAuthStore();
-  const { budget, stats, transactions, fetchBudget, fetchTransactions, processRecurringTransactions } = useBudgetStore();
+  const { budget, stats, transactions, isOffline, pendingActions, setOfflineStatus, syncOfflineActions, fetchBudget, fetchTransactions, processRecurringTransactions } = useBudgetStore();
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [currentView, setCurrentView] = useState<'dashboard' | 'settings' | 'add-transaction' | 'transactions' | 'analytics'>('dashboard');
   const [dataReady, setDataReady] = useState(false);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => setToast({ message, type });
+
+  // Network listener
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      const offline = !(state.isConnected && state.isInternetReachable !== false);
+      setOfflineStatus(offline);
+      
+      // If we just came back online and have pending actions, sync them
+      if (!offline && pendingActions.length > 0) {
+        showToast('Back online! Syncing data...', 'success');
+        syncOfflineActions().then(() => {
+          showToast('Sync complete!', 'success');
+        });
+      }
+    });
+
+    return () => unsubscribe();
+  }, [pendingActions.length]);
 
   useEffect(() => {
     if (user) {
