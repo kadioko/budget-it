@@ -47,7 +47,7 @@ npm install
 
 Create `.env.local` in the project root:
 
-```
+```env
 EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 ```
@@ -67,7 +67,7 @@ Then press `i` for iOS or `a` for Android in the terminal.
 
 ## Project Structure
 
-```
+```text
 budget-it/
 ├── App.tsx                       # Main entry point (auth check, routing)
 ├── src/
@@ -96,7 +96,7 @@ budget-it/
 
 ### Web (Vercel)
 
-The web app is configured as a Single Page Application (SPA) on Vercel. 
+The web app is configured as a Single Page Application (SPA) on Vercel.
 It auto-deploys on push to the `main` branch.
 
 **Manual Web Build:**
