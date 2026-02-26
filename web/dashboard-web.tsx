@@ -302,7 +302,7 @@ export default function DashboardWeb() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#ffffff', margin: 0 }}>Recent Transactions</h2>
             <button onClick={() => setCurrentView('transactions')}
-              style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>
+              style={{ fontSize: '12px', color: '#ffffff', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>
               View all →
             </button>
           </div>
