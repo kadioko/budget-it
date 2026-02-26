@@ -46,15 +46,16 @@ function StatCard({ title, value, subtitle, color, progress, progressMax, progre
 }) {
   return (
     <div style={{
-      backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '20px',
-      boxShadow: 'var(--shadow-md)', borderLeft: `5px solid ${color}`,
+      backgroundColor: '#1e293b', borderRadius: '16px', padding: '20px',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.15)', borderLeft: `5px solid ${color}`,
+      color: '#fff'
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-        <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{title}</div>
+        <div style={{ fontSize: '13px', fontWeight: '600', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{title}</div>
         <div style={{ fontSize: '22px' }}>{icon}</div>
       </div>
-      <div style={{ fontSize: '26px', fontWeight: '800', color: 'var(--text-main)', lineHeight: 1.2 }}>{value}</div>
-      <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '4px' }}>{subtitle}</div>
+      <div style={{ fontSize: '26px', fontWeight: '800', color: '#fff', lineHeight: 1.2 }}>{value}</div>
+      <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>{subtitle}</div>
       {progress !== undefined && progressMax !== undefined && (
         <ProgressBar value={progress} max={progressMax} color={progressColor || color} />
       )}
@@ -273,45 +274,45 @@ export default function DashboardWeb() {
 
         {/* Budget status pills */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
-          <div style={{ backgroundColor: stats.isOverDailyBudget ? 'var(--danger-bg)' : 'var(--success-bg)', borderRadius: '14px', padding: '16px 18px', border: `1px solid ${stats.isOverDailyBudget ? 'var(--danger-border)' : 'var(--success-border)'}`, boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', color: stats.isOverDailyBudget ? 'var(--danger-text)' : 'var(--success-text)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Daily Budget</div>
-            <div style={{ fontSize: '22px', fontWeight: '800', color: stats.isOverDailyBudget ? 'var(--danger)' : 'var(--success)', lineHeight: 1.2 }}>
+          <div style={{ background: stats.isOverDailyBudget ? '#ef4444' : '#22c55e', borderRadius: '14px', padding: '16px 18px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: '#fff', opacity: 0.9, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Daily Budget</div>
+            <div style={{ fontSize: '22px', fontWeight: '800', color: '#fff', lineHeight: 1.2 }}>
               {stats.isOverDailyBudget
                 ? `−${formatCurrency(stats.spentToday - budget.daily_target, cur)}`
                 : `+${formatCurrency(stats.dailyRemaining, cur)}`}
             </div>
-            <div style={{ fontSize: '12px', color: stats.isOverDailyBudget ? 'var(--danger-text)' : 'var(--success-text)', marginTop: '4px', fontWeight: '500' }}>
+            <div style={{ fontSize: '12px', color: '#fff', opacity: 0.9, marginTop: '4px', fontWeight: '500' }}>
               {stats.isOverDailyBudget ? '⚠️ over limit' : '✅ remaining today'}
             </div>
           </div>
-          <div style={{ backgroundColor: stats.isOverMonthlyBudget ? 'var(--danger-bg)' : 'var(--success-bg)', borderRadius: '14px', padding: '16px 18px', border: `1px solid ${stats.isOverMonthlyBudget ? 'var(--danger-border)' : 'var(--success-border)'}`, boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', color: stats.isOverMonthlyBudget ? 'var(--danger-text)' : 'var(--success-text)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Monthly Budget</div>
-            <div style={{ fontSize: '22px', fontWeight: '800', color: stats.isOverMonthlyBudget ? 'var(--danger)' : 'var(--success)', lineHeight: 1.2 }}>
+          <div style={{ background: stats.isOverMonthlyBudget ? '#ef4444' : '#22c55e', borderRadius: '14px', padding: '16px 18px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: '#fff', opacity: 0.9, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Monthly Budget</div>
+            <div style={{ fontSize: '22px', fontWeight: '800', color: '#fff', lineHeight: 1.2 }}>
               {stats.isOverMonthlyBudget
                 ? `−${formatCurrency(stats.spentMonthToDate - budget.monthly_target, cur)}`
                 : `+${formatCurrency(stats.monthlyRemaining, cur)}`}
             </div>
-            <div style={{ fontSize: '12px', color: stats.isOverMonthlyBudget ? 'var(--danger-text)' : 'var(--success-text)', marginTop: '4px', fontWeight: '500' }}>
+            <div style={{ fontSize: '12px', color: '#fff', opacity: 0.9, marginTop: '4px', fontWeight: '500' }}>
               {stats.isOverMonthlyBudget ? '⚠️ over limit' : '✅ remaining this month'}
             </div>
           </div>
         </div>
 
         {/* Recent transactions */}
-        <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '20px', boxShadow: 'var(--shadow-md)' }}>
+        <div style={{ background: '#22c55e', borderRadius: '16px', padding: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', color: '#fff' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h2 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-main)', margin: 0 }}>Recent Transactions</h2>
+            <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#fff', margin: 0 }}>Recent Transactions</h2>
             <button onClick={() => setCurrentView('transactions')}
-              style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>
+              style={{ fontSize: '12px', color: '#fff', opacity: 0.9, fontWeight: '600', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '6px', cursor: 'pointer', padding: '4px 10px' }}>
               View all →
             </button>
           </div>
           {recentTransactions.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)' }}>
+            <div style={{ textAlign: 'center', padding: '24px 0', color: '#fff', opacity: 0.8 }}>
               <div style={{ fontSize: '32px', marginBottom: '8px' }}>📭</div>
               <div style={{ fontSize: '14px' }}>No transactions yet</div>
               <button onClick={() => setCurrentView('add-transaction')}
-                style={{ marginTop: '12px', padding: '8px 20px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                style={{ marginTop: '12px', padding: '8px 20px', background: '#fff', color: '#22c55e', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
                 Add your first transaction
               </button>
             </div>
@@ -320,17 +321,17 @@ export default function DashboardWeb() {
               {recentTransactions.map(t => {
                 const isIncome = t.amount < 0;
                 return (
-                  <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', backgroundColor: 'var(--bg-secondary)', borderRadius: '10px' }}>
+                  <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '10px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: isIncome ? 'var(--success-bg)' : 'var(--danger-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>
                         {isIncome ? '💰' : '💸'}
                       </div>
                       <div>
-                        <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-main)' }}>{t.category}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{t.note ? ` · ${t.note}` : ''}</div>
+                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>{t.category}</div>
+                        <div style={{ fontSize: '11px', color: '#fff', opacity: 0.8 }}>{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{t.note ? ` · ${t.note}` : ''}</div>
                       </div>
                     </div>
-                    <div style={{ fontSize: '14px', fontWeight: '700', color: isIncome ? 'var(--success)' : 'var(--danger)' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>
                       {isIncome ? '+' : '−'}{formatCurrency(Math.abs(t.amount), cur)}
                     </div>
                   </div>
