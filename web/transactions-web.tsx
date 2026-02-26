@@ -150,6 +150,7 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
           width: 100%;
           background: #0f172a;
           color: #f8fafc;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
         * {
           box-sizing: border-box;
@@ -247,80 +248,70 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
                 <div style={{ fontSize: '14px', marginTop: '8px' }}>Try changing your filters or add a new transaction.</div>
               </div>
             ) : (
-              <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px' }}>
                 {filteredTransactions.slice(0, visibleCount).map((t, index) => {
                   const isExpense = t.amount > 0;
                   return (
                     <div key={t.id} style={{
-                      padding: '16px',
-                      borderBottom: index < filteredTransactions.length - 1 ? '1px solid #334155' : 'none',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      backgroundColor: '#1e293b'
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: '#334155', borderRadius: '10px'
                     }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                          <span style={{
-                            backgroundColor: !isExpense ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)',
-                            color: !isExpense ? '#10b981' : '#ef4444',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            fontWeight: '600'
-                          }}>
-                            {!isExpense ? '💰' : '💸'} {t.category}
-                          </span>
-                          <span style={{ fontSize: '12px', color: '#94a3b8' }}>
-                            {new Date(t.date).toLocaleDateString()}
-                          </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: !isExpense ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
+                          {!isExpense ? '💰' : '💸'}
                         </div>
-                        {t.note && (
-                          <div style={{ fontSize: '14px', color: '#cbd5e1', marginBottom: '4px', marginTop: '6px' }}>
-                            {t.note}
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: '700', color: '#f8fafc' }}>{t.category}</div>
+                          <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                            {new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {t.note ? ` · ${t.note}` : ''}
                           </div>
-                        )}
+                        </div>
                       </div>
                       
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <div style={{
-                          fontSize: '16px',
-                          fontWeight: 'bold',
+                          fontSize: '15px',
+                          fontWeight: '800',
                           color: !isExpense ? '#10b981' : '#ef4444'
                         }}>
                           {!isExpense ? '+' : '-'}{formatCurrency(Math.abs(t.amount), budget?.currency || 'TZS')}
                         </div>
                         
-                        <button
-                          onClick={() => handleEdit(t.id)}
-                          style={{
-                            backgroundColor: '#3b82f6',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '6px',
-                            padding: '6px 12px',
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Edit
-                        </button>
-                        
-                        <button
-                          onClick={() => setShowDeleteConfirm(t.id)}
-                          style={{
-                            backgroundColor: 'transparent',
-                            color: '#ef4444',
-                            border: '1px solid #ef4444',
-                            borderRadius: '6px',
-                            padding: '5px 11px',
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Delete
-                        </button>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            onClick={() => handleEdit(t.id)}
+                            style={{
+                              backgroundColor: '#3b82f6',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '6px 12px',
+                              fontSize: '12px',
+                              fontWeight: '700',
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 4px rgba(59,130,246,0.3)'
+                            }}
+                          >
+                            Edit
+                          </button>
+                          
+                          <button
+                            onClick={() => setShowDeleteConfirm(t.id)}
+                            style={{
+                              backgroundColor: 'transparent',
+                              color: '#ef4444',
+                              border: '1px solid #ef4444',
+                              borderRadius: '6px',
+                              padding: '5px 11px',
+                              fontSize: '12px',
+                              fontWeight: '700',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -331,13 +322,14 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
                     onClick={() => setVisibleCount(prev => prev + 20)}
                     style={{
                       width: '100%',
-                      padding: '16px',
+                      padding: '12px',
+                      marginTop: '8px',
                       backgroundColor: 'transparent',
-                      border: 'none',
-                      borderTop: '1px solid #334155',
+                      border: '1px solid #334155',
+                      borderRadius: '8px',
                       color: '#3b82f6',
-                      fontSize: '14px',
-                      fontWeight: '600',
+                      fontSize: '13px',
+                      fontWeight: '700',
                       cursor: 'pointer',
                       transition: 'all 0.2s',
                     }}
