@@ -273,25 +273,25 @@ export default function DashboardWeb() {
 
         {/* Budget status pills */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
-          <div style={{ backgroundColor: stats.isOverDailyBudget ? 'var(--danger)' : 'var(--success)', borderRadius: '14px', padding: '16px 18px', boxShadow: stats.isOverDailyBudget ? '0 4px 12px rgba(231,76,60,0.3)' : '0 4px 12px rgba(39,174,96,0.3)' }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Daily Budget</div>
+          <div style={{ backgroundColor: stats.isOverDailyBudget ? '#ef4444' : '#10b981', borderRadius: '14px', padding: '16px 18px', boxShadow: stats.isOverDailyBudget ? '0 4px 12px rgba(239,68,68,0.3)' : '0 4px 12px rgba(16,185,129,0.3)' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255,255,255,0.9)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Daily Budget</div>
             <div style={{ fontSize: '22px', fontWeight: '800', color: '#ffffff', lineHeight: 1.2 }}>
               {stats.isOverDailyBudget
                 ? `−${formatCurrency(stats.spentToday - budget.daily_target, cur)}`
                 : `+${formatCurrency(stats.dailyRemaining, cur)}`}
             </div>
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.9)', marginTop: '4px', fontWeight: '500' }}>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.95)', marginTop: '4px', fontWeight: '600' }}>
               {stats.isOverDailyBudget ? '⚠️ over limit' : '✅ remaining today'}
             </div>
           </div>
-          <div style={{ backgroundColor: stats.isOverMonthlyBudget ? 'var(--danger)' : 'var(--success)', borderRadius: '14px', padding: '16px 18px', boxShadow: stats.isOverMonthlyBudget ? '0 4px 12px rgba(231,76,60,0.3)' : '0 4px 12px rgba(39,174,96,0.3)' }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Monthly Budget</div>
+          <div style={{ backgroundColor: stats.isOverMonthlyBudget ? '#ef4444' : '#10b981', borderRadius: '14px', padding: '16px 18px', boxShadow: stats.isOverMonthlyBudget ? '0 4px 12px rgba(239,68,68,0.3)' : '0 4px 12px rgba(16,185,129,0.3)' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255,255,255,0.9)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Monthly Budget</div>
             <div style={{ fontSize: '22px', fontWeight: '800', color: '#ffffff', lineHeight: 1.2 }}>
               {stats.isOverMonthlyBudget
                 ? `−${formatCurrency(stats.spentMonthToDate - budget.monthly_target, cur)}`
                 : `+${formatCurrency(stats.monthlyRemaining, cur)}`}
             </div>
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.9)', marginTop: '4px', fontWeight: '500' }}>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.95)', marginTop: '4px', fontWeight: '600' }}>
               {stats.isOverMonthlyBudget ? '⚠️ over limit' : '✅ remaining this month'}
             </div>
           </div>
