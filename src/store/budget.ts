@@ -412,17 +412,19 @@ export const useBudgetStore = create<BudgetState>()(
       const newTransactions = [data, ...get().transactions];
       
       // Update envelope balance if applicable
+      // Convention: expense = +amount (positive), income = -amount (negative)
+      // So balance -= amount  means: expense reduces balance, income increases it
       if (envelopeId) {
         const envelope = get().envelopes.find(e => e.id === envelopeId);
         if (envelope) {
-          const newBalance = envelope.balance + amount;
+          const newBalance = envelope.balance - amount;
           await get().updateEnvelope(envelope.id, envelope.name, envelope.icon, newBalance, envelope.currency);
         }
       } else {
         // Fallback to bank_balance
         const budget = get().budget;
         if (budget) {
-          await get().updateBankBalance(budget.id, budget.bank_balance + amount);
+          await get().updateBankBalance(budget.id, budget.bank_balance - amount);
         }
       }
 
@@ -465,32 +467,34 @@ export const useBudgetStore = create<BudgetState>()(
       if (error) throw error;
 
       // Handle balance updates
+      // Convention: expense = +amount, income = -amount → balance -= amount
+      // diff = newAmount - oldAmount; applying diff: balance -= diff (reverses old, applies new)
       const diff = amount - existingTx.amount;
       
       if (existingTx.envelope_id === envelopeId) {
         if (envelopeId) {
           const env = get().envelopes.find(e => e.id === envelopeId);
-          if (env) await get().updateEnvelope(env.id, env.name, env.icon, env.balance + diff, env.currency);
+          if (env) await get().updateEnvelope(env.id, env.name, env.icon, env.balance - diff, env.currency);
         } else {
           const budget = get().budget;
-          if (budget) await get().updateBankBalance(budget.id, budget.bank_balance + diff);
+          if (budget) await get().updateBankBalance(budget.id, budget.bank_balance - diff);
         }
       } else {
         // Changed destination! Refund old, apply to new.
         if (existingTx.envelope_id) {
            const oldEnv = get().envelopes.find(e => e.id === existingTx.envelope_id);
-           if (oldEnv) await get().updateEnvelope(oldEnv.id, oldEnv.name, oldEnv.icon, oldEnv.balance - existingTx.amount, oldEnv.currency);
+           if (oldEnv) await get().updateEnvelope(oldEnv.id, oldEnv.name, oldEnv.icon, oldEnv.balance + existingTx.amount, oldEnv.currency);
         } else {
            const budget = get().budget;
-           if (budget) await get().updateBankBalance(budget.id, budget.bank_balance - existingTx.amount);
+           if (budget) await get().updateBankBalance(budget.id, budget.bank_balance + existingTx.amount);
         }
 
         if (envelopeId) {
            const newEnv = get().envelopes.find(e => e.id === envelopeId);
-           if (newEnv) await get().updateEnvelope(newEnv.id, newEnv.name, newEnv.icon, newEnv.balance + amount, newEnv.currency);
+           if (newEnv) await get().updateEnvelope(newEnv.id, newEnv.name, newEnv.icon, newEnv.balance - amount, newEnv.currency);
         } else {
            const budget = get().budget;
-           if (budget) await get().updateBankBalance(budget.id, budget.bank_balance + amount);
+           if (budget) await get().updateBankBalance(budget.id, budget.bank_balance - amount);
         }
       }
 
@@ -556,12 +560,26 @@ export const useBudgetStore = create<BudgetState>()(
         return;
       }
 
+      const txToDelete = get().transactions.find(t => t.id === transactionId);
+
       const { error } = await supabase
         .from('transactions')
         .delete()
         .eq('id', transactionId);
 
       if (error) throw error;
+
+      // Reverse the balance effect of the deleted transaction
+      if (txToDelete) {
+        if (txToDelete.envelope_id) {
+          const env = get().envelopes.find(e => e.id === txToDelete.envelope_id);
+          if (env) await get().updateEnvelope(env.id, env.name, env.icon, env.balance + txToDelete.amount, env.currency);
+        } else {
+          const budget = get().budget;
+          if (budget) await get().updateBankBalance(budget.id, budget.bank_balance + txToDelete.amount);
+        }
+      }
+
       const filtered = get().transactions.filter((t) => t.id !== transactionId);
       set({ transactions: filtered });
       get().calculateStats();

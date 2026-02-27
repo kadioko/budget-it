@@ -249,42 +249,66 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
         <div style={card}>
           <div style={sectionTitle}><span>💌</span> Envelopes & Accounts</div>
           <div style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '16px', lineHeight: '1.4' }}>
-            Manage multiple accounts or budgeting envelopes (e.g., Wallet, Bank, Vacation Fund).
+            Your main bank account plus any extra envelopes (e.g., Wallet, Cash, Vacation Fund).
           </div>
-          
-          {envelopes.length > 0 && (
-            <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {envelopes.map(env => (
-                <div key={env.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ fontSize: '24px' }}>{env.icon}</div>
-                    <div>
-                      <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {env.name}
-                        {env.is_default && <span style={{ fontSize: '10px', backgroundColor: '#3b82f6', color: '#fff', padding: '2px 6px', borderRadius: '4px' }}>DEFAULT</span>}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>
-                        {formatCurrency(env.balance, env.currency)}
-                      </div>
+
+          <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* Default Bank Account (from budget.bank_balance) */}
+            {budget && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', border: '1px solid #3b82f6', borderRadius: '10px', backgroundColor: '#0f172a' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                  <div style={{ fontSize: '24px' }}>🏦</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                      Bank Account
+                      <span style={{ fontSize: '10px', backgroundColor: '#3b82f6', color: '#fff', padding: '2px 6px', borderRadius: '4px' }}>DEFAULT</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={bankBalance}
+                        onChange={e => setBankBalance(e.target.value)}
+                        style={{ ...fieldStyle, width: '160px', padding: '8px 10px', fontSize: '14px', marginBottom: 0 }}
+                      />
+                      <button
+                        onClick={handleSaveBalance}
+                        disabled={loading}
+                        style={{ padding: '8px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer' }}
+                      >
+                        {loading ? '...' : 'Update'}
+                      </button>
+                    </div>
+                    {balanceMsg && <div style={{ fontSize: '12px', color: balanceMsg.type === 'success' ? '#10b981' : '#ef4444', marginTop: '6px', fontWeight: '600' }}>{balanceMsg.text}</div>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {envelopes.map(env => (
+              <div key={env.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', border: '1px solid #334155', borderRadius: '8px', backgroundColor: '#0f172a' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ fontSize: '24px' }}>{env.icon}</div>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {env.name}
+                      {env.is_default && <span style={{ fontSize: '10px', backgroundColor: '#10b981', color: '#fff', padding: '2px 6px', borderRadius: '4px' }}>ACCOUNT</span>}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>
+                      {formatCurrency(env.balance, env.currency)}
                     </div>
                   </div>
-                  {!env.is_default && (
-                    <button onClick={async () => {
-                      if(window.confirm('Are you sure you want to delete this envelope? Transactions will lose this envelope reference.')) {
-                        try {
-                          await deleteEnvelope(env.id);
-                        } catch(e) {
-                          alert('Failed to delete envelope');
-                        }
-                      }
-                    }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', padding: '4px' }} title="Delete">
-                      🗑️
-                    </button>
-                  )}
                 </div>
-              ))}
-            </div>
-          )}
+                <button onClick={async () => {
+                  if(window.confirm('Delete this envelope? Transactions will lose this reference.')) {
+                    try { await deleteEnvelope(env.id); } catch(e) { alert('Failed to delete envelope'); }
+                  }
+                }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', padding: '4px' }} title="Delete">
+                  🗑️
+                </button>
+              </div>
+            ))}
+          </div>
 
           {!showEnvelopeForm ? (
             <button
@@ -324,21 +348,6 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
           )}
         </div>
 
-        {/* Bank Balance (Legacy / Default) */}
-        <div style={card}>
-          <div style={sectionTitle}><span>🏦</span> Bank Account Balance</div>
-          <label style={lbl}>Starting Balance ({currency})</label>
-          <input type="number" step="0.01" value={bankBalance} onChange={e => setBankBalance(e.target.value)}
-            placeholder="0.00" style={{ ...fieldStyle, marginBottom: '12px' }} />
-          <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '16px' }}>
-            Your initial balance — transactions will be deducted from this
-          </div>
-          <button onClick={handleSaveBalance} disabled={loading}
-            style={{ width: '100%', padding: '14px', background: loading ? '#475569' : '#10b981', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: loading ? 'none' : '0 4px 12px rgba(16,185,129,0.3)', marginTop: '8px' }}>
-            {loading ? 'Saving...' : '💾 Save Balance'}
-          </button>
-          {balanceMsg && <Msg text={balanceMsg.text} type={balanceMsg.type} />}
-        </div>
 
         {/* Recurring Transactions Section */}
         <div style={card}>
