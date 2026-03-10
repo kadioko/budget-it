@@ -2,6 +2,11 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { Profile } from '@/types/index';
 
+const getEmailRedirectTo = () => {
+  if (typeof window === 'undefined') return undefined;
+  return `${window.location.origin}/?auth_action=email_verified`;
+};
+
 interface AuthState {
   user: any | null;
   profile: Profile | null;
@@ -26,6 +31,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: getEmailRedirectTo(),
+        },
       });
 
       if (error) throw error;

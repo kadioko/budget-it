@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from './src/store/auth';
+import { supabase } from './src/lib/supabase';
 import { applyWebTheme, useThemeStore } from './src/store/theme';
 import DashboardWeb from './web/dashboard-web';
 
@@ -39,6 +40,12 @@ const featurePillStyle: React.CSSProperties = {
   fontSize: '13px',
   fontWeight: 600,
   backdropFilter: 'blur(8px)',
+};
+
+type VerificationBanner = {
+  type: 'success' | 'error' | 'info';
+  title: string;
+  message: string;
 };
 
 function AuthCard({ children }: { children: React.ReactNode }) {
@@ -291,10 +298,105 @@ function SignupForm({ onSwitch }: { onSwitch: () => void }) {
   );
 }
 
+function VerificationNotice({ banner, onContinue }: { banner: VerificationBanner; onContinue: () => void }) {
+  const palette = banner.type === 'success'
+    ? { background: '#f0fdf4', border: '#bbf7d0', text: '#166534', icon: '✅', button: 'linear-gradient(135deg, #27ae60, #219a52)' }
+    : banner.type === 'error'
+      ? { background: '#fef2f2', border: '#fecaca', text: '#b91c1c', icon: '⚠️', button: 'linear-gradient(135deg, #ef4444, #dc2626)' }
+      : { background: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8', icon: 'ℹ️', button: 'linear-gradient(135deg, #3498db, #2563eb)' };
+
+  return (
+    <AuthCard>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '44px', marginBottom: '14px' }}>{palette.icon}</div>
+        <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#2c3e50', marginBottom: '10px' }}>{banner.title}</h2>
+        <div style={{ backgroundColor: palette.background, border: `1px solid ${palette.border}`, color: palette.text, padding: '14px 16px', borderRadius: '14px', fontSize: '14px', lineHeight: 1.6, marginBottom: '18px' }}>
+          {banner.message}
+        </div>
+        <button
+          onClick={onContinue}
+          style={{ width: '100%', padding: '14px', background: palette.button, color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(15,23,42,0.16)' }}
+        >
+          Continue to sign in
+        </button>
+      </div>
+    </AuthCard>
+  );
+}
+
 export default function App() {
   const { user, checkAuth } = useAuthStore();
   const [ready, setReady] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<'login' | 'signup'>('login');
+  const [verificationBanner, setVerificationBanner] = useState<VerificationBanner | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const url = new URL(window.location.href);
+    const searchParams = url.searchParams;
+    const hashParams = new URLSearchParams(url.hash.startsWith('#') ? url.hash.slice(1) : url.hash);
+    const hasVerificationIntent = searchParams.get('auth_action') === 'email_verified';
+    const hasAuthTokens = hashParams.has('access_token') || hashParams.has('refresh_token') || searchParams.has('code') || searchParams.has('token_hash');
+    const hasAuthError = searchParams.has('error') || hashParams.has('error_description');
+
+    if (!hasVerificationIntent && !hasAuthTokens && !hasAuthError) return;
+
+    let active = true;
+
+    const finalizeUrl = () => {
+      const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+      window.history.replaceState({}, document.title, cleanUrl);
+    };
+
+    const processVerification = async () => {
+      setVerificationBanner({
+        type: 'info',
+        title: 'Finishing verification…',
+        message: 'We are confirming your email and preparing your account.',
+      });
+
+      try {
+        const { data, error } = await supabase.auth.getSession();
+
+        if (!active) return;
+
+        if (error) {
+          throw error;
+        }
+
+        if (data.session?.user?.email_confirmed_at || hasVerificationIntent) {
+          setVerificationBanner({
+            type: 'success',
+            title: 'Email verified',
+            message: 'Your email has been verified successfully. You can now sign in and continue using Budget It.',
+          });
+          setCurrentScreen('login');
+        } else {
+          setVerificationBanner({
+            type: 'error',
+            title: 'Verification not completed',
+            message: 'We could not confirm your email from this link. Please try the latest email again or request a new verification email.',
+          });
+        }
+      } catch (error: any) {
+        if (!active) return;
+        setVerificationBanner({
+          type: 'error',
+          title: 'Verification failed',
+          message: error?.message || 'We could not complete email verification. Please try again from the most recent email link.',
+        });
+      } finally {
+        if (active) finalizeUrl();
+      }
+    };
+
+    processVerification();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -325,6 +427,9 @@ export default function App() {
   }
 
   if (!user) {
+    if (verificationBanner) {
+      return <VerificationNotice banner={verificationBanner} onContinue={() => { setVerificationBanner(null); setCurrentScreen('login'); }} />;
+    }
     if (currentScreen === 'login') return <LoginForm onSwitch={() => setCurrentScreen('signup')} />;
     return <SignupForm onSwitch={() => setCurrentScreen('login')} />;
   }
