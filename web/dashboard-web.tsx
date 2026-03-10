@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
+import { themeTokens, useThemeStore } from '../src/store/theme';
 import SettingsWeb from './settings-web';
 import AddTransactionWeb from './add-transaction-web';
 import TransactionsWeb from './transactions-web';
@@ -125,6 +126,16 @@ export default function DashboardWeb() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const updateViewport = () => setIsMobile(window.innerWidth < 640);
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+
+    return () => window.removeEventListener('resize', updateViewport);
+  }, []);
+
   const runningBalance = useMemo(() => {
     let balance = budget?.bank_balance || 0;
     transactions.forEach(t => { balance -= t.amount; });
@@ -176,7 +187,43 @@ export default function DashboardWeb() {
     );
   }
 
-  if (!stats) return null;
+  if (!stats) {
+    return (
+      <>
+        <style>{`
+          *, *::before, *::after { box-sizing: border-box; }
+          html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--app-bg, ${theme.background}); color: var(--app-text, ${theme.text}); }
+          @keyframes pulseCard { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+          .dashboard-loading-card { background: ${theme.surface}; border: 1px solid ${theme.border}; box-shadow: ${theme.shadow}; backdrop-filter: blur(16px); animation: pulseCard 1.4s ease-in-out infinite; }
+        `}</style>
+        <div style={{ minHeight: '100vh', background: theme.background }}>
+          <div style={{ background: theme.navSurface, position: 'sticky', top: 0, zIndex: 100, boxShadow: theme.shadow, borderBottom: `1px solid ${theme.border}` }}>
+            <div style={{ maxWidth: '760px', margin: '0 auto', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '22px' }}>💰</span>
+                <span style={{ fontSize: '17px', fontWeight: '800', color: theme.text }}>Budget It</span>
+              </div>
+              <div style={{ fontSize: '12px', color: theme.textSubtle, fontWeight: 700 }}>Preparing dashboard...</div>
+            </div>
+          </div>
+          <div style={{ maxWidth: '760px', margin: '0 auto', padding: '24px 16px 60px' }}>
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ fontSize: '12px', color: theme.textSubtle, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Overview</div>
+              <div style={{ fontSize: isMobile ? '26px' : '32px', color: theme.text, fontWeight: '900', letterSpacing: '-1px', marginBottom: '8px' }}>Loading your budget at a glance</div>
+              <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.6 }}>Your account is signed in. We’re finishing your dashboard data now.</div>
+            </div>
+            <div className="dashboard-loading-card" style={{ borderRadius: '28px', height: isMobile ? '220px' : '260px', marginBottom: '20px' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+              <div className="dashboard-loading-card" style={{ borderRadius: '22px', height: '160px' }} />
+              <div className="dashboard-loading-card" style={{ borderRadius: '22px', height: '160px' }} />
+              <div className="dashboard-loading-card" style={{ borderRadius: '22px', height: '160px' }} />
+            </div>
+            <div className="dashboard-loading-card" style={{ borderRadius: '16px', height: '220px' }} />
+          </div>
+        </div>
+      </>
+    );
+  }
 
   const cur = budget.currency;
   const dailyPct = budget.daily_target > 0 ? Math.min(Math.round((stats.spentToday / budget.daily_target) * 100), 100) : 0;

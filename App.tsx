@@ -48,12 +48,14 @@ function AuthCard({ children }: { children: React.ReactNode }) {
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-        .auth-shell { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(320px, 420px); gap: 28px; width: 100%; max-width: 1080px; align-items: stretch; }
-        .auth-hero { display: flex; flex-direction: column; justify-content: space-between; min-height: 560px; padding: 40px; border-radius: 28px; color: #fff; background: linear-gradient(160deg, rgba(15,23,42,0.92) 0%, rgba(30,41,59,0.85) 50%, rgba(37,99,235,0.78) 100%); box-shadow: 0 28px 80px rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.12); }
-        .auth-card { width: 100%; background-color: rgba(255,255,255,0.96); border-radius: 28px; padding: 40px 36px; box-shadow: 0 24px 64px rgba(0,0,0,0.25); animation: fadeIn 0.4s ease; border: 1px solid rgba(255,255,255,0.35); backdrop-filter: blur(10px); }
+        .auth-shell { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(380px, 460px); gap: 32px; width: min(1180px, 100%); align-items: stretch; }
+        .auth-hero { display: flex; flex-direction: column; justify-content: space-between; min-height: 620px; padding: 48px; border-radius: 32px; color: #fff; background: linear-gradient(160deg, rgba(15,23,42,0.94) 0%, rgba(30,41,59,0.88) 48%, rgba(37,99,235,0.8) 100%); box-shadow: 0 28px 80px rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.12); }
+        .auth-card { width: 100%; display: flex; flex-direction: column; justify-content: center; background-color: rgba(255,255,255,0.97); border-radius: 32px; padding: 48px 40px; box-shadow: 0 24px 64px rgba(0,0,0,0.25); animation: fadeIn 0.4s ease; border: 1px solid rgba(255,255,255,0.35); backdrop-filter: blur(10px); }
         .auth-feature-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-        @media (max-width: 900px) { .auth-shell { grid-template-columns: 1fr; max-width: 460px; } .auth-hero { min-height: auto; padding: 28px 24px; } }
-        @media (max-width: 640px) { .auth-card { padding: 28px 22px; border-radius: 22px; } .auth-feature-grid { grid-template-columns: 1fr; } }
+        .auth-metrics-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+        @media (max-width: 1080px) { .auth-shell { grid-template-columns: minmax(0, 1fr) minmax(340px, 420px); gap: 24px; } .auth-hero { min-height: 580px; padding: 40px; } .auth-card { padding: 40px 32px; } }
+        @media (max-width: 900px) { .auth-shell { grid-template-columns: 1fr; max-width: 760px; } .auth-hero { min-height: auto; padding: 32px 28px; } .auth-card { padding: 36px 28px; } }
+        @media (max-width: 640px) { .auth-shell { gap: 18px; } .auth-hero { padding: 24px 20px; border-radius: 24px; } .auth-card { padding: 28px 22px; border-radius: 24px; } .auth-feature-grid, .auth-metrics-grid { grid-template-columns: 1fr; } }
       `}</style>
       <div style={{
         minHeight: '100vh',
@@ -61,7 +63,7 @@ function AuthCard({ children }: { children: React.ReactNode }) {
         alignItems: 'center',
         justifyContent: 'center',
         background: 'linear-gradient(135deg, #1a252f 0%, #2c3e50 50%, #3498db 100%)',
-        padding: '20px',
+        padding: '28px',
       }}>
         <div className="auth-shell">
           <div className="auth-hero">
@@ -83,7 +85,7 @@ function AuthCard({ children }: { children: React.ReactNode }) {
                 <div style={featurePillStyle}><span>📱</span><span>Mobile-friendly responsive web app</span></div>
                 <div style={featurePillStyle}><span>🔒</span><span>Secure account-based access</span></div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
+              <div className="auth-metrics-grid">
                 <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)' }}>
                   <div style={{ fontSize: '22px', fontWeight: 800 }}>24/7</div>
                   <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.72)', marginTop: '4px' }}>budget visibility</div>
