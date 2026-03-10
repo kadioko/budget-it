@@ -54,6 +54,8 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   const [recurringMsg, setRecurringMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [envMsg, setEnvMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [envUpdateMsg, setEnvUpdateMsg] = useState<Record<string, { text: string; type: 'success' | 'error' } | null>>({});
+  const [envDeleteMsg, setEnvDeleteMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [recurringDeleteMsg, setRecurringDeleteMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [signOutConfirm, setSignOutConfirm] = useState(false);
 
   const [showRecurringForm, setShowRecurringForm] = useState(false);
@@ -190,10 +192,39 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   };
 
   const handleDeleteRecurring = async (id: string) => {
+    setRecurringDeleteMsg(null);
+    const recurringItem = recurringTransactions.find((item) => item.id === id);
+    if (!recurringItem) {
+      setRecurringDeleteMsg({ text: 'Recurring transaction not found', type: 'error' });
+      return;
+    }
+
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm(`Remove recurring transaction for ${recurringItem.category}? This will stop future automatic entries.`);
+      if (!confirmed) return;
+    }
+
     try {
       await deleteRecurringTransaction(id);
-    } catch (error) {
-      console.error('Failed to delete recurring transaction', error);
+      setRecurringDeleteMsg({ text: 'Recurring transaction removed.', type: 'success' });
+    } catch (error: any) {
+      setRecurringDeleteMsg({ text: error?.message || 'Failed to delete recurring transaction', type: 'error' });
+    }
+  };
+
+  const handleDeleteEnvelope = async (envelopeId: string, envelopeName: string) => {
+    setEnvDeleteMsg(null);
+
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm(`Delete ${envelopeName}? Existing transactions will lose this envelope reference.`);
+      if (!confirmed) return;
+    }
+
+    try {
+      await deleteEnvelope(envelopeId);
+      setEnvDeleteMsg({ text: `${envelopeName} removed.`, type: 'success' });
+    } catch (error: any) {
+      setEnvDeleteMsg({ text: error?.message || 'Failed to delete envelope', type: 'error' });
     }
   };
 
@@ -322,6 +353,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
           <div style={{ fontSize: '14px', color: theme.textMuted, marginBottom: '16px', lineHeight: '1.6' }}>
             Your main bank account plus any extra envelopes (e.g., Wallet, Cash, Vacation Fund).
           </div>
+          {envDeleteMsg && <div style={{ fontSize: '12px', color: envDeleteMsg.type === 'success' ? '#10b981' : '#ef4444', marginBottom: '12px', fontWeight: '600' }}>{envDeleteMsg.text}</div>}
 
           <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {/* Default Bank Account (from budget.bank_balance) */}
@@ -333,6 +365,9 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
                     <div style={{ fontSize: '14px', fontWeight: '700', color: theme.text, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
                       Bank Account
                       <span style={{ fontSize: '10px', backgroundColor: theme.primary, color: '#fff', padding: '2px 6px', borderRadius: '4px' }}>DEFAULT</span>
+                    </div>
+                    <div style={{ fontSize: '12px', color: theme.textMuted, marginBottom: '8px' }}>
+                      This primary account stays available. You can update its balance, while extra envelopes can be removed below.
                     </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexDirection: isMobile ? 'column' : 'row' }}>
                       <input
@@ -390,12 +425,8 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
                     {envUpdateMsg[env.id] && <div style={{ fontSize: '12px', color: envUpdateMsg[env.id]?.type === 'success' ? '#10b981' : '#ef4444', marginTop: '6px', fontWeight: '600' }}>{envUpdateMsg[env.id]?.text}</div>}
                   </div>
                 </div>
-                <button onClick={async () => {
-                  if(window.confirm('Delete this envelope? Transactions will lose this reference.')) {
-                    try { await deleteEnvelope(env.id); } catch(e) { alert('Failed to delete envelope'); }
-                  }
-                }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', padding: '4px' }} title="Delete">
-                  🗑️
+                <button onClick={() => handleDeleteEnvelope(env.id, env.name)} style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', cursor: 'pointer', fontSize: '12px', padding: '10px 12px', borderRadius: '10px', fontWeight: '700', width: isMobile ? '100%' : 'auto' }} title="Delete envelope">
+                  Delete
                 </button>
               </div>
             ))}
@@ -449,6 +480,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
           <div style={{ fontSize: '14px', color: theme.textMuted, marginBottom: '16px', lineHeight: '1.6' }}>
             Set up automatic income (like salary) or expenses (like rent) to be added on a schedule.
           </div>
+          {recurringDeleteMsg && <div style={{ fontSize: '12px', color: recurringDeleteMsg.type === 'success' ? '#10b981' : '#ef4444', marginBottom: '12px', fontWeight: '600' }}>{recurringDeleteMsg.text}</div>}
 
           {/* List of existing recurring transactions */}
           {recurringTransactions.length > 0 && (
@@ -472,8 +504,8 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
                     <div style={{ fontSize: '15px', fontWeight: 'bold', color: rt.type === 'income' ? '#10b981' : '#ef4444' }}>
                       {rt.type === 'income' ? '+' : '-'}{formatCurrency(rt.amount, budget?.currency || 'USD')}
                     </div>
-                    <button onClick={() => handleDeleteRecurring(rt.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', padding: '4px' }} title="Delete">
-                      🗑️
+                    <button onClick={() => handleDeleteRecurring(rt.id)} style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', cursor: 'pointer', fontSize: '12px', padding: '10px 12px', borderRadius: '10px', fontWeight: '700' }} title="Delete recurring transaction">
+                      Delete
                     </button>
                   </div>
                 </div>
