@@ -88,6 +88,7 @@ export default function DashboardWeb() {
   const { budget, stats, transactions, isOffline, pendingActions, setOfflineStatus, syncOfflineActions, fetchBudget, fetchTransactions, processRecurringTransactions } = useBudgetStore();
   const { mode } = useThemeStore();
   const theme = themeTokens[mode];
+  const isLightMode = mode === 'light';
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [currentView, setCurrentView] = useState<'dashboard' | 'settings' | 'add-transaction' | 'transactions' | 'analytics'>('dashboard');
   const [dataReady, setDataReady] = useState(false);
@@ -209,7 +210,7 @@ export default function DashboardWeb() {
           <div style={{ maxWidth: '760px', margin: '0 auto', padding: '24px 16px 60px' }}>
             <div style={{ marginBottom: '24px' }}>
               <div style={{ fontSize: '12px', color: theme.textSubtle, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Overview</div>
-              <div style={{ fontSize: isMobile ? '26px' : '32px', color: theme.text, fontWeight: '900', letterSpacing: '-1px', marginBottom: '8px' }}>Loading your budget at a glance</div>
+              <div style={{ fontSize: '28px', color: theme.text, fontWeight: '900', lineHeight: 1.1, letterSpacing: '-1px' }}>Loading your budget at a glance</div>
               <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.6 }}>Your account is signed in. We’re finishing your dashboard data now.</div>
             </div>
             <div className="dashboard-loading-card" style={{ borderRadius: '28px', height: isMobile ? '220px' : '260px', marginBottom: '20px' }} />
@@ -240,7 +241,11 @@ export default function DashboardWeb() {
         .nav-btn { transition: all 0.15s ease !important; }
         .nav-btn-add { background: linear-gradient(135deg, #27ae60, #1e8449) !important; box-shadow: 0 2px 8px rgba(39,174,96,0.4) !important; }
         .section-card { background: ${theme.surface}; border: 1px solid ${theme.border}; box-shadow: ${theme.shadow}; backdrop-filter: blur(16px); }
+        .dashboard-shell { max-width: 1180px; }
         @media (max-width: 639px) {
+          .dashboard-shell {
+            max-width: 760px;
+          }
           .dashboard-nav-actions {
             width: 100%;
             justify-content: stretch !important;
@@ -257,7 +262,7 @@ export default function DashboardWeb() {
 
       {/* Sticky top nav */}
       <div style={{ background: theme.navSurface, position: 'sticky', top: 0, zIndex: 100, boxShadow: theme.shadow, borderBottom: `1px solid ${theme.border}` }}>
-        <div style={{ maxWidth: '760px', margin: '0 auto', padding: '12px 16px', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <div className="dashboard-shell" style={{ margin: '0 auto', padding: '12px 24px', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span style={{ fontSize: '22px' }}>💰</span>
             <span style={{ fontSize: '17px', fontWeight: '800', color: theme.text, letterSpacing: '-0.3px' }}>Budget It</span>
@@ -281,54 +286,54 @@ export default function DashboardWeb() {
         </div>
       </div>
 
-      <div style={{ maxWidth: '760px', margin: '0 auto', padding: '24px 16px 60px', animation: 'fadeIn 0.3s ease' }}>
+      <div className="dashboard-shell" style={{ margin: '0 auto', padding: '28px 24px 72px', animation: 'fadeIn 0.3s ease' }}>
 
         {/* Date + user info */}
         <div style={{ marginBottom: '24px' }}>
           <div style={{ fontSize: '12px', color: theme.textSubtle, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Overview</div>
-          <div style={{ fontSize: isMobile ? '26px' : '32px', color: theme.text, fontWeight: '900', letterSpacing: '-1px' }}>Your budget at a glance</div>
+          <div style={{ fontSize: isMobile ? '26px' : '38px', color: theme.text, fontWeight: '900', letterSpacing: '-1.2px' }}>Your budget at a glance</div>
           <div style={{ fontSize: '14px', color: theme.textMuted, marginTop: '8px', lineHeight: 1.6 }}>
             {getDateInfo()} · {getDaysUntilEndOfMonth()} days left in month · <span style={{ color: theme.text, fontWeight: 600 }}>{user?.email}</span>
           </div>
         </div>
 
         {/* Hero balance card */}
-        <div style={{ background: theme.heroGradient, borderRadius: '28px', padding: isMobile ? '22px 18px' : '30px 28px', marginBottom: '20px', boxShadow: theme.shadow, color: '#fff', border: `1px solid ${theme.border}` }}>
+        <div style={{ background: theme.heroGradient, borderRadius: '28px', padding: isMobile ? '22px 18px' : '38px 36px', marginBottom: '24px', boxShadow: theme.shadow, color: isLightMode ? theme.text : '#fff', border: `1px solid ${theme.border}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: '16px', marginBottom: '18px' }}>
             <div>
-              <div style={{ fontSize: '11px', fontWeight: '700', opacity: 0.72, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Account Balance</div>
-              <div style={{ fontSize: isMobile ? '30px' : '44px', fontWeight: '900', letterSpacing: '-1.3px', marginBottom: '6px', color: runningBalance >= 0 ? '#fff' : '#ffb4b4', overflowWrap: 'anywhere' }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: isLightMode ? theme.textSubtle : 'rgba(255,255,255,0.72)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Account Balance</div>
+              <div style={{ fontSize: isMobile ? '30px' : '52px', fontWeight: '900', letterSpacing: '-1.5px', marginBottom: '6px', color: runningBalance >= 0 ? (isLightMode ? theme.text : '#fff') : (isLightMode ? theme.danger : '#ffb4b4'), overflowWrap: 'anywhere' }}>
                 {runningBalance < 0 ? '-' : ''}{formatCurrency(Math.abs(runningBalance), cur)}
               </div>
-              <div style={{ fontSize: '13px', opacity: 0.74, lineHeight: 1.5 }}>
+              <div style={{ fontSize: '14px', color: isLightMode ? theme.textMuted : 'rgba(255,255,255,0.78)', lineHeight: 1.6, maxWidth: '620px' }}>
                 {transactions.length === 0
                   ? 'No transactions yet — add one to start building your activity history.'
                   : `${transactions.length} transaction${transactions.length !== 1 ? 's' : ''} recorded so far this cycle.`}
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr', gap: '10px', minWidth: isMobile ? '100%' : '180px' }}>
-              <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Daily Target</div>
-                <div style={{ fontSize: '18px', fontWeight: 800 }}>{formatCurrency(budget.daily_target, cur)}</div>
+              <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: isLightMode ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.1)', border: isLightMode ? `1px solid ${theme.border}` : '1px solid rgba(255,255,255,0.12)' }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: isLightMode ? theme.textSubtle : 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Daily Target</div>
+                <div style={{ fontSize: '18px', fontWeight: '800' }}>{formatCurrency(budget.daily_target, cur)}</div>
               </div>
-              <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Monthly Target</div>
-                <div style={{ fontSize: '18px', fontWeight: 800 }}>{formatCurrency(budget.monthly_target, cur)}</div>
+              <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: isLightMode ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.1)', border: isLightMode ? `1px solid ${theme.border}` : '1px solid rgba(255,255,255,0.12)' }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: isLightMode ? theme.textSubtle : 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Monthly Target</div>
+                <div style={{ fontSize: '18px', fontWeight: '800' }}>{formatCurrency(budget.monthly_target, cur)}</div>
               </div>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
-            <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <div style={{ fontSize: '11px', opacity: 0.72, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Today</div>
-              <div style={{ fontSize: '16px', fontWeight: 800 }}>{formatCurrency(stats.spentToday, cur)}</div>
+            <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: isLightMode ? 'rgba(255,255,255,0.58)' : 'rgba(255,255,255,0.08)', border: isLightMode ? `1px solid ${theme.border}` : '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize: '11px', color: isLightMode ? theme.textSubtle : 'rgba(255,255,255,0.72)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Today</div>
+              <div style={{ fontSize: '16px', fontWeight: '800' }}>{formatCurrency(stats.spentToday, cur)}</div>
             </div>
-            <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <div style={{ fontSize: '11px', opacity: 0.72, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Month to date</div>
-              <div style={{ fontSize: '16px', fontWeight: 800 }}>{formatCurrency(stats.spentMonthToDate, cur)}</div>
+            <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: isLightMode ? 'rgba(255,255,255,0.58)' : 'rgba(255,255,255,0.08)', border: isLightMode ? `1px solid ${theme.border}` : '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize: '11px', color: isLightMode ? theme.textSubtle : 'rgba(255,255,255,0.72)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Month to date</div>
+              <div style={{ fontSize: '16px', fontWeight: '800' }}>{formatCurrency(stats.spentMonthToDate, cur)}</div>
             </div>
-            <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <div style={{ fontSize: '11px', opacity: 0.72, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Projection</div>
-              <div style={{ fontSize: '16px', fontWeight: 800 }}>{formatCurrency(stats.projectedMonthEnd, cur)}</div>
+            <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: isLightMode ? 'rgba(255,255,255,0.58)' : 'rgba(255,255,255,0.08)', border: isLightMode ? `1px solid ${theme.border}` : '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize: '11px', color: isLightMode ? theme.textSubtle : 'rgba(255,255,255,0.72)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Projection</div>
+              <div style={{ fontSize: '16px', fontWeight: '800' }}>{formatCurrency(stats.projectedMonthEnd, cur)}</div>
             </div>
           </div>
         </div>
