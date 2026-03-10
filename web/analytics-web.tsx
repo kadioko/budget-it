@@ -12,6 +12,7 @@ import {
 import { Doughnut, Bar } from 'react-chartjs-2';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
+import { themeTokens, useThemeStore } from '../src/store/theme';
 
 ChartJS.register(
   ArcElement,
@@ -47,8 +48,11 @@ const formatCurrency = (amount: number, currency: string) => {
 export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
   const { user } = useAuthStore();
   const { transactions, budget, loading, fetchTransactions } = useBudgetStore();
+  const { mode } = useThemeStore();
+  const theme = themeTokens[mode];
   
   const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'week' | 'all'>('month');
+  const [isMobile, setIsMobile] = useState(false);
 
   // Fetch transactions on mount
   useEffect(() => {
@@ -131,33 +135,34 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
     
     return (
       <div style={{ marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text-main)', marginBottom: '16px' }}>{title}</h3>
+        <div style={{ fontSize: '11px', fontWeight: 700, color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Breakdown</div>
+        <h3 style={{ fontSize: '18px', fontWeight: '800', color: theme.text, marginBottom: '16px', letterSpacing: '-0.4px' }}>{title}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {data.map((item, index) => (
-            <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div key={index} style={{ display: 'flex', alignItems: isMobile ? 'stretch' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: '12px' }}>
               <div style={{ 
-                width: '120px', 
+                width: isMobile ? '100%' : '120px', 
                 fontSize: '14px', 
-                color: 'var(--text-secondary)',
-                textAlign: 'right'
+                color: theme.textMuted,
+                textAlign: isMobile ? 'left' : 'right'
               }}>
                 {item.label}
               </div>
-              <div style={{ flex: 1, backgroundColor: 'var(--bg-secondary)', borderRadius: '4px', height: '24px' }}>
+              <div style={{ flex: 1, backgroundColor: theme.surfaceMuted, borderRadius: '999px', height: '24px', overflow: 'hidden' }}>
                 <div style={{
                   width: `${(item.value / maxValue) * 100}%`,
                   height: '100%',
                   backgroundColor: color,
-                  borderRadius: '4px',
+                  borderRadius: '999px',
                   transition: 'width 0.3s ease'
                 }} />
               </div>
               <div style={{ 
-                width: '80px', 
+                width: isMobile ? '100%' : '80px', 
                 fontSize: '14px', 
                 fontWeight: '600',
-                color: 'var(--text-main)',
-                textAlign: 'right'
+                color: theme.text,
+                textAlign: isMobile ? 'left' : 'right'
               }}>
                 {formatCurrency(item.value, budget?.currency || 'TZS')}
               </div>
@@ -167,6 +172,17 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
       </div>
     );
   };
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    window.addEventListener('resize', handleResize);
+    handleResize();
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -178,7 +194,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
             margin: 0;
             padding: 0;
             width: 100%;
-            background: var(--bg-main);
+            background: ${theme.background};
           }
           * {
             box-sizing: border-box;
@@ -186,7 +202,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
         `}</style>
         <div style={{ 
           minHeight: '100vh', 
-          backgroundColor: 'var(--bg-main)', 
+          backgroundColor: theme.background, 
           padding: '20px',
           boxSizing: 'border-box',
           width: '100%',
@@ -197,7 +213,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
         }}>
           <div style={{ maxWidth: '600px', margin: '0 auto' }}>
             <div style={{ textAlign: 'center', padding: '40px' }}>
-              <div style={{ fontSize: '18px', color: 'var(--text-secondary)' }}>Loading analytics...</div>
+              <div style={{ fontSize: '18px', color: theme.textMuted }}>Loading analytics...</div>
             </div>
           </div>
         </div>
@@ -215,7 +231,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
             margin: 0;
             padding: 0;
             width: 100%;
-            background: var(--bg-main);
+            background: ${theme.background};
           }
           * {
             box-sizing: border-box;
@@ -223,7 +239,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
         `}</style>
         <div style={{ 
           minHeight: '100vh', 
-          backgroundColor: 'var(--bg-main)', 
+          backgroundColor: theme.background, 
           padding: '20px',
           boxSizing: 'border-box',
           width: '100%',
@@ -234,8 +250,8 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
         }}>
           <div style={{ maxWidth: '600px', margin: '0 auto' }}>
             <div style={{ textAlign: 'center', padding: '40px' }}>
-              <div style={{ fontSize: '18px', color: 'var(--text-secondary)' }}>No data available for analytics</div>
-              <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginTop: '8px' }}>
+              <div style={{ fontSize: '18px', color: theme.textMuted }}>No data available for analytics</div>
+              <div style={{ fontSize: '14px', color: theme.textSubtle, marginTop: '8px' }}>
                 Add some transactions to see your spending analytics!
               </div>
             </div>
@@ -274,20 +290,24 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
   return (
     <>
       <style>{`
-        html, body {
-          scrollbar-gutter: stable;
-          overflow-y: scroll;
-          margin: 0;
-          padding: 0;
-          width: 100%;
-        }
         * {
           box-sizing: border-box;
+        }
+        .analytics-shell-card {
+          background: ${theme.surface};
+          border: 1px solid ${theme.border};
+          box-shadow: ${theme.shadow};
+          backdrop-filter: blur(16px);
+        }
+        @media (max-width: 639px) {
+          .analytics-period-btn {
+            width: 100%;
+          }
         }
       `}</style>
       <div style={{ 
         minHeight: '100vh', 
-        backgroundColor: '#f5f5f5', 
+        backgroundColor: theme.background, 
         padding: '20px',
         boxSizing: 'border-box',
         width: '100%',
@@ -300,44 +320,53 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
           {/* Header */}
           <div style={{ 
             display: 'flex', 
-            alignItems: 'center', 
+            alignItems: isMobile ? 'flex-start' : 'center', 
+            flexDirection: isMobile ? 'column' : 'row',
             marginBottom: '24px',
             gap: '16px'
           }}>
             <button
               onClick={onBack}
               style={{
-                backgroundColor: 'transparent',
-                color: '#3498db',
-                border: 'none',
+                backgroundColor: theme.surfaceStrong,
+                color: theme.primary,
+                border: `1px solid ${theme.borderStrong}`,
+                borderRadius: '12px',
                 fontSize: '16px',
                 cursor: 'pointer',
-                padding: '8px'
+                padding: '10px 14px',
+                fontWeight: '700'
               }}
             >
               ← Back
             </button>
-            <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#2c3e50', margin: 0 }}>
-              📊 Analytics
-            </h1>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.9px', marginBottom: '6px' }}>Insights</div>
+              <h1 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '900', color: theme.text, margin: 0, letterSpacing: '-0.8px' }}>Analytics</h1>
+            </div>
           </div>
 
           {/* Period Selector */}
-          <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          <div className="analytics-shell-card" style={{ borderRadius: '24px', padding: '20px', marginBottom: '20px' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Range</div>
+              <div style={{ fontSize: '18px', fontWeight: '800', color: theme.text, letterSpacing: '-0.4px' }}>Choose the reporting window</div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexDirection: isMobile ? 'column' : 'row' }}>
               {(['week', 'month', 'all'] as const).map(period => (
                 <button
+                  className="analytics-period-btn"
                   key={period}
                   onClick={() => setSelectedPeriod(period)}
                   style={{
                     flex: 1,
-                    padding: '10px',
-                    backgroundColor: selectedPeriod === period ? '#3498db' : '#fff',
-                    color: selectedPeriod === period ? '#fff' : '#3498db',
-                    border: '2px solid #3498db',
-                    borderRadius: '8px',
+                    padding: '12px',
+                    backgroundColor: selectedPeriod === period ? theme.primary : theme.surfaceMuted,
+                    color: selectedPeriod === period ? '#fff' : theme.primary,
+                    border: `1px solid ${theme.borderStrong}`,
+                    borderRadius: '14px',
                     fontSize: '14px',
-                    fontWeight: '600',
+                    fontWeight: '700',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                   }}
@@ -349,43 +378,44 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
           </div>
 
           {/* Summary Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-            <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>Total Income</h3>
-              <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#27ae60' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+            <div className="analytics-shell-card" style={{ borderRadius: '22px', padding: '18px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Total Income</div>
+              <div style={{ fontSize: '24px', fontWeight: '900', color: theme.success, letterSpacing: '-0.5px' }}>
                 {formatCurrency(analytics.totalIncome, budget?.currency || 'TZS')}
               </div>
             </div>
             
-            <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>Total Expenses</h3>
-              <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#e74c3c' }}>
+            <div className="analytics-shell-card" style={{ borderRadius: '22px', padding: '18px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Total Expenses</div>
+              <div style={{ fontSize: '24px', fontWeight: '900', color: theme.danger, letterSpacing: '-0.5px' }}>
                 {formatCurrency(analytics.totalExpenses, budget?.currency || 'TZS')}
               </div>
             </div>
             
-            <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>Net Income</h3>
-              <div style={{ fontSize: '20px', fontWeight: 'bold', color: analytics.netIncome >= 0 ? '#27ae60' : '#e74c3c' }}>
+            <div className="analytics-shell-card" style={{ borderRadius: '22px', padding: '18px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Net Income</div>
+              <div style={{ fontSize: '24px', fontWeight: '900', color: analytics.netIncome >= 0 ? theme.success : theme.danger, letterSpacing: '-0.5px' }}>
                 {formatCurrency(analytics.netIncome, budget?.currency || 'TZS')}
               </div>
             </div>
             
-            <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>Transactions</h3>
-              <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#2c3e50' }}>
+            <div className="analytics-shell-card" style={{ borderRadius: '22px', padding: '18px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Transactions</div>
+              <div style={{ fontSize: '24px', fontWeight: '900', color: theme.text, letterSpacing: '-0.5px' }}>
                 {analytics.transactionCount}
               </div>
             </div>
           </div>
 
           {/* Charts */}
-          <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#2c3e50', marginBottom: '20px' }}>Spending Analysis</h2>
+          <div className="analytics-shell-card" style={{ borderRadius: '24px', padding: '22px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Charts</div>
+            <h2 style={{ fontSize: '22px', fontWeight: '900', color: theme.text, marginBottom: '20px', letterSpacing: '-0.6px' }}>Spending Analysis</h2>
             
             {categoryData.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '32px' }}>
-                <div style={{ width: '250px', height: '250px', marginBottom: '16px' }}>
+                <div style={{ width: isMobile ? '100%' : '250px', maxWidth: '250px', height: isMobile ? '220px' : '250px', marginBottom: '20px', padding: '14px', borderRadius: '20px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}` }}>
                   <Doughnut data={doughnutData} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } } }} />
                 </div>
                 <div style={{ width: '100%' }}>
@@ -407,27 +437,29 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
             )}
 
             {/* Averages */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '24px' }}>
-              <div style={{ backgroundColor: '#f8f9fa', borderRadius: '8px', padding: '16px' }}>
-                <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>Daily Average</h4>
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#2c3e50' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '24px' }}>
+              <div style={{ backgroundColor: theme.surfaceMuted, borderRadius: '20px', padding: '18px', border: `1px solid ${theme.border}` }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: theme.textSubtle, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Daily Average</div>
+                <div style={{ fontSize: '18px', fontWeight: '800', color: theme.text, letterSpacing: '-0.4px' }}>
                   {formatCurrency(analytics.avgDailyExpenses, budget?.currency || 'TZS')}
                 </div>
-                <div style={{ fontSize: '12px', color: '#95a5a6' }}>Expenses</div>
+                <div style={{ fontSize: '12px', color: theme.textSubtle, marginTop: '4px' }}>Expenses</div>
               </div>
               
-              <div style={{ backgroundColor: '#f8f9fa', borderRadius: '8px', padding: '16px' }}>
-                <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#7f8c8d', marginBottom: '8px' }}>Monthly Projection</h4>
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#2c3e50' }}>
+              <div style={{ backgroundColor: theme.surfaceMuted, borderRadius: '20px', padding: '18px', border: `1px solid ${theme.border}` }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: theme.textSubtle, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Monthly Projection</div>
+                <div style={{ fontSize: '18px', fontWeight: '800', color: theme.text, letterSpacing: '-0.4px' }}>
                   {formatCurrency(analytics.monthlyExpensesProjection, budget?.currency || 'TZS')}
                 </div>
-                <div style={{ fontSize: '12px', color: '#95a5a6' }}>Expenses</div>
+                <div style={{ fontSize: '12px', color: theme.textSubtle, marginTop: '4px' }}>Expenses</div>
               </div>
             </div>
           </div>
 
           {/* Export Button */}
-          <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginTop: '20px' }}>
+          <div className="analytics-shell-card" style={{ borderRadius: '24px', padding: '20px', marginTop: '20px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Export</div>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: theme.text, marginBottom: '14px', letterSpacing: '-0.4px' }}>Download your transactions</div>
             <button
               onClick={() => {
                 // Simple CSV export
@@ -453,14 +485,15 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
               style={{
                 width: '100%',
                 padding: '14px',
-                backgroundColor: '#9b59b6',
+                background: 'linear-gradient(135deg, #7c3aed, #2563eb)',
                 color: '#fff',
                 border: 'none',
-                borderRadius: '8px',
+                borderRadius: '14px',
                 fontSize: '16px',
-                fontWeight: '600',
+                fontWeight: '700',
                 cursor: 'pointer',
                 transition: 'opacity 0.2s',
+                boxShadow: '0 14px 30px rgba(124,58,237,0.22)',
               }}
               onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
               onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}

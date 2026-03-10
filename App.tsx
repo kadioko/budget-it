@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from './src/store/auth';
+import { applyWebTheme, useThemeStore } from './src/store/theme';
 import DashboardWeb from './web/dashboard-web';
 
 // Override Expo's react-native-web reset that sets body{overflow:hidden} and #root{display:flex;height:100%}
@@ -7,7 +8,7 @@ import DashboardWeb from './web/dashboard-web';
 if (typeof document !== 'undefined') {
   const style = document.createElement('style');
   style.textContent = `
-    html, body { height: auto !important; min-height: 100vh; overflow-x: hidden !important; overflow-y: auto !important; margin: 0; padding: 0; background: #f0f2f5; }
+    html, body { height: auto !important; min-height: 100vh; overflow-x: hidden !important; overflow-y: auto !important; margin: 0; padding: 0; background: var(--app-bg, #f0f2f5); color: var(--app-text, #0f172a); transition: background-color 0.2s ease, color 0.2s ease; }
     #root { display: block !important; height: auto !important; min-height: 100vh; flex: none !important; }
   `;
   document.head.appendChild(style);
@@ -25,6 +26,92 @@ const inputStyle: React.CSSProperties = {
   transition: 'border-color 0.2s',
   color: '#2c3e50',
 };
+
+const featurePillStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '8px',
+  padding: '10px 14px',
+  borderRadius: '999px',
+  backgroundColor: 'rgba(255,255,255,0.12)',
+  border: '1px solid rgba(255,255,255,0.18)',
+  color: '#ffffff',
+  fontSize: '13px',
+  fontWeight: 600,
+  backdropFilter: 'blur(8px)',
+};
+
+function AuthCard({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <style>{`
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        .auth-shell { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(320px, 420px); gap: 28px; width: 100%; max-width: 1080px; align-items: stretch; }
+        .auth-hero { display: flex; flex-direction: column; justify-content: space-between; min-height: 560px; padding: 40px; border-radius: 28px; color: #fff; background: linear-gradient(160deg, rgba(15,23,42,0.92) 0%, rgba(30,41,59,0.85) 50%, rgba(37,99,235,0.78) 100%); box-shadow: 0 28px 80px rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.12); }
+        .auth-card { width: 100%; background-color: rgba(255,255,255,0.96); border-radius: 28px; padding: 40px 36px; box-shadow: 0 24px 64px rgba(0,0,0,0.25); animation: fadeIn 0.4s ease; border: 1px solid rgba(255,255,255,0.35); backdrop-filter: blur(10px); }
+        .auth-feature-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        @media (max-width: 900px) { .auth-shell { grid-template-columns: 1fr; max-width: 460px; } .auth-hero { min-height: auto; padding: 28px 24px; } }
+        @media (max-width: 640px) { .auth-card { padding: 28px 22px; border-radius: 22px; } .auth-feature-grid { grid-template-columns: 1fr; } }
+      `}</style>
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #1a252f 0%, #2c3e50 50%, #3498db 100%)',
+        padding: '20px',
+      }}>
+        <div className="auth-shell">
+          <div className="auth-hero">
+            <div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '999px', backgroundColor: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.16)', marginBottom: '28px', fontSize: '13px', fontWeight: 700 }}>
+                <span style={{ fontSize: '16px' }}>✨</span>
+                Smarter personal finance, built for everyday use
+              </div>
+              <div style={{ fontSize: '52px', lineHeight: 1, marginBottom: '20px' }}>💰</div>
+              <h1 style={{ fontSize: '42px', fontWeight: '900', lineHeight: 1.05, letterSpacing: '-1.2px', marginBottom: '14px' }}>Budget with clarity, not guesswork.</h1>
+              <p style={{ fontSize: '16px', lineHeight: 1.7, color: 'rgba(255,255,255,0.78)', maxWidth: '540px' }}>
+                Track spending, monitor your balance, and stay on top of your goals with a cleaner, faster budgeting flow designed to work well on both desktop and mobile.
+              </p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              <div className="auth-feature-grid">
+                <div style={featurePillStyle}><span>📊</span><span>Clear daily and monthly tracking</span></div>
+                <div style={featurePillStyle}><span>⚡</span><span>Quick transaction logging</span></div>
+                <div style={featurePillStyle}><span>📱</span><span>Mobile-friendly responsive web app</span></div>
+                <div style={featurePillStyle}><span>🔒</span><span>Secure account-based access</span></div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
+                <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                  <div style={{ fontSize: '22px', fontWeight: 800 }}>24/7</div>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.72)', marginTop: '4px' }}>budget visibility</div>
+                </div>
+                <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                  <div style={{ fontSize: '22px', fontWeight: 800 }}>1 view</div>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.72)', marginTop: '4px' }}>for balances and trends</div>
+                </div>
+                <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                  <div style={{ fontSize: '22px', fontWeight: 800 }}>Fast</div>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.72)', marginTop: '4px' }}>setup and onboarding</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="auth-card">
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <div style={{ fontSize: '40px', marginBottom: '12px' }}>💰</div>
+              <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#2c3e50', letterSpacing: '-0.5px' }}>Budget It</h1>
+              <p style={{ fontSize: '14px', color: '#95a5a6', marginTop: '6px' }}>Track your spending, save smarter</p>
+            </div>
+            {children}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
 
 function PasswordInput({ value, onChange, placeholder, disabled }: {
   value: string; onChange: (v: string) => void; placeholder: string; disabled: boolean;
@@ -58,43 +145,6 @@ function PasswordInput({ value, onChange, placeholder, disabled }: {
   );
 }
 
-function AuthCard({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <style>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #1a252f 0%, #2c3e50 50%, #3498db 100%)',
-        padding: '20px',
-      }}>
-        <div style={{
-          width: '100%',
-          maxWidth: '420px',
-          backgroundColor: '#fff',
-          borderRadius: '20px',
-          padding: '40px 36px',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.25)',
-          animation: 'fadeIn 0.4s ease',
-        }}>
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <div style={{ fontSize: '40px', marginBottom: '12px' }}>💰</div>
-            <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#2c3e50', letterSpacing: '-0.5px' }}>Budget It</h1>
-            <p style={{ fontSize: '14px', color: '#95a5a6', marginTop: '6px' }}>Track your spending, save smarter</p>
-          </div>
-          {children}
-        </div>
-      </div>
-    </>
-  );
-}
-
 function LoginForm({ onSwitch }: { onSwitch: () => void }) {
   const { signIn, loading } = useAuthStore();
   const [email, setEmail] = useState('');
@@ -114,7 +164,10 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
 
   return (
     <AuthCard>
-      <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#2c3e50', marginBottom: '24px', textAlign: 'center' }}>Welcome back</h2>
+      <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#2c3e50', marginBottom: '8px' }}>Welcome back</h2>
+        <p style={{ fontSize: '14px', color: '#7f8c8d', lineHeight: 1.5 }}>Sign in to continue tracking your budget, balances, and recent spending.</p>
+      </div>
       <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <input
           type="email"

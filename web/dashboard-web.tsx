@@ -46,15 +46,18 @@ function StatCard({ title, value, subtitle, color, progress, progressMax, progre
 }) {
   return (
     <div style={{
-      backgroundColor: '#1e293b', borderRadius: '16px', padding: '20px',
-      boxShadow: 'var(--shadow-md)', borderLeft: `5px solid ${color}`,
+      background: 'linear-gradient(180deg, rgba(30,41,59,0.98) 0%, rgba(15,23,42,0.96) 100%)', borderRadius: '22px', padding: '22px',
+      boxShadow: '0 20px 40px rgba(15,23,42,0.18)', border: '1px solid rgba(148,163,184,0.16)',
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-        <div style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{title}</div>
-        <div style={{ fontSize: '22px' }}>{icon}</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', gap: '12px' }}>
+        <div>
+          <div style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255,255,255,0.58)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>{title}</div>
+          <div style={{ width: '36px', height: '4px', borderRadius: '999px', background: color, boxShadow: `0 0 18px ${color}` }} />
+        </div>
+        <div style={{ width: '42px', height: '42px', borderRadius: '14px', backgroundColor: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', border: '1px solid rgba(255,255,255,0.08)' }}>{icon}</div>
       </div>
-      <div style={{ fontSize: '26px', fontWeight: '800', color: '#ffffff', lineHeight: 1.2 }}>{value}</div>
-      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>{subtitle}</div>
+      <div style={{ fontSize: '28px', fontWeight: '900', color: '#ffffff', lineHeight: 1.1, letterSpacing: '-0.8px' }}>{value}</div>
+      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.56)', marginTop: '8px', lineHeight: 1.5 }}>{subtitle}</div>
       {progress !== undefined && progressMax !== undefined && (
         <ProgressBar value={progress} max={progressMax} color={progressColor || color} />
       )}
@@ -82,9 +85,12 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
 export default function DashboardWeb() {
   const { user } = useAuthStore();
   const { budget, stats, transactions, isOffline, pendingActions, setOfflineStatus, syncOfflineActions, fetchBudget, fetchTransactions, processRecurringTransactions } = useBudgetStore();
+  const { mode } = useThemeStore();
+  const theme = themeTokens[mode];
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [currentView, setCurrentView] = useState<'dashboard' | 'settings' | 'add-transaction' | 'transactions' | 'analytics'>('dashboard');
   const [dataReady, setDataReady] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => setToast({ message, type });
 
@@ -156,12 +162,12 @@ export default function DashboardWeb() {
     return (
       <>
         <style>{`* { box-sizing: border-box; margin: 0; padding: 0; } @keyframes fadeIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }`}</style>
-        <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(135deg, #1a252f 0%, #2c3e50 50%, #3498db 100%)', padding: '20px' }}>
-          <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: '20px', padding: '48px 40px', maxWidth: '420px', width: '100%', textAlign: 'center', boxShadow: 'var(--shadow-xl)', animation: 'fadeIn 0.4s ease' }}>
+        <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: theme.background, padding: '20px' }}>
+          <div style={{ backgroundColor: theme.surface, borderRadius: '20px', padding: '48px 40px', maxWidth: '420px', width: '100%', textAlign: 'center', boxShadow: theme.shadow, animation: 'fadeIn 0.4s ease' }}>
             <div style={{ fontSize: '56px', marginBottom: '20px' }}>🎯</div>
-            <h1 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-main)', marginBottom: '12px' }}>Welcome to Budget It!</h1>
-            <p style={{ fontSize: '15px', color: 'var(--text-secondary)', marginBottom: '32px', lineHeight: 1.6 }}>Set up your daily and monthly spending targets to start tracking your finances.</p>
-            <button onClick={() => setCurrentView('settings')} style={{ width: '100%', padding: '16px', background: 'linear-gradient(135deg, #3498db, #2980b9)', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(52,152,219,0.4)' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: '800', color: theme.text, marginBottom: '12px' }}>Welcome to Budget It!</h1>
+            <p style={{ fontSize: '15px', color: theme.textSubtle, marginBottom: '32px', lineHeight: 1.6 }}>Set up your daily and monthly spending targets to start tracking your finances.</p>
+            <button onClick={() => setCurrentView('settings')} style={{ width: '100%', padding: '16px', background: theme.primary, color: '#fff', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', boxShadow: `0 4px 12px ${theme.shadow}` }}>
               Set Up My Budget →
             </button>
           </div>
@@ -180,27 +186,39 @@ export default function DashboardWeb() {
     <>
       <style>{`
         *, *::before, *::after { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-main, #f0f2f5); }
+        html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--app-bg, ${theme.background}); color: var(--app-text, ${theme.text}); }
         @keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(16px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
         .nav-btn:hover { opacity: 0.88 !important; transform: translateY(-1px) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.25) !important; }
         .nav-btn { transition: all 0.15s ease !important; }
         .nav-btn-add { background: linear-gradient(135deg, #27ae60, #1e8449) !important; box-shadow: 0 2px 8px rgba(39,174,96,0.4) !important; }
+        .section-card { background: ${theme.surface}; border: 1px solid ${theme.border}; box-shadow: ${theme.shadow}; backdrop-filter: blur(16px); }
+        @media (max-width: 639px) {
+          .dashboard-nav-actions {
+            width: 100%;
+            justify-content: stretch !important;
+          }
+          .dashboard-nav-actions .nav-btn {
+            flex: 1 1 calc(50% - 6px);
+            text-align: center;
+            min-height: 40px;
+          }
+        }
       `}</style>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Sticky top nav */}
-      <div style={{ background: '#1e2d3d', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,0,0,0.25)' }}>
+      <div style={{ background: theme.navSurface, position: 'sticky', top: 0, zIndex: 100, boxShadow: theme.shadow, borderBottom: `1px solid ${theme.border}` }}>
         <div style={{ maxWidth: '760px', margin: '0 auto', padding: '12px 16px', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span style={{ fontSize: '22px' }}>💰</span>
-            <span style={{ fontSize: '17px', fontWeight: '800', color: '#ffffff', letterSpacing: '-0.3px' }}>Budget It</span>
+            <span style={{ fontSize: '17px', fontWeight: '800', color: theme.text, letterSpacing: '-0.3px' }}>Budget It</span>
           </div>
           {isOffline && (
             <div style={{ fontSize: '11px', fontWeight: '700', color: '#f39c12', backgroundColor: 'rgba(243,156,18,0.15)', border: '1px solid rgba(243,156,18,0.3)', borderRadius: '6px', padding: '3px 8px' }}>⚡ Offline</div>
           )}
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', flex: '1 1 auto' }}>
+          <div className="dashboard-nav-actions" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', flex: '1 1 auto' }}>
             {([
               { label: '+ Add', view: 'add-transaction', bg: 'linear-gradient(135deg, #27ae60, #1e8449)', shadow: 'rgba(39,174,96,0.4)' },
               { label: '📋 History', view: 'transactions', bg: 'linear-gradient(135deg, #8e44ad, #6c3483)', shadow: 'rgba(142,68,173,0.4)' },
@@ -219,28 +237,57 @@ export default function DashboardWeb() {
       <div style={{ maxWidth: '760px', margin: '0 auto', padding: '24px 16px 60px', animation: 'fadeIn 0.3s ease' }}>
 
         {/* Date + user info */}
-        <div style={{ marginBottom: '20px' }}>
-          <div style={{ fontSize: '14px', color: 'var(--text-main)', fontWeight: '600' }}>{getDateInfo()}</div>
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '3px' }}>
-            {getDaysUntilEndOfMonth()} days left in month · <span style={{ color: 'var(--text-tertiary)' }}>{user?.email}</span>
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ fontSize: '12px', color: theme.textSubtle, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Overview</div>
+          <div style={{ fontSize: isMobile ? '26px' : '32px', color: theme.text, fontWeight: '900', letterSpacing: '-1px' }}>Your budget at a glance</div>
+          <div style={{ fontSize: '14px', color: theme.textMuted, marginTop: '8px', lineHeight: 1.6 }}>
+            {getDateInfo()} · {getDaysUntilEndOfMonth()} days left in month · <span style={{ color: theme.text, fontWeight: 600 }}>{user?.email}</span>
           </div>
         </div>
 
         {/* Hero balance card */}
-        <div style={{ background: 'linear-gradient(135deg, #1a2332 0%, #2c3e50 50%, #2980b9 100%)', borderRadius: '20px', padding: '28px 24px', marginBottom: '16px', boxShadow: '0 8px 32px rgba(30,45,61,0.35)', color: '#fff' }}>
-          <div style={{ fontSize: '11px', fontWeight: '700', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>Account Balance</div>
-          <div style={{ fontSize: '38px', fontWeight: '900', letterSpacing: '-1px', marginBottom: '4px', color: runningBalance >= 0 ? '#fff' : '#ff7675' }}>
-            {runningBalance < 0 ? '-' : ''}{formatCurrency(Math.abs(runningBalance), cur)}
+        <div style={{ background: theme.heroGradient, borderRadius: '28px', padding: isMobile ? '22px 18px' : '30px 28px', marginBottom: '20px', boxShadow: theme.shadow, color: '#fff', border: `1px solid ${theme.border}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: '16px', marginBottom: '18px' }}>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: '700', opacity: 0.72, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Account Balance</div>
+              <div style={{ fontSize: isMobile ? '30px' : '44px', fontWeight: '900', letterSpacing: '-1.3px', marginBottom: '6px', color: runningBalance >= 0 ? '#fff' : '#ffb4b4', overflowWrap: 'anywhere' }}>
+                {runningBalance < 0 ? '-' : ''}{formatCurrency(Math.abs(runningBalance), cur)}
+              </div>
+              <div style={{ fontSize: '13px', opacity: 0.74, lineHeight: 1.5 }}>
+                {transactions.length === 0
+                  ? 'No transactions yet — add one to start building your activity history.'
+                  : `${transactions.length} transaction${transactions.length !== 1 ? 's' : ''} recorded so far this cycle.`}
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr', gap: '10px', minWidth: isMobile ? '100%' : '180px' }}>
+              <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Daily Target</div>
+                <div style={{ fontSize: '18px', fontWeight: 800 }}>{formatCurrency(budget.daily_target, cur)}</div>
+              </div>
+              <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Monthly Target</div>
+                <div style={{ fontSize: '18px', fontWeight: 800 }}>{formatCurrency(budget.monthly_target, cur)}</div>
+              </div>
+            </div>
           </div>
-          <div style={{ fontSize: '12px', opacity: 0.65 }}>
-            {transactions.length === 0
-              ? 'No transactions yet — add one to get started'
-              : `${transactions.length} transaction${transactions.length !== 1 ? 's' : ''} recorded`}
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
+            <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize: '11px', opacity: 0.72, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Today</div>
+              <div style={{ fontSize: '16px', fontWeight: 800 }}>{formatCurrency(stats.spentToday, cur)}</div>
+            </div>
+            <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize: '11px', opacity: 0.72, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Month to date</div>
+              <div style={{ fontSize: '16px', fontWeight: 800 }}>{formatCurrency(stats.spentMonthToDate, cur)}</div>
+            </div>
+            <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize: '11px', opacity: 0.72, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Projection</div>
+              <div style={{ fontSize: '16px', fontWeight: 800 }}>{formatCurrency(stats.projectedMonthEnd, cur)}</div>
+            </div>
           </div>
         </div>
 
         {/* Stats grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '20px' }}>
           <StatCard
             title="Today's Spending" icon={stats.isOverDailyBudget ? '⚠️' : '☀️'}
             value={formatCurrency(stats.spentToday, cur)}
@@ -272,7 +319,7 @@ export default function DashboardWeb() {
         </div>
 
         {/* Budget status pills */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
           <div style={{ backgroundColor: stats.isOverDailyBudget ? '#ef4444' : '#10b981', borderRadius: '14px', padding: '16px 18px', boxShadow: stats.isOverDailyBudget ? '0 4px 12px rgba(239,68,68,0.3)' : '0 4px 12px rgba(16,185,129,0.3)' }}>
             <div style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255,255,255,0.9)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Daily Budget</div>
             <div style={{ fontSize: '22px', fontWeight: '800', color: '#ffffff', lineHeight: 1.2 }}>
@@ -298,20 +345,20 @@ export default function DashboardWeb() {
         </div>
 
         {/* Recent transactions */}
-        <div style={{ backgroundColor: '#1e293b', borderRadius: '16px', padding: '20px', boxShadow: 'var(--shadow-md)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#ffffff', margin: 0 }}>Recent Transactions</h2>
+        <div className="section-card" style={{ borderRadius: '16px', padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '10px' : '0', marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: '700', color: theme.text, margin: 0 }}>Recent Transactions</h2>
             <button onClick={() => setCurrentView('transactions')}
-              style={{ fontSize: '12px', color: '#ffffff', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>
+              style={{ fontSize: '12px', color: theme.primary, fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>
               View all →
             </button>
           </div>
           {recentTransactions.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '24px 0', color: 'rgba(255,255,255,0.5)' }}>
+            <div style={{ textAlign: 'center', padding: '24px 0', color: theme.textSubtle }}>
               <div style={{ fontSize: '32px', marginBottom: '8px' }}>📭</div>
               <div style={{ fontSize: '14px' }}>No transactions yet</div>
               <button onClick={() => setCurrentView('add-transaction')}
-                style={{ marginTop: '12px', padding: '8px 20px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                style={{ marginTop: '12px', padding: '8px 20px', background: theme.primary, color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
                 Add your first transaction
               </button>
             </div>
@@ -320,17 +367,17 @@ export default function DashboardWeb() {
               {recentTransactions.map(t => {
                 const isIncome = t.amount < 0;
                 return (
-                  <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', backgroundColor: '#334155', borderRadius: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '10px' : '12px', padding: '10px 12px', backgroundColor: theme.surfaceMuted, borderRadius: '10px', border: `1px solid ${theme.border}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, width: isMobile ? '100%' : 'auto' }}>
                       <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: isIncome ? 'rgba(39,174,96,0.2)' : 'rgba(231,76,60,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>
                         {isIncome ? '💰' : '💸'}
                       </div>
-                      <div>
-                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#ffffff' }}>{t.category}</div>
-                        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{t.note ? ` · ${t.note}` : ''}</div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: '13px', fontWeight: '600', color: theme.text, overflowWrap: 'anywhere' }}>{t.category}</div>
+                        <div style={{ fontSize: '11px', color: theme.textSubtle, overflowWrap: 'anywhere' }}>{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{t.note ? ` · ${t.note}` : ''}</div>
                       </div>
                     </div>
-                    <div style={{ fontSize: '14px', fontWeight: '700', color: isIncome ? '#2ecc71' : '#ff7675' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: isIncome ? '#2ecc71' : '#ff7675', alignSelf: isMobile ? 'flex-end' : 'auto' }}>
                       {isIncome ? '+' : '−'}{formatCurrency(Math.abs(t.amount), cur)}
                     </div>
                   </div>
