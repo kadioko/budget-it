@@ -8,9 +8,30 @@ const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'INR
 const formatCurrency = (amount: number, currency: string) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount);
 
+const sanitizeAmountInput = (value: string) => value.replace(/[^0-9,.-]/g, '');
+
+const parseAmountInput = (value: string) => {
+  const normalized = value.replace(/,/g, '').trim();
+  if (!normalized || normalized === '-' || normalized === '.' || normalized === '-.') return 0;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatNumberInput = (value: string) => {
+  const sanitized = sanitizeAmountInput(value);
+  if (!sanitized) return '';
+
+  const isNegative = sanitized.startsWith('-');
+  const unsigned = isNegative ? sanitized.slice(1) : sanitized;
+  const [integerPartRaw = '', decimalPart] = unsigned.replace(/,/g, '').split('.');
+  const integerPart = integerPartRaw.replace(/^0+(?=\d)/, '') || (integerPartRaw ? '0' : '');
+  const withCommas = integerPart ? integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+  return `${isNegative ? '-' : ''}${withCommas}${decimalPart !== undefined ? `.${decimalPart}` : ''}`;
+};
+
 export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   const { user, signOut } = useAuthStore();
-  const { budget, loading, createBudget, updateBudget, updateBankBalance, recurringTransactions, fetchRecurringTransactions, addRecurringTransaction, deleteRecurringTransaction, envelopes, fetchEnvelopes, createEnvelope, deleteEnvelope } = useBudgetStore();
+  const { budget, loading, createBudget, updateBudget, updateBankBalance, recurringTransactions, fetchRecurringTransactions, addRecurringTransaction, deleteRecurringTransaction, envelopes, fetchEnvelopes, createEnvelope, updateEnvelope, deleteEnvelope } = useBudgetStore();
   const { mode, setMode, toggleMode } = useThemeStore();
   const theme = themeTokens[mode];
   const [isMobile, setIsMobile] = useState(false);
@@ -32,9 +53,9 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   const [balanceMsg, setBalanceMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [recurringMsg, setRecurringMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [envMsg, setEnvMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [envUpdateMsg, setEnvUpdateMsg] = useState<Record<string, { text: string; type: 'success' | 'error' } | null>>({});
   const [signOutConfirm, setSignOutConfirm] = useState(false);
 
-  // New Recurring Transaction Form State
   const [showRecurringForm, setShowRecurringForm] = useState(false);
   const [recAmount, setRecAmount] = useState('');
   const [recCategory, setRecCategory] = useState('Salary');
@@ -43,11 +64,11 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   const [recNextDate, setRecNextDate] = useState(new Date().toISOString().split('T')[0]);
   const [recNote, setRecNote] = useState('');
 
-  // New Envelope Form State
   const [showEnvelopeForm, setShowEnvelopeForm] = useState(false);
   const [envName, setEnvName] = useState('');
   const [envIcon, setEnvIcon] = useState('💰');
   const [envBalance, setEnvBalance] = useState('');
+  const [editedEnvelopeBalances, setEditedEnvelopeBalances] = useState<Record<string, string>>({});
 
   const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Rent', 'Other'];
   const INCOME_CATEGORIES = ['Salary', 'Business', 'Investment', 'Gift', 'Other'];
@@ -65,9 +86,17 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
       setMonthlyTarget(budget.monthly_target.toString());
       setCurrency(budget.currency);
       setMonthStartDay(budget.month_start_day.toString());
-      setBankBalance(budget.bank_balance?.toString() || '0');
+      setBankBalance(formatNumberInput(budget.bank_balance?.toString() || '0'));
     }
   }, [budget]);
+
+  useEffect(() => {
+    setEditedEnvelopeBalances(
+      Object.fromEntries(
+        envelopes.map((env) => [env.id, formatNumberInput(env.balance.toString())])
+      )
+    );
+  }, [envelopes]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -106,10 +135,33 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
     setBalanceMsg(null);
     if (!budget) { setBalanceMsg({ text: 'Please set up your budget first', type: 'error' }); return; }
     try {
-      await updateBankBalance(budget.id, parseFloat(bankBalance) || 0);
+      const nextBalance = parseAmountInput(bankBalance);
+      await updateBankBalance(budget.id, nextBalance);
+      setBankBalance(formatNumberInput(nextBalance.toString()));
       setBalanceMsg({ text: 'Bank balance updated successfully!', type: 'success' });
     } catch (error: any) {
       setBalanceMsg({ text: error.message || 'Failed to update balance', type: 'error' });
+    }
+  };
+
+  const handleSaveEnvelopeBalance = async (envelopeId: string) => {
+    setEnvUpdateMsg((current) => ({ ...current, [envelopeId]: null }));
+    const envelope = envelopes.find((item) => item.id === envelopeId);
+    if (!envelope) {
+      setEnvUpdateMsg((current) => ({ ...current, [envelopeId]: { text: 'Envelope not found', type: 'error' } }));
+      return;
+    }
+
+    try {
+      const nextBalance = parseAmountInput(editedEnvelopeBalances[envelopeId] || '0');
+      await updateEnvelope(envelope.id, envelope.name, envelope.icon, nextBalance, envelope.currency);
+      setEditedEnvelopeBalances((current) => ({
+        ...current,
+        [envelopeId]: formatNumberInput(nextBalance.toString()),
+      }));
+      setEnvUpdateMsg((current) => ({ ...current, [envelopeId]: { text: 'Envelope balance updated!', type: 'success' } }));
+    } catch (error: any) {
+      setEnvUpdateMsg((current) => ({ ...current, [envelopeId]: { text: error.message || 'Failed to update balance', type: 'error' } }));
     }
   };
 
@@ -151,7 +203,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
       setEnvMsg({ text: 'Please enter a name for the envelope', type: 'error' });
       return;
     }
-    const bal = parseFloat(envBalance) || 0;
+    const bal = parseAmountInput(envBalance);
     if (!user) return;
 
     try {
@@ -284,10 +336,10 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
                     </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexDirection: isMobile ? 'column' : 'row' }}>
                       <input
-                        type="number"
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         value={bankBalance}
-                        onChange={e => setBankBalance(e.target.value)}
+                        onChange={e => setBankBalance(formatNumberInput(e.target.value))}
                         style={{ ...fieldStyle, width: isMobile ? '100%' : '160px', padding: '8px 10px', fontSize: '14px', marginBottom: 0 }}
                       />
                       <button
@@ -298,6 +350,9 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
                         {loading ? '...' : 'Update'}
                       </button>
                     </div>
+                    <div style={{ fontSize: '12px', color: theme.textMuted, marginTop: '8px' }}>
+                      Current balance: <span style={{ color: theme.text, fontWeight: '700' }}>{formatCurrency(parseAmountInput(bankBalance), budget.currency)}</span>
+                    </div>
                     {balanceMsg && <div style={{ fontSize: '12px', color: balanceMsg.type === 'success' ? '#10b981' : '#ef4444', marginTop: '6px', fontWeight: '600' }}>{balanceMsg.text}</div>}
                   </div>
                 </div>
@@ -306,16 +361,33 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
 
             {envelopes.map(env => (
               <div key={env.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: '12px', padding: '14px', border: `1px solid ${theme.border}`, borderRadius: '18px', backgroundColor: theme.surfaceMuted }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
                   <div style={{ fontSize: '24px' }}>{env.icon}</div>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '14px', fontWeight: 'bold', color: theme.text, display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {env.name}
                       {env.is_default && <span style={{ fontSize: '10px', backgroundColor: theme.primary, color: '#fff', padding: '2px 6px', borderRadius: '4px' }}>ACCOUNT</span>}
                     </div>
-                    <div style={{ fontSize: '12px', color: theme.textMuted }}>
-                      {formatCurrency(env.balance, env.currency)}
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexDirection: isMobile ? 'column' : 'row', marginTop: '8px' }}>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={editedEnvelopeBalances[env.id] ?? formatNumberInput(env.balance.toString())}
+                        onChange={e => setEditedEnvelopeBalances((current) => ({ ...current, [env.id]: formatNumberInput(e.target.value) }))}
+                        style={{ ...fieldStyle, width: isMobile ? '100%' : '180px', padding: '8px 10px', fontSize: '14px', marginBottom: 0 }}
+                      />
+                      <button
+                        onClick={() => handleSaveEnvelopeBalance(env.id)}
+                        disabled={loading}
+                        style={{ padding: '8px 16px', width: isMobile ? '100%' : 'auto', background: theme.primary, color: '#fff', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer' }}
+                      >
+                        {loading ? '...' : 'Update'}
+                      </button>
                     </div>
+                    <div style={{ fontSize: '12px', color: theme.textMuted, marginTop: '8px' }}>
+                      Current balance: <span style={{ color: theme.text, fontWeight: '700' }}>{formatCurrency(parseAmountInput(editedEnvelopeBalances[env.id] ?? env.balance.toString()), env.currency)}</span>
+                    </div>
+                    {envUpdateMsg[env.id] && <div style={{ fontSize: '12px', color: envUpdateMsg[env.id]?.type === 'success' ? '#10b981' : '#ef4444', marginTop: '6px', fontWeight: '600' }}>{envUpdateMsg[env.id]?.text}</div>}
                   </div>
                 </div>
                 <button onClick={async () => {
@@ -354,8 +426,12 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
                 </div>
                 <div>
                   <label style={lbl}>Initial Balance</label>
-                  <input type="number" value={envBalance} onChange={e => setEnvBalance(e.target.value)} placeholder="0.00" style={fieldStyle} step="0.01" />
+                  <input type="text" inputMode="decimal" value={envBalance} onChange={e => setEnvBalance(formatNumberInput(e.target.value))} placeholder="0.00" style={fieldStyle} />
                 </div>
+              </div>
+
+              <div style={{ fontSize: '12px', color: theme.textMuted, marginBottom: '12px' }}>
+                Starting balance preview: <span style={{ color: theme.text, fontWeight: '700' }}>{formatCurrency(parseAmountInput(envBalance), budget?.currency || 'USD')}</span>
               </div>
 
               <button onClick={handleAddEnvelope} disabled={loading}

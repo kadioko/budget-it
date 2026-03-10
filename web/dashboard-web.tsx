@@ -85,7 +85,7 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
 
 export default function DashboardWeb() {
   const { user } = useAuthStore();
-  const { budget, stats, transactions, isOffline, pendingActions, setOfflineStatus, syncOfflineActions, fetchBudget, fetchTransactions, processRecurringTransactions } = useBudgetStore();
+  const { budget, envelopes, stats, transactions, isOffline, pendingActions, setOfflineStatus, syncOfflineActions, fetchBudget, fetchEnvelopes, fetchTransactions, processRecurringTransactions } = useBudgetStore();
   const { mode } = useThemeStore();
   const theme = themeTokens[mode];
   const isLightMode = mode === 'light';
@@ -93,6 +93,7 @@ export default function DashboardWeb() {
   const [currentView, setCurrentView] = useState<'dashboard' | 'settings' | 'add-transaction' | 'transactions' | 'analytics'>('dashboard');
   const [dataReady, setDataReady] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [selectedAccountId, setSelectedAccountId] = useState<'all' | 'bank' | string>('all');
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => setToast({ message, type });
 
@@ -118,6 +119,7 @@ export default function DashboardWeb() {
     if (user) {
       Promise.all([
         fetchBudget(user.id), 
+        fetchEnvelopes(user.id),
         fetchTransactions(user.id),
         processRecurringTransactions(user.id)
       ]).finally(() => setDataReady(true));
@@ -137,11 +139,33 @@ export default function DashboardWeb() {
     return () => window.removeEventListener('resize', updateViewport);
   }, []);
 
-  const runningBalance = useMemo(() => {
-    let balance = budget?.bank_balance || 0;
-    transactions.forEach(t => { balance -= t.amount; });
-    return balance;
-  }, [budget?.bank_balance, transactions]);
+  const accountOptions = useMemo(() => {
+    const baseOptions = [{ id: 'bank', label: 'Bank account', icon: '🏦', balance: budget?.bank_balance || 0, currency: budget?.currency || 'USD' }];
+    const envelopeOptions = envelopes.map((env) => ({ id: env.id, label: env.name, icon: env.icon, balance: env.balance, currency: env.currency }));
+    const totalBalance = baseOptions.reduce((sum, item) => sum + item.balance, 0) + envelopeOptions.reduce((sum, item) => sum + item.balance, 0);
+
+    return [
+      { id: 'all', label: 'All accounts', icon: '🧾', balance: totalBalance, currency: budget?.currency || 'USD' },
+      ...baseOptions,
+      ...envelopeOptions,
+    ];
+  }, [budget?.bank_balance, budget?.currency, envelopes]);
+
+  const selectedAccount = useMemo(
+    () => accountOptions.find((option) => option.id === selectedAccountId) || accountOptions[0],
+    [accountOptions, selectedAccountId]
+  );
+
+  useEffect(() => {
+    if (!selectedAccount) {
+      setSelectedAccountId('all');
+      return;
+    }
+
+    if (selectedAccountId !== 'all' && !accountOptions.some((option) => option.id === selectedAccountId)) {
+      setSelectedAccountId('all');
+    }
+  }, [accountOptions, selectedAccount, selectedAccountId]);
 
   const recentTransactions = useMemo(() =>
     [...transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5),
@@ -242,6 +266,8 @@ export default function DashboardWeb() {
         .nav-btn-add { background: linear-gradient(135deg, #27ae60, #1e8449) !important; box-shadow: 0 2px 8px rgba(39,174,96,0.4) !important; }
         .section-card { background: ${theme.surface}; border: 1px solid ${theme.border}; box-shadow: ${theme.shadow}; backdrop-filter: blur(16px); }
         .dashboard-shell { max-width: 1180px; }
+        .account-filter-btn { transition: all 0.2s ease; }
+        .account-filter-btn:hover { transform: translateY(-1px); }
         @media (max-width: 639px) {
           .dashboard-shell {
             max-width: 760px;
@@ -299,26 +325,68 @@ export default function DashboardWeb() {
 
         {/* Hero balance card */}
         <div style={{ background: theme.heroGradient, borderRadius: '28px', padding: isMobile ? '22px 18px' : '38px 36px', marginBottom: '24px', boxShadow: theme.shadow, color: isLightMode ? theme.text : '#fff', border: `1px solid ${theme.border}` }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: '16px', marginBottom: '18px' }}>
-            <div>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: isLightMode ? theme.textSubtle : 'rgba(255,255,255,0.72)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Account Balance</div>
-              <div style={{ fontSize: isMobile ? '30px' : '52px', fontWeight: '900', letterSpacing: '-1.5px', marginBottom: '6px', color: runningBalance >= 0 ? (isLightMode ? theme.text : '#fff') : (isLightMode ? theme.danger : '#ffb4b4'), overflowWrap: 'anywhere' }}>
-                {runningBalance < 0 ? '-' : ''}{formatCurrency(Math.abs(runningBalance), cur)}
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.35fr) minmax(320px, 0.95fr)', gap: '18px', alignItems: 'stretch', marginBottom: '18px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: isMobile ? 'auto' : '240px' }}>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: isLightMode ? theme.textSubtle : 'rgba(255,255,255,0.72)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>Account Balance</div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '18px' }}>
+                  {accountOptions.map((option) => {
+                    const active = option.id === selectedAccount?.id;
+                    return (
+                      <button
+                        key={option.id}
+                        className="account-filter-btn"
+                        onClick={() => setSelectedAccountId(option.id as 'all' | 'bank' | string)}
+                        style={{
+                          padding: '9px 12px',
+                          borderRadius: '999px',
+                          border: active ? `1px solid ${theme.borderStrong}` : `1px solid ${isLightMode ? theme.border : 'rgba(255,255,255,0.16)'}`,
+                          background: active ? theme.primary : (isLightMode ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.08)'),
+                          color: active ? '#fff' : (isLightMode ? theme.text : '#fff'),
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {option.icon} {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: isMobile ? '30px' : '56px', fontWeight: '900', letterSpacing: '-1.8px', marginBottom: '8px', color: (selectedAccount?.balance || 0) >= 0 ? (isLightMode ? theme.text : '#fff') : (isLightMode ? theme.danger : '#ffb4b4'), overflowWrap: 'anywhere' }}>
+                  {(selectedAccount?.balance || 0) < 0 ? '-' : ''}{formatCurrency(Math.abs(selectedAccount?.balance || 0), selectedAccount?.currency || cur)}
+                </div>
+                <div style={{ fontSize: '14px', color: isLightMode ? theme.textMuted : 'rgba(255,255,255,0.78)', lineHeight: 1.6, maxWidth: '640px' }}>
+                  {selectedAccount?.id === 'all'
+                    ? `Viewing your combined balance across ${accountOptions.length - 1} account${accountOptions.length - 1 !== 1 ? 's' : ''}.`
+                    : `Viewing the current balance for ${selectedAccount?.label || 'this account'}.`}
+                </div>
               </div>
-              <div style={{ fontSize: '14px', color: isLightMode ? theme.textMuted : 'rgba(255,255,255,0.78)', lineHeight: 1.6, maxWidth: '620px' }}>
-                {transactions.length === 0
-                  ? 'No transactions yet — add one to start building your activity history.'
-                  : `${transactions.length} transaction${transactions.length !== 1 ? 's' : ''} recorded so far this cycle.`}
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '12px', marginTop: '18px' }}>
+                <div style={{ padding: '16px 18px', borderRadius: '18px', backgroundColor: isLightMode ? 'rgba(255,255,255,0.62)' : 'rgba(255,255,255,0.08)', border: isLightMode ? `1px solid ${theme.border}` : '1px solid rgba(255,255,255,0.1)' }}>
+                  <div style={{ fontSize: '11px', color: isLightMode ? theme.textSubtle : 'rgba(255,255,255,0.72)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Tracked Accounts</div>
+                  <div style={{ fontSize: '22px', fontWeight: 800 }}>{accountOptions.length - 1}</div>
+                  <div style={{ fontSize: '12px', color: isLightMode ? theme.textMuted : 'rgba(255,255,255,0.74)', marginTop: '4px' }}>Bank + envelopes available</div>
+                </div>
+                <div style={{ padding: '16px 18px', borderRadius: '18px', backgroundColor: isLightMode ? 'rgba(255,255,255,0.62)' : 'rgba(255,255,255,0.08)', border: isLightMode ? `1px solid ${theme.border}` : '1px solid rgba(255,255,255,0.1)' }}>
+                  <div style={{ fontSize: '11px', color: isLightMode ? theme.textSubtle : 'rgba(255,255,255,0.72)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Transactions Logged</div>
+                  <div style={{ fontSize: '22px', fontWeight: 800 }}>{transactions.length}</div>
+                  <div style={{ fontSize: '12px', color: isLightMode ? theme.textMuted : 'rgba(255,255,255,0.74)', marginTop: '4px' }}>Across your current budget cycle</div>
+                </div>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr', gap: '10px', minWidth: isMobile ? '100%' : '180px' }}>
-              <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: isLightMode ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.1)', border: isLightMode ? `1px solid ${theme.border}` : '1px solid rgba(255,255,255,0.12)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr', gap: '12px' }}>
+              <div style={{ padding: '16px 18px', borderRadius: '18px', backgroundColor: isLightMode ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.1)', border: isLightMode ? `1px solid ${theme.border}` : '1px solid rgba(255,255,255,0.12)' }}>
                 <div style={{ fontSize: '11px', fontWeight: '700', color: isLightMode ? theme.textSubtle : 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Daily Target</div>
-                <div style={{ fontSize: '18px', fontWeight: '800' }}>{formatCurrency(budget.daily_target, cur)}</div>
+                <div style={{ fontSize: '20px', fontWeight: '800' }}>{formatCurrency(budget.daily_target, cur)}</div>
               </div>
-              <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: isLightMode ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.1)', border: isLightMode ? `1px solid ${theme.border}` : '1px solid rgba(255,255,255,0.12)' }}>
+              <div style={{ padding: '16px 18px', borderRadius: '18px', backgroundColor: isLightMode ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.1)', border: isLightMode ? `1px solid ${theme.border}` : '1px solid rgba(255,255,255,0.12)' }}>
                 <div style={{ fontSize: '11px', fontWeight: '700', color: isLightMode ? theme.textSubtle : 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Monthly Target</div>
-                <div style={{ fontSize: '18px', fontWeight: '800' }}>{formatCurrency(budget.monthly_target, cur)}</div>
+                <div style={{ fontSize: '20px', fontWeight: '800' }}>{formatCurrency(budget.monthly_target, cur)}</div>
+              </div>
+              <div style={{ padding: '16px 18px', borderRadius: '18px', backgroundColor: isLightMode ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.1)', border: isLightMode ? `1px solid ${theme.border}` : '1px solid rgba(255,255,255,0.12)' }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: isLightMode ? theme.textSubtle : 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Selected Account</div>
+                <div style={{ fontSize: '18px', fontWeight: '800', overflowWrap: 'anywhere' }}>{selectedAccount?.icon} {selectedAccount?.label}</div>
               </div>
             </div>
           </div>
