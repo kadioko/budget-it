@@ -9,7 +9,7 @@ import DashboardWeb from './web/dashboard-web';
 if (typeof document !== 'undefined') {
   const style = document.createElement('style');
   style.textContent = `
-    html, body { height: auto !important; min-height: 100vh; overflow-x: hidden !important; overflow-y: auto !important; margin: 0; padding: 0; background: var(--app-bg, #f0f2f5); color: var(--app-text, #0f172a); transition: background-color 0.2s ease, color 0.2s ease; }
+    html, body { height: auto !important; min-height: 100vh; overflow-x: hidden !important; overflow-y: auto !important; margin: 0; padding: 0; background: var(--app-bg, #f4f7fb); color: var(--app-text, #0f172a); font-family: var(--app-font-body, "Manrope", sans-serif); transition: background-color 0.2s ease, color 0.2s ease; }
     #root { display: block !important; height: auto !important; min-height: 100vh; flex: none !important; }
   `;
   document.head.appendChild(style);
@@ -53,7 +53,8 @@ function AuthCard({ children }: { children: React.ReactNode }) {
     <>
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        body { font-family: var(--app-font-body, "Manrope", sans-serif); }
+        h1, h2 { font-family: var(--app-font-display, "Space Grotesk", sans-serif); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
         .auth-shell { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(380px, 460px); gap: 32px; width: min(1180px, 100%); align-items: stretch; }
         .auth-hero { display: flex; flex-direction: column; justify-content: space-between; min-height: 620px; padding: 48px; border-radius: 32px; color: #fff; background: linear-gradient(160deg, rgba(15,23,42,0.94) 0%, rgba(30,41,59,0.88) 48%, rgba(37,99,235,0.8) 100%); box-shadow: 0 28px 80px rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.12); }
@@ -69,7 +70,7 @@ function AuthCard({ children }: { children: React.ReactNode }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #1a252f 0%, #2c3e50 50%, #3498db 100%)',
+        background: 'radial-gradient(circle at top right, rgba(96,165,250,0.24), transparent 24%), radial-gradient(circle at bottom left, rgba(16,185,129,0.18), transparent 28%), linear-gradient(135deg, #081120 0%, #0f1b32 52%, #1d4ed8 100%)',
         padding: '28px',
       }}>
         <div className="auth-shell">
@@ -326,9 +327,14 @@ function VerificationNotice({ banner, onContinue }: { banner: VerificationBanner
 
 export default function App() {
   const { user, checkAuth } = useAuthStore();
+  const { mode } = useThemeStore();
   const [ready, setReady] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<'login' | 'signup'>('login');
   const [verificationBanner, setVerificationBanner] = useState<VerificationBanner | null>(null);
+
+  useEffect(() => {
+    applyWebTheme(mode);
+  }, [mode]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

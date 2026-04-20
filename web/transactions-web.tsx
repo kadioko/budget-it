@@ -120,7 +120,6 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
     return (
       <>
         <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
           html, body {
             scrollbar-gutter: stable;
             overflow-y: scroll;
@@ -129,7 +128,7 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
             width: 100%;
             background: var(--app-bg, ${theme.background});
             color: var(--app-text, ${theme.text});
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: var(--app-font-body, "Manrope", sans-serif);
           }
           * {
             box-sizing: border-box;
@@ -159,7 +158,6 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         html, body {
           scrollbar-gutter: stable;
           overflow-y: scroll;
@@ -168,7 +166,7 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
           width: 100%;
           background: var(--app-bg, ${theme.background});
           color: var(--app-text, ${theme.text});
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-family: var(--app-font-body, "Manrope", sans-serif);
         }
         * {
           box-sizing: border-box;

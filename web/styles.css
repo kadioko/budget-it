@@ -1,5 +1,11 @@
 /* Web-specific styles for Budget It */
 
+:root {
+  --app-radius-sm: 12px;
+  --app-radius-md: 18px;
+  --app-radius-lg: 26px;
+}
+
 /* Make all pressable/touchable elements have pointer cursor */
 button,
 [role="button"],
@@ -59,10 +65,42 @@ button,
   user-select: none;
 }
 
-/* Add hover effects */
-button:hover,
-[role="button"]:hover {
-  opacity: 0.8;
+body {
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 30%),
+    radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.08), transparent 26%),
+    var(--app-bg, #f4f7fb);
+  color: var(--app-text, #0f172a);
+  font-family: var(--app-font-body, "Manrope", sans-serif);
+}
+
+h1,
+h2,
+h3,
+[data-display="true"] {
+  font-family: var(--app-font-display, "Space Grotesk", sans-serif);
+  letter-spacing: -0.03em;
+}
+
+button,
+input,
+select,
+textarea {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--app-primary, #1d4ed8) 72%, white);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--app-primary, #1d4ed8) 20%, white);
+  color: var(--app-text, #0f172a);
 }
 
 /* Ensure proper touch target size on web */

@@ -269,7 +269,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
     <>
       <style>{`
         *, *::before, *::after { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--app-bg, ${theme.background}); color: var(--app-text, ${theme.text}); }
+        html, body { margin: 0; padding: 0; font-family: var(--app-font-body, "Manrope", sans-serif); background: var(--app-bg, ${theme.background}); color: var(--app-text, ${theme.text}); }
         @keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
         input:focus, select:focus { border-color: #3b82f6 !important; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important; }
         .curr-btn:hover { opacity: 0.8; }

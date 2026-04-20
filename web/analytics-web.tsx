@@ -299,6 +299,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
           box-shadow: ${theme.shadow};
           backdrop-filter: blur(16px);
         }
+        html, body { font-family: var(--app-font-body, "Manrope", sans-serif); }
         @media (max-width: 639px) {
           .analytics-period-btn {
             width: 100%;

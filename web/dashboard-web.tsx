@@ -217,7 +217,7 @@ export default function DashboardWeb() {
       <>
         <style>{`
           *, *::before, *::after { box-sizing: border-box; }
-          html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--app-bg, ${theme.background}); color: var(--app-text, ${theme.text}); }
+          html, body { margin: 0; padding: 0; font-family: var(--app-font-body, "Manrope", sans-serif); background: var(--app-bg, ${theme.background}); color: var(--app-text, ${theme.text}); }
           @keyframes pulseCard { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
           .dashboard-loading-card { background: ${theme.surface}; border: 1px solid ${theme.border}; box-shadow: ${theme.shadow}; backdrop-filter: blur(16px); animation: pulseCard 1.4s ease-in-out infinite; }
         `}</style>
@@ -258,7 +258,7 @@ export default function DashboardWeb() {
     <>
       <style>{`
         *, *::before, *::after { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--app-bg, ${theme.background}); color: var(--app-text, ${theme.text}); }
+        html, body { margin: 0; padding: 0; font-family: var(--app-font-body, "Manrope", sans-serif); background: var(--app-bg, ${theme.background}); color: var(--app-text, ${theme.text}); }
         @keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(16px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
         .nav-btn:hover { opacity: 0.88 !important; transform: translateY(-1px) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.25) !important; }

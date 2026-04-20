@@ -4,32 +4,57 @@
     <meta charset="utf-8" />
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, maximum-scale=1, user-scalable=0" />
-    <meta name="theme-color" content="#2c3e50" />
+    <meta name="application-name" content="Budget It" />
+    <meta name="apple-mobile-web-app-title" content="Budget It" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#1d4ed8" />
+    <meta name="description" content="Track spending, manage accounts, and stay on top of your budget with Budget It." />
     <link rel="manifest" href="/manifest.json" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <link rel="apple-touch-icon" href="/icon.png" />
+    <meta name="msapplication-TileColor" content="#1d4ed8" />
+    <meta name="msapplication-TileImage" content="/icon-192.png" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Budget It" />
+    <meta property="og:description" content="Track spending, manage accounts, and stay on top of your budget with Budget It." />
+    <meta property="og:image" content="/brand-logo.png" />
+    <meta property="og:site_name" content="Budget It" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Budget It" />
+    <meta name="twitter:description" content="Track spending, manage accounts, and stay on top of your budget with Budget It." />
+    <meta name="twitter:image" content="/brand-logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
     <title>Budget It</title>
     <style>
       :root {
-        --bg-main: #f0f2f5;
+        --bg-main: #f4f7fb;
         --bg-card: #ffffff;
-        --bg-secondary: #f8f9fa;
-        --bg-tertiary: #fafafa;
-        --bg-nav: #0f172a;
+        --bg-secondary: rgba(255,255,255,0.88);
+        --bg-tertiary: rgba(255,255,255,0.64);
+        --bg-nav: rgba(255,255,255,0.72);
 
-        --text-main: #2c3e50;
-        --text-secondary: #7f8c8d;
-        --text-tertiary: #95a5a6;
-        --text-muted: #b2bec3;
+        --text-main: #0f172a;
+        --text-secondary: #475569;
+        --text-tertiary: #64748b;
+        --text-muted: #94a3b8;
 
-        --border-color: #e0e0e0;
-        --border-light: #ecf0f1;
+        --border-color: rgba(148,163,184,0.22);
+        --border-light: rgba(255,255,255,0.4);
 
-        --primary: #3498db;
-        --primary-dark: #2980b9;
+        --primary: #1d4ed8;
+        --primary-dark: #1e40af;
+        --shadow-sm: 0 8px 24px rgba(15,23,42,0.06);
+        --shadow-md: 0 18px 44px rgba(15,23,42,0.08);
+        --shadow-lg: 0 28px 72px rgba(15,23,42,0.12);
+        --shadow-xl: 0 36px 96px rgba(15,23,42,0.14);
 
-        --success: #27ae60;
+        --success: #059669;
         --success-bg: #d5f4e6;
         --success-border: #bbf7d0;
         --success-text: #166534;
@@ -38,11 +63,8 @@
         --danger-bg: #fadbd8;
         --danger-border: #f5c6c6;
         --danger-text: #c0392b;
-
-        --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.12);
-        --shadow-md: 0 2px 8px rgba(0,0,0,0.1), 0 4px 16px rgba(0,0,0,0.08);
-        --shadow-lg: 0 8px 24px rgba(0,0,0,0.15);
-        --shadow-xl: 0 24px 64px rgba(0,0,0,0.18);
+        --app-font-body: "Manrope", "Segoe UI", sans-serif;
+        --app-font-display: "Space Grotesk", "Manrope", sans-serif;
       }
 
       *, *::before, *::after {
@@ -57,14 +79,40 @@
         overflow-y: auto;
         background: var(--bg-main);
         color: var(--text-main);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-family: var(--app-font-body);
         -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+      body::before,
+      body::after {
+        content: "";
+        position: fixed;
+        inset: auto;
+        pointer-events: none;
+        z-index: 0;
+        filter: blur(20px);
+      }
+      body::before {
+        top: -120px;
+        right: -80px;
+        width: 360px;
+        height: 360px;
+        background: radial-gradient(circle, rgba(59,130,246,0.18) 0%, rgba(59,130,246,0) 72%);
+      }
+      body::after {
+        left: -120px;
+        bottom: -160px;
+        width: 420px;
+        height: 420px;
+        background: radial-gradient(circle, rgba(16,185,129,0.14) 0%, rgba(16,185,129,0) 70%);
       }
       #root {
+        position: relative;
         display: block;
         min-height: 100vh;
         height: auto;
         flex: none;
+        z-index: 1;
       }
     </style>
   </head>

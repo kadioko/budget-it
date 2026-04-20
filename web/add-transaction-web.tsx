@@ -99,8 +99,6 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        
         html, body {
           scrollbar-gutter: stable;
           overflow-y: scroll;
@@ -109,7 +107,7 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
           width: 100%;
           background: #0f172a;
           color: #f8fafc;
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          font-family: var(--app-font-body, "Manrope", sans-serif);
         }
         *, *::before, *::after {
           box-sizing: border-box;
