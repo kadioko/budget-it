@@ -63,6 +63,19 @@ export type RecurringTransaction = {
   created_at: string;
 };
 
+export type SavingsGoal = {
+  id: string;
+  user_id: string;
+  name: string;
+  target_amount: number;
+  current_amount: number;
+  target_date: string;
+  note: string | null;
+  linked_envelope_id?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type BudgetStats = {
   spentToday: number;
   spentMonthToDate: number;

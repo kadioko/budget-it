@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
+import { useI18n, useLanguageStore } from '../src/store/language';
 import { themeTokens, useThemeStore } from '../src/store/theme';
 import { CategoryBudgetMap } from '../src/types';
 
@@ -31,10 +32,12 @@ const formatNumberInput = (value: string) => {
   return `${isNegative ? '-' : ''}${withCommas}${decimalPart !== undefined ? `.${decimalPart}` : ''}`;
 };
 
-export default function SettingsWeb({ onBack }: { onBack: () => void }) {
+export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => void; onOpenGuides?: () => void }) {
   const { user, signOut } = useAuthStore();
-  const { budget, categoryBudgets, loading, createBudget, updateBudget, updateBankBalance, saveCategoryBudgets, recurringTransactions, fetchRecurringTransactions, addRecurringTransaction, deleteRecurringTransaction, envelopes, fetchEnvelopes, createEnvelope, updateEnvelope, deleteEnvelope } = useBudgetStore();
+  const { budget, categoryBudgets, loading, createBudget, updateBudget, updateBankBalance, saveCategoryBudgets, recurringTransactions, fetchRecurringTransactions, addRecurringTransaction, deleteRecurringTransaction, savingsGoals, fetchSavingsGoals, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal, envelopes, fetchEnvelopes, createEnvelope, updateEnvelope, deleteEnvelope } = useBudgetStore();
   const { mode, setMode, toggleMode } = useThemeStore();
+  const { language, t } = useI18n();
+  const setLanguage = useLanguageStore((state) => state.setLanguage);
   const theme = themeTokens[mode];
   const [isMobile, setIsMobile] = useState(false);
 
@@ -59,6 +62,8 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   const [envUpdateMsg, setEnvUpdateMsg] = useState<Record<string, { text: string; type: 'success' | 'error' } | null>>({});
   const [envDeleteMsg, setEnvDeleteMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [recurringDeleteMsg, setRecurringDeleteMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [goalMsg, setGoalMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [goalDeleteMsg, setGoalDeleteMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [signOutConfirm, setSignOutConfirm] = useState(false);
 
   const [showRecurringForm, setShowRecurringForm] = useState(false);
@@ -75,6 +80,14 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   const [envBalance, setEnvBalance] = useState('');
   const [editedEnvelopeBalances, setEditedEnvelopeBalances] = useState<Record<string, string>>({});
   const [editedCategoryBudgets, setEditedCategoryBudgets] = useState<Record<string, string>>({});
+  const [showGoalForm, setShowGoalForm] = useState(false);
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const [goalName, setGoalName] = useState('');
+  const [goalTargetAmount, setGoalTargetAmount] = useState('');
+  const [goalCurrentAmount, setGoalCurrentAmount] = useState('');
+  const [goalTargetDate, setGoalTargetDate] = useState('');
+  const [goalNote, setGoalNote] = useState('');
+  const [goalEnvelopeId, setGoalEnvelopeId] = useState('');
 
   const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Rent', 'Other'];
   const INCOME_CATEGORIES = ['Salary', 'Business', 'Investment', 'Gift', 'Other'];
@@ -82,6 +95,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     if (user?.id) {
       fetchRecurringTransactions(user.id);
+      fetchSavingsGoals(user.id);
       fetchEnvelopes(user.id);
     }
   }, [user?.id]);
@@ -284,6 +298,84 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
     }
   };
 
+  const resetGoalForm = () => {
+    setEditingGoalId(null);
+    setGoalName('');
+    setGoalTargetAmount('');
+    setGoalCurrentAmount('');
+    setGoalTargetDate('');
+    setGoalNote('');
+    setGoalEnvelopeId('');
+  };
+
+  const handleSaveGoal = async () => {
+    setGoalMsg(null);
+    if (!user) return;
+    if (!goalName.trim()) {
+      setGoalMsg({ text: 'Please enter a savings goal name', type: 'error' });
+      return;
+    }
+
+    const targetAmount = parseAmountInput(goalTargetAmount);
+    const currentAmount = parseAmountInput(goalCurrentAmount);
+
+    if (targetAmount <= 0) {
+      setGoalMsg({ text: 'Target amount must be greater than 0', type: 'error' });
+      return;
+    }
+    if (currentAmount < 0) {
+      setGoalMsg({ text: 'Current saved amount cannot be negative', type: 'error' });
+      return;
+    }
+    if (!goalTargetDate) {
+      setGoalMsg({ text: 'Please choose a target date', type: 'error' });
+      return;
+    }
+
+    try {
+      if (editingGoalId) {
+        await updateSavingsGoal(editingGoalId, goalName.trim(), targetAmount, currentAmount, goalTargetDate, goalNote || undefined, goalEnvelopeId || null);
+        setGoalMsg({ text: 'Savings goal updated successfully!', type: 'success' });
+      } else {
+        await addSavingsGoal(user.id, goalName.trim(), targetAmount, currentAmount, goalTargetDate, goalNote || undefined, goalEnvelopeId || null);
+        setGoalMsg({ text: 'Savings goal added!', type: 'success' });
+      }
+      setShowGoalForm(false);
+      resetGoalForm();
+    } catch (error: any) {
+      setGoalMsg({ text: error?.message || 'Failed to save savings goal', type: 'error' });
+    }
+  };
+
+  const startEditingGoal = (goalId: string) => {
+    const goal = savingsGoals.find((item) => item.id === goalId);
+    if (!goal) return;
+    setEditingGoalId(goal.id);
+    setGoalName(goal.name);
+    setGoalTargetAmount(formatNumberInput(goal.target_amount.toString()));
+    setGoalCurrentAmount(formatNumberInput(goal.current_amount.toString()));
+    setGoalTargetDate(goal.target_date);
+    setGoalNote(goal.note || '');
+    setGoalEnvelopeId(goal.linked_envelope_id || '');
+    setShowGoalForm(true);
+    setGoalMsg(null);
+  };
+
+  const handleDeleteGoal = async (goalId: string, goalNameValue: string) => {
+    setGoalDeleteMsg(null);
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm(`Delete savings goal "${goalNameValue}"?`);
+      if (!confirmed) return;
+    }
+
+    try {
+      await deleteSavingsGoal(goalId);
+      setGoalDeleteMsg({ text: `${goalNameValue} removed.`, type: 'success' });
+    } catch (error: any) {
+      setGoalDeleteMsg({ text: error?.message || 'Failed to delete savings goal', type: 'error' });
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -314,29 +406,187 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
       <div style={{ background: theme.navSurface, position: 'sticky', top: 0, zIndex: 100, boxShadow: theme.shadow, borderBottom: `1px solid ${theme.border}`, backdropFilter: 'blur(14px)' }}>
         <div style={{ maxWidth: '720px', margin: '0 auto', padding: '12px 16px', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: '12px' }}>
           <button onClick={onBack} style={{ background: theme.surfaceStrong, border: `1px solid ${theme.borderStrong}`, borderRadius: '12px', color: theme.primary, fontSize: '16px', cursor: 'pointer', padding: '8px 14px', fontWeight: '700' }}>
-            ← Back
+            ← {t('common.back')}
           </button>
           <div>
-            <div style={{ fontSize: '11px', fontWeight: '700', color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px' }}>Preferences</div>
-            <span style={{ fontSize: '20px', fontWeight: '900', color: theme.text, letterSpacing: '-0.5px' }}>⚙️ Settings</span>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px' }}>{t('settings.preferences')}</div>
+            <span style={{ fontSize: '20px', fontWeight: '900', color: theme.text, letterSpacing: '-0.5px' }}>⚙️ {t('settings.settingsTitle')}</span>
           </div>
         </div>
       </div>
 
       <div style={{ maxWidth: '720px', margin: '0 auto', padding: '20px 16px 60px', animation: 'fadeIn 0.4s ease' }}>
         <div style={card}>
-          <div style={sectionTitle}><span>{mode === 'dark' ? '🌙' : '☀️'}</span> Appearance</div>
-          <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.6, marginBottom: '16px' }}>Choose how the web app looks. Your preference is saved on this device.</div>
+          <div style={sectionTitle}><span>🌍</span> {t('settings.languageAndHelp')}</div>
+          <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.6, marginBottom: '16px' }}>{t('settings.languageSubtitle')}</div>
+          <div style={{ marginBottom: '18px' }}>
+            <label style={lbl}>{t('settings.appLanguage')}</label>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
+              {([
+                { code: 'en', label: t('common.english') },
+                { code: 'sw', label: t('common.swahili') },
+              ] as const).map((option) => (
+                <button
+                  key={option.code}
+                  onClick={() => setLanguage(option.code)}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: '14px',
+                    border: `1px solid ${language === option.code ? theme.borderStrong : theme.border}`,
+                    background: language === option.code ? theme.primary : theme.surfaceMuted,
+                    color: language === option.code ? '#fff' : theme.text,
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{ padding: '16px', borderRadius: '18px', background: `linear-gradient(135deg, ${theme.surfaceMuted} 0%, ${theme.surface} 100%)`, border: `1px solid ${theme.border}`, marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '14px', background: 'linear-gradient(135deg, #0f172a 0%, #1d4ed8 55%, #38bdf8 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 900 }}>?</div>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: 800, color: theme.text }}>{t('settings.openQuickGuides')}</div>
+                <div style={{ fontSize: '12px', color: theme.textMuted, lineHeight: 1.6 }}>{t('settings.quickGuidesSubtitle')}</div>
+              </div>
+            </div>
+          </div>
+          <button onClick={() => onOpenGuides?.()} style={{ width: '100%', padding: '14px', background: theme.primary, color: '#fff', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', boxShadow: theme.shadow }}>
+            {t('settings.openQuickGuides')}
+          </button>
+        </div>
+
+        <div style={card}>
+          <div style={sectionTitle}><span>🎯</span> Savings Goals</div>
+          <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.6, marginBottom: '16px' }}>
+            Create personal saving targets with a due date and track how much progress you have already made.
+          </div>
+          {goalDeleteMsg && <div style={{ fontSize: '12px', color: goalDeleteMsg.type === 'success' ? '#10b981' : '#ef4444', marginBottom: '12px', fontWeight: '600' }}>{goalDeleteMsg.text}</div>}
+
+          {savingsGoals.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '18px' }}>
+              {savingsGoals.map((goal) => {
+                const progressPct = Math.min(100, Math.round((goal.current_amount / goal.target_amount) * 100));
+                const remaining = Math.max(0, goal.target_amount - goal.current_amount);
+                const linkedEnvelope = envelopes.find((env) => env.id === goal.linked_envelope_id);
+                return (
+                  <div key={goal.id} style={{ padding: '16px', borderRadius: '18px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: '12px', marginBottom: '10px' }}>
+                      <div>
+                        <div style={{ fontSize: '16px', fontWeight: '800', color: theme.text, marginBottom: '4px' }}>{goal.name}</div>
+                        <div style={{ fontSize: '12px', color: theme.textMuted, lineHeight: 1.6 }}>
+                          {formatCurrency(goal.current_amount, budget?.currency || 'USD')} saved of {formatCurrency(goal.target_amount, budget?.currency || 'USD')}
+                          {' · '}Target date: {new Date(goal.target_date).toLocaleDateString()}
+                          {linkedEnvelope ? ` · Linked to ${linkedEnvelope.name}` : ''}
+                        </div>
+                        {goal.note && <div style={{ fontSize: '12px', color: theme.textSubtle, marginTop: '6px' }}>{goal.note}</div>}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', width: isMobile ? '100%' : 'auto' }}>
+                        <button onClick={() => startEditingGoal(goal.id)} style={{ flex: isMobile ? 1 : '0 0 auto', padding: '10px 14px', borderRadius: '10px', border: `1px solid ${theme.borderStrong}`, background: theme.surfaceStrong, color: theme.primary, fontWeight: '700', cursor: 'pointer' }}>
+                          Edit
+                        </button>
+                        <button onClick={() => handleDeleteGoal(goal.id, goal.name)} style={{ flex: isMobile ? 1 : '0 0 auto', padding: '10px 14px', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.12)', color: '#ef4444', fontWeight: '700', cursor: 'pointer' }}>
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ width: '100%', height: '10px', borderRadius: '999px', backgroundColor: theme.surfaceStrong, overflow: 'hidden', marginBottom: '8px' }}>
+                      <div style={{ width: `${progressPct}%`, height: '100%', borderRadius: '999px', background: progressPct >= 100 ? '#10b981' : theme.primary, transition: 'width 0.3s ease' }} />
+                    </div>
+                    <div style={{ fontSize: '12px', color: theme.textMuted }}>
+                      {progressPct}% complete · {formatCurrency(remaining, budget?.currency || 'USD')} remaining
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ padding: '24px 20px', borderRadius: '18px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}`, marginBottom: '18px', textAlign: 'center' }}>
+              <div style={{ fontSize: '36px', marginBottom: '10px' }}>🏁</div>
+              <div style={{ fontSize: '18px', fontWeight: '800', color: theme.text, marginBottom: '8px' }}>No savings goals yet</div>
+              <div style={{ fontSize: '13px', color: theme.textMuted, lineHeight: 1.7 }}>
+                Add a target like emergency fund, vacation, or school fees and track progress here.
+              </div>
+            </div>
+          )}
+
+          {!showGoalForm ? (
+            <button
+              onClick={() => { resetGoalForm(); setShowGoalForm(true); }}
+              style={{ width: '100%', padding: '14px', background: theme.primary, color: '#fff', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', boxShadow: theme.shadow }}
+            >
+              + Add Savings Goal
+            </button>
+          ) : (
+            <div style={{ backgroundColor: theme.surfaceMuted, borderRadius: '18px', padding: '16px', border: `1px solid ${theme.border}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: '800', color: theme.text, margin: 0 }}>
+                  {editingGoalId ? 'Edit Savings Goal' : 'New Savings Goal'}
+                </h3>
+                <button onClick={() => { setShowGoalForm(false); resetGoalForm(); }} style={{ background: 'none', border: 'none', color: theme.textSubtle, cursor: 'pointer', fontSize: '18px' }}>×</button>
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={lbl}>Goal name</label>
+                <input type="text" value={goalName} onChange={(e) => setGoalName(e.target.value)} placeholder="e.g. Emergency fund, Vacation" style={fieldStyle} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label style={lbl}>Target amount</label>
+                  <input type="text" inputMode="decimal" value={goalTargetAmount} onChange={(e) => setGoalTargetAmount(formatNumberInput(e.target.value))} placeholder="0.00" style={fieldStyle} />
+                </div>
+                <div>
+                  <label style={lbl}>Already saved</label>
+                  <input type="text" inputMode="decimal" value={goalCurrentAmount} onChange={(e) => setGoalCurrentAmount(formatNumberInput(e.target.value))} placeholder="0.00" style={fieldStyle} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label style={lbl}>Target date</label>
+                  <input type="date" value={goalTargetDate} onChange={(e) => setGoalTargetDate(e.target.value)} style={fieldStyle} />
+                </div>
+                <div>
+                  <label style={lbl}>Linked envelope (optional)</label>
+                  <select value={goalEnvelopeId} onChange={(e) => setGoalEnvelopeId(e.target.value)} style={fieldStyle}>
+                    <option value="">No linked envelope</option>
+                    {envelopes.map((env) => (
+                      <option key={env.id} value={env.id}>{env.icon} {env.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={lbl}>Note (optional)</label>
+                <input type="text" value={goalNote} onChange={(e) => setGoalNote(e.target.value)} placeholder="Why this goal matters" style={fieldStyle} />
+              </div>
+
+              <button onClick={handleSaveGoal} disabled={loading} style={{ width: '100%', padding: '12px', background: theme.primary, color: '#fff', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer' }}>
+                {loading ? 'Saving...' : editingGoalId ? 'Update Goal' : 'Save Goal'}
+              </button>
+              {goalMsg && <div style={{ fontSize: '12px', color: goalMsg.type === 'success' ? '#10b981' : '#ef4444', marginTop: '6px', fontWeight: '600' }}>{goalMsg.text}</div>}
+            </div>
+          )}
+        </div>
+
+        <div style={card}>
+          <div style={sectionTitle}><span>{mode === 'dark' ? '🌙' : '☀️'}</span> {t('settings.appearance')}</div>
+          <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.6, marginBottom: '16px' }}>{t('settings.appearanceSubtitle')}</div>
           <div style={{ display: 'flex', gap: '10px', flexDirection: isMobile ? 'column' : 'row', marginBottom: '12px' }}>
             <button onClick={() => setMode('light')} style={{ flex: 1, padding: '12px', borderRadius: '14px', border: `1px solid ${mode === 'light' ? theme.borderStrong : theme.border}`, background: mode === 'light' ? theme.primary : theme.surfaceMuted, color: mode === 'light' ? '#fff' : theme.text, fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>
-              Light mode
+              {t('settings.lightMode')}
             </button>
             <button onClick={() => setMode('dark')} style={{ flex: 1, padding: '12px', borderRadius: '14px', border: `1px solid ${mode === 'dark' ? theme.borderStrong : theme.border}`, background: mode === 'dark' ? theme.primary : theme.surfaceMuted, color: mode === 'dark' ? '#fff' : theme.text, fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>
-              Dark mode
+              {t('settings.darkMode')}
             </button>
           </div>
           <button onClick={toggleMode} style={{ width: '100%', padding: '12px', borderRadius: '14px', border: `1px solid ${theme.border}`, background: theme.surfaceMuted, color: theme.text, fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>
-            Toggle to {mode === 'light' ? 'dark' : 'light'}
+            {t('settings.toggleTo')} {mode === 'light' ? t('settings.darkMode').toLowerCase() : t('settings.lightMode').toLowerCase()}
           </button>
         </div>
 

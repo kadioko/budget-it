@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { supabase } from '@/lib/supabase';
-import { Budget, Transaction, BudgetStats, RecurringTransaction, Envelope, CategoryBudgetMap } from '@/types/index';
+import { Budget, Transaction, BudgetStats, RecurringTransaction, Envelope, CategoryBudgetMap, SavingsGoal } from '@/types/index';
 import { calculateBudgetStats } from '@/lib/budget-logic';
 
 interface PendingAction {
@@ -30,6 +30,7 @@ interface BudgetState {
   envelopes: Envelope[];
   transactions: Transaction[];
   recurringTransactions: RecurringTransaction[];
+  savingsGoals: SavingsGoal[];
   stats: BudgetStats | null;
   loading: boolean;
   error: string | null;
@@ -45,6 +46,7 @@ interface BudgetState {
   deleteEnvelope: (envelopeId: string) => Promise<void>;
   fetchTransactions: (userId: string) => Promise<void>;
   fetchRecurringTransactions: (userId: string) => Promise<void>;
+  fetchSavingsGoals: (userId: string) => Promise<void>;
   createBudget: (
     userId: string,
     dailyTarget: number,
@@ -98,6 +100,25 @@ interface BudgetState {
     note?: string
   ) => Promise<void>;
   deleteRecurringTransaction: (id: string) => Promise<void>;
+  addSavingsGoal: (
+    userId: string,
+    name: string,
+    targetAmount: number,
+    currentAmount: number,
+    targetDate: string,
+    note?: string,
+    linkedEnvelopeId?: string | null
+  ) => Promise<void>;
+  updateSavingsGoal: (
+    goalId: string,
+    name: string,
+    targetAmount: number,
+    currentAmount: number,
+    targetDate: string,
+    note?: string,
+    linkedEnvelopeId?: string | null
+  ) => Promise<void>;
+  deleteSavingsGoal: (goalId: string) => Promise<void>;
   processRecurringTransactions: (userId: string) => Promise<void>;
   calculateStats: () => void;
   clearData: () => void;
@@ -111,6 +132,7 @@ export const useBudgetStore = create<BudgetState>()(
       envelopes: [],
       transactions: [],
       recurringTransactions: [],
+      savingsGoals: [],
       stats: null,
       loading: false,
       error: null,
@@ -170,7 +192,7 @@ export const useBudgetStore = create<BudgetState>()(
       },
 
       clearData: () => {
-        set({ budget: null, categoryBudgets: {}, transactions: [], recurringTransactions: [], stats: null, lastSync: null, pendingActions: [] });
+        set({ budget: null, categoryBudgets: {}, transactions: [], recurringTransactions: [], savingsGoals: [], stats: null, lastSync: null, pendingActions: [] });
       },
 
   fetchBudget: async (userId: string) => {
@@ -620,6 +642,24 @@ export const useBudgetStore = create<BudgetState>()(
     }
   },
 
+  fetchSavingsGoals: async (userId: string) => {
+    set({ loading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('savings_goals')
+        .select('*')
+        .eq('user_id', userId)
+        .order('target_date', { ascending: true });
+
+      if (error) throw error;
+      set({ savingsGoals: data || [] });
+    } catch (err: any) {
+      set({ error: err.message });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
   saveCategoryBudgets: async (budgetId: string, categoryBudgets: CategoryBudgetMap) => {
     set({ loading: true, error: null });
     const sanitizedBudgets = Object.fromEntries(
@@ -862,6 +902,99 @@ export const useBudgetStore = create<BudgetState>()(
       if (error) throw error;
       const filtered = get().recurringTransactions.filter((t) => t.id !== id);
       set({ recurringTransactions: filtered });
+    } catch (err: any) {
+      set({ error: err.message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  addSavingsGoal: async (
+    userId: string,
+    name: string,
+    targetAmount: number,
+    currentAmount: number,
+    targetDate: string,
+    note?: string,
+    linkedEnvelopeId?: string | null
+  ) => {
+    set({ loading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('savings_goals')
+        .insert([{
+          user_id: userId,
+          name,
+          target_amount: targetAmount,
+          current_amount: currentAmount,
+          target_date: targetDate,
+          note: note || null,
+          linked_envelope_id: linkedEnvelopeId || null,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      set({ savingsGoals: [...get().savingsGoals, data].sort((a, b) => a.target_date.localeCompare(b.target_date)) });
+    } catch (err: any) {
+      set({ error: err.message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  updateSavingsGoal: async (
+    goalId: string,
+    name: string,
+    targetAmount: number,
+    currentAmount: number,
+    targetDate: string,
+    note?: string,
+    linkedEnvelopeId?: string | null
+  ) => {
+    set({ loading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('savings_goals')
+        .update({
+          name,
+          target_amount: targetAmount,
+          current_amount: currentAmount,
+          target_date: targetDate,
+          note: note || null,
+          linked_envelope_id: linkedEnvelopeId || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', goalId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      set({
+        savingsGoals: get().savingsGoals
+          .map((goal) => goal.id === goalId ? data : goal)
+          .sort((a, b) => a.target_date.localeCompare(b.target_date)),
+      });
+    } catch (err: any) {
+      set({ error: err.message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  deleteSavingsGoal: async (goalId: string) => {
+    set({ loading: true, error: null });
+    try {
+      const { error } = await supabase
+        .from('savings_goals')
+        .delete()
+        .eq('id', goalId);
+
+      if (error) throw error;
+      set({ savingsGoals: get().savingsGoals.filter((goal) => goal.id !== goalId) });
     } catch (err: any) {
       set({ error: err.message });
       throw err;

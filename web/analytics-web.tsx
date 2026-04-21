@@ -50,11 +50,13 @@ const toDateString = (date: Date) => date.toISOString().split('T')[0];
 
 export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
   const { user } = useAuthStore();
-  const { transactions, budget, loading, fetchTransactions } = useBudgetStore();
+  const { transactions, budget, envelopes, loading, error, isOffline, fetchTransactions } = useBudgetStore();
   const { mode } = useThemeStore();
   const theme = themeTokens[mode];
   
   const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'week' | 'all'>('month');
+  const [selectedAccountId, setSelectedAccountId] = useState<'all' | 'bank' | string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isMobile, setIsMobile] = useState(false);
 
   // Fetch transactions on mount
@@ -65,44 +67,74 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  // Calculate analytics data
-  const calculateAnalytics = () => {
-    if (!transactions.length) return null;
+  const accountOptions = useMemo(
+    () => [
+      { id: 'all', label: 'All accounts' },
+      { id: 'bank', label: 'Bank account' },
+      ...envelopes.map((envelope) => ({ id: envelope.id, label: `${envelope.icon} ${envelope.name}` })),
+    ],
+    [envelopes]
+  );
 
+  const categoryOptions = useMemo(
+    () => ['all', ...Array.from(new Set(transactions.map((transaction) => transaction.category))).sort((a, b) => a.localeCompare(b))],
+    [transactions]
+  );
+
+  const analyticsRange = useMemo(() => {
     const now = new Date();
     let startDate = new Date();
     let endDate = new Date(now);
-    
+
     if (selectedPeriod === 'week') {
       startDate.setDate(now.getDate() - 7);
     } else if (selectedPeriod === 'month') {
-      const cycle = budget ? getBudgetCycleWindow(now, budget.month_start_day) : { monthStart: new Date(now.getFullYear(), now.getMonth(), 1), monthEnd: now };
+      const cycle = budget
+        ? getBudgetCycleWindow(now, budget.month_start_day)
+        : { monthStart: new Date(now.getFullYear(), now.getMonth(), 1), monthEnd: now };
       startDate = cycle.monthStart;
       endDate = cycle.monthEnd;
     } else {
-      startDate = new Date(0); // All time
+      startDate = new Date(0);
     }
 
-    const filteredTransactions = transactions.filter(t => 
-      new Date(t.date) >= startDate && new Date(t.date) <= endDate
-    );
+    return { startDate, endDate };
+  }, [budget, selectedPeriod]);
 
-    // Calculate category breakdown
+  const filteredTransactions = useMemo(
+    () =>
+      transactions.filter((transaction) => {
+        const transactionDate = new Date(transaction.date);
+        const matchesPeriod = transactionDate >= analyticsRange.startDate && transactionDate <= analyticsRange.endDate;
+        const matchesAccount = selectedAccountId === 'all'
+          ? true
+          : selectedAccountId === 'bank'
+            ? !transaction.envelope_id
+            : transaction.envelope_id === selectedAccountId;
+        const matchesCategory = selectedCategory === 'all' || transaction.category === selectedCategory;
+        return matchesPeriod && matchesAccount && matchesCategory;
+      }),
+    [analyticsRange.endDate, analyticsRange.startDate, selectedAccountId, selectedCategory, transactions]
+  );
+
+  const analytics = useMemo(() => {
+    if (!filteredTransactions.length) return null;
+
     const categoryBreakdown: { [key: string]: { total: number; count: number; type: 'income' | 'expense' } } = {};
     let totalIncome = 0;
     let totalExpenses = 0;
 
-    filteredTransactions.forEach(t => {
-      const isIncome = t.amount < 0;
-      const amount = Math.abs(t.amount);
-      
-      if (!categoryBreakdown[t.category]) {
-        categoryBreakdown[t.category] = { total: 0, count: 0, type: isIncome ? 'income' : 'expense' };
+    filteredTransactions.forEach((transaction) => {
+      const isIncome = transaction.amount < 0;
+      const amount = Math.abs(transaction.amount);
+
+      if (!categoryBreakdown[transaction.category]) {
+        categoryBreakdown[transaction.category] = { total: 0, count: 0, type: isIncome ? 'income' : 'expense' };
       }
-      
-      categoryBreakdown[t.category].total += amount;
-      categoryBreakdown[t.category].count += 1;
-      
+
+      categoryBreakdown[transaction.category].total += amount;
+      categoryBreakdown[transaction.category].count += 1;
+
       if (isIncome) {
         totalIncome += amount;
       } else {
@@ -110,14 +142,9 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
       }
     });
 
-    // Calculate daily averages
-    const daysDiff = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    const daysDiff = Math.max(1, Math.ceil((analyticsRange.endDate.getTime() - analyticsRange.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
     const avgDailyIncome = totalIncome / daysDiff;
     const avgDailyExpenses = totalExpenses / daysDiff;
-
-    // Calculate monthly projection
-    const monthlyIncomeProjection = avgDailyIncome * 30;
-    const monthlyExpensesProjection = avgDailyExpenses * 30;
 
     return {
       totalIncome,
@@ -125,17 +152,25 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
       netIncome: totalIncome - totalExpenses,
       avgDailyIncome,
       avgDailyExpenses,
-      monthlyIncomeProjection,
-      monthlyExpensesProjection,
+      monthlyIncomeProjection: avgDailyIncome * 30,
+      monthlyExpensesProjection: avgDailyExpenses * 30,
       categoryBreakdown,
       transactionCount: filteredTransactions.length,
-      daysDiff
+      daysDiff,
     };
-  };
+  }, [analyticsRange.endDate, analyticsRange.startDate, filteredTransactions]);
 
-  const analytics = calculateAnalytics();
   const monthComparison = useMemo(() => {
-    if (!transactions.length) return [];
+    const scopedTransactions = transactions.filter((transaction) => {
+      const matchesAccount = selectedAccountId === 'all'
+        ? true
+        : selectedAccountId === 'bank'
+          ? !transaction.envelope_id
+          : transaction.envelope_id === selectedAccountId;
+      const matchesCategory = selectedCategory === 'all' || transaction.category === selectedCategory;
+      return matchesAccount && matchesCategory;
+    });
+    if (!scopedTransactions.length) return [];
 
     const now = new Date();
     const currentCycle = budget
@@ -146,7 +181,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
       : { monthStart: new Date(now.getFullYear(), now.getMonth() - 1, 1), monthEnd: new Date(now.getFullYear(), now.getMonth(), 0) };
     const categoryTotals = new Map<string, { current: number; previous: number }>();
 
-    transactions.forEach((transaction) => {
+    scopedTransactions.forEach((transaction) => {
       if (transaction.amount <= 0) return;
       const existing = categoryTotals.get(transaction.category) || { current: 0, previous: 0 };
       if (transaction.date >= toDateString(currentCycle.monthStart) && transaction.date <= toDateString(currentCycle.monthEnd)) {
@@ -173,7 +208,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
       })
       .filter((item) => item.current > 0 || item.previous > 0)
       .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
-  }, [transactions]);
+  }, [budget, selectedAccountId, selectedCategory, transactions]);
 
   // Simple bar chart component
   const SimpleBarChart = ({ data, title, color }: { data: { label: string; value: number }[]; title: string; color: string }) => {
@@ -258,8 +293,42 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
           right: '0'
         }}>
           <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              <div style={{ fontSize: '18px', color: theme.textMuted }}>Loading analytics...</div>
+            <div style={{ textAlign: 'center', padding: '56px 32px', background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: '24px', boxShadow: theme.shadow }}>
+              <div style={{ fontSize: '40px', marginBottom: '14px' }}>📈</div>
+              <div style={{ fontSize: '20px', fontWeight: '800', color: theme.text, marginBottom: '8px' }}>Loading analytics</div>
+              <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.6 }}>
+                We’re preparing your cycle trends, category breakdowns, and spending comparisons.
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (error && transactions.length === 0) {
+    return (
+      <>
+        <style>{`
+          html, body {
+            scrollbar-gutter: stable;
+            overflow-y: scroll;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            background: ${theme.background};
+          }
+          * { box-sizing: border-box; }
+        `}</style>
+        <div style={{ minHeight: '100vh', backgroundColor: theme.background, padding: '20px', boxSizing: 'border-box', width: '100%', maxWidth: '100vw', margin: '0', left: '0', right: '0' }}>
+          <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+            <div style={{ textAlign: 'center', padding: '56px 28px', background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: '24px', boxShadow: theme.shadow }}>
+              <div style={{ fontSize: '44px', marginBottom: '14px' }}>⚠️</div>
+              <div style={{ fontSize: '22px', fontWeight: '800', color: theme.text, marginBottom: '8px' }}>Analytics could not load</div>
+              <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.7, marginBottom: '18px' }}>{error}</div>
+              <button onClick={onBack} style={{ padding: '12px 18px', borderRadius: '14px', border: 'none', background: theme.primary, color: '#fff', fontWeight: '700', cursor: 'pointer' }}>
+                Back to dashboard
+              </button>
             </div>
           </div>
         </div>
@@ -295,11 +364,19 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
           right: '0'
         }}>
           <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              <div style={{ fontSize: '18px', color: theme.textMuted }}>No data available for analytics</div>
-              <div style={{ fontSize: '14px', color: theme.textSubtle, marginTop: '8px' }}>
-                Add some transactions to see your spending analytics!
+            <div style={{ textAlign: 'center', padding: '56px 32px', background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: '24px', boxShadow: theme.shadow }}>
+              <div style={{ fontSize: '44px', marginBottom: '14px' }}>{isOffline ? '📡' : '🧾'}</div>
+              <div style={{ fontSize: '22px', color: theme.text, fontWeight: '800', marginBottom: '8px' }}>
+                {isOffline ? 'Analytics are limited offline' : 'No analytics yet'}
               </div>
+              <div style={{ fontSize: '14px', color: theme.textSubtle, marginTop: '8px', lineHeight: 1.7, marginBottom: '18px' }}>
+                {isOffline
+                  ? 'Reconnect to refresh your latest data, or keep logging transactions and review the charts once you are back online.'
+                    : 'Add a few transactions first, or broaden your filters, then come back here to see trends, category breakdowns, and cycle comparisons.'}
+              </div>
+              <button onClick={onBack} style={{ padding: '12px 18px', borderRadius: '14px', border: 'none', background: theme.primary, color: '#fff', fontWeight: '700', cursor: 'pointer' }}>
+                Back to dashboard
+              </button>
             </div>
           </div>
         </div>
@@ -364,6 +441,14 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
         right: '0'
       }}>
         <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+          {isOffline && (
+            <div className="analytics-shell-card" style={{ borderRadius: '18px', padding: '14px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px', color: theme.text }}>
+              <span style={{ fontSize: '18px' }}>📡</span>
+              <div style={{ fontSize: '13px', lineHeight: 1.6 }}>
+                You are offline. Analytics shown here may be based on the last synced data.
+              </div>
+            </div>
+          )}
           {/* Header */}
           <div style={{ 
             display: 'flex', 
@@ -418,11 +503,51 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
                     transition: 'all 0.2s',
                   }}
                 >
-                  {period === 'week' ? 'Last Week' : period === 'month' ? 'Last Month' : 'All Time'}
-                </button>
-              ))}
+                    {period === 'week' ? 'Last 7 days' : period === 'month' ? 'Current cycle' : 'All time'}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
+                <select
+                  value={selectedAccountId}
+                  onChange={(e) => setSelectedAccountId(e.target.value as 'all' | 'bank' | string)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: '14px',
+                    border: `1px solid ${theme.border}`,
+                    backgroundColor: theme.surfaceMuted,
+                    color: theme.text,
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {accountOptions.map((option) => (
+                    <option key={option.id} value={option.id}>{option.label}</option>
+                  ))}
+                </select>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: '14px',
+                    border: `1px solid ${theme.border}`,
+                    backgroundColor: theme.surfaceMuted,
+                    color: theme.text,
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {categoryOptions.map((option) => (
+                    <option key={option} value={option}>{option === 'all' ? 'All categories' : option}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
 
           {/* Summary Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
@@ -496,10 +621,10 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
 
             <div style={{ marginTop: '8px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Trends</div>
-              <h3 style={{ fontSize: '18px', fontWeight: 800, color: theme.text, margin: '0 0 16px 0', letterSpacing: '-0.4px' }}>Current month vs previous month</h3>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, color: theme.text, margin: '0 0 16px 0', letterSpacing: '-0.4px' }}>Current cycle vs previous cycle</h3>
               {monthComparison.length === 0 ? (
                 <div style={{ padding: '16px', borderRadius: '16px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}`, fontSize: '13px', color: theme.textMuted, lineHeight: 1.6 }}>
-                  Add more transaction history to compare month-over-month spending patterns by category.
+                  Add more history for this filter set to compare cycle-over-cycle spending patterns by category.
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -565,7 +690,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
                 // Simple CSV export
                 const csvContent = [
                   ['Date', 'Category', 'Amount', 'Type', 'Note'],
-                  ...transactions.map(t => [
+                  ...filteredTransactions.map(t => [
                     t.date,
                     t.category,
                     Math.abs(t.amount).toString(),

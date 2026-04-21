@@ -30,7 +30,7 @@ const formatCurrency = (amount: number, currency: string) => {
 
 export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
   const { user } = useAuthStore();
-  const { transactions, loading, budget, deleteTransaction, fetchTransactions } = useBudgetStore();
+  const { transactions, loading, budget, error, isOffline, deleteTransaction, fetchTransactions } = useBudgetStore();
   const { mode } = useThemeStore();
   const theme = themeTokens[mode];
   
@@ -239,6 +239,16 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
 
           {/* Filters & Search */}
           <div className="section-card" style={{ padding: '20px', borderRadius: '24px', marginBottom: '24px' }}>
+            {isOffline && (
+              <div style={{ marginBottom: '16px', padding: '12px 14px', borderRadius: '14px', backgroundColor: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.2)', color: '#b45309', fontSize: '13px', lineHeight: 1.6 }}>
+                You’re offline. The transaction list below may be based on your last synced data.
+              </div>
+            )}
+            {error && (
+              <div style={{ marginBottom: '16px', padding: '12px 14px', borderRadius: '14px', backgroundColor: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.2)', color: '#dc2626', fontSize: '13px', lineHeight: 1.6 }}>
+                {error}
+              </div>
+            )}
             <div style={{ marginBottom: '16px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.9px', marginBottom: '6px' }}>Filters</div>
               <div style={{ fontSize: '18px', fontWeight: 800, color: theme.text, letterSpacing: '-0.4px' }}>Find the transaction you need fast</div>
@@ -288,10 +298,16 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
 
           {/* Transaction List */}
           <div className="section-card" style={{ borderRadius: '24px', overflow: 'hidden' }}>
-            {filteredTransactions.length === 0 ? (
+            {transactions.length === 0 ? (
               <div style={{ padding: '56px 24px', textAlign: 'center', color: theme.textSubtle }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.9 }}>📭</div>
-                <div style={{ fontSize: '20px', fontWeight: '900', color: theme.text, marginBottom: '8px' }}>No transactions found</div>
+                <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.9 }}>🧾</div>
+                <div style={{ fontSize: '20px', fontWeight: '900', color: theme.text, marginBottom: '8px' }}>No transactions yet</div>
+                <div style={{ fontSize: '15px', lineHeight: 1.6 }}>Start with your first expense, income, or transfer and it will show up here.</div>
+              </div>
+            ) : filteredTransactions.length === 0 ? (
+              <div style={{ padding: '56px 24px', textAlign: 'center', color: theme.textSubtle }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.9 }}>🔎</div>
+                <div style={{ fontSize: '20px', fontWeight: '900', color: theme.text, marginBottom: '8px' }}>No transactions match these filters</div>
                 <div style={{ fontSize: '15px', lineHeight: 1.6 }}>Try changing your filters, search term, or add a new transaction.</div>
               </div>
             ) : (

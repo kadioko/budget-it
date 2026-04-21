@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
+import { useI18n } from '../src/store/language';
 import { themeTokens, useThemeStore } from '../src/store/theme';
 import { getBudgetCycleWindow } from '../src/lib/budget-logic';
 import SettingsWeb from './settings-web';
@@ -9,6 +10,7 @@ import AddTransactionWeb from './add-transaction-web';
 import TransactionsWeb from './transactions-web';
 import AnalyticsWeb from './analytics-web';
 import TransferFundsWeb from './transfer-funds-web';
+import HelpGuidesWeb from './help-guides-web';
 
 const formatCurrency = (amount: number, currency: string) => {
   if (isNaN(amount) || amount === null || amount === undefined) amount = 0;
@@ -88,16 +90,19 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
 
 export default function DashboardWeb() {
   const { user } = useAuthStore();
-  const { budget, categoryBudgets, envelopes, stats, transactions, recurringTransactions, isOffline, pendingActions, setOfflineStatus, syncOfflineActions, fetchBudget, fetchEnvelopes, fetchTransactions, fetchRecurringTransactions, processRecurringTransactions } = useBudgetStore();
+  const { budget, categoryBudgets, envelopes, stats, transactions, recurringTransactions, savingsGoals, isOffline, pendingActions, setOfflineStatus, syncOfflineActions, fetchBudget, fetchEnvelopes, fetchTransactions, fetchRecurringTransactions, fetchSavingsGoals, processRecurringTransactions } = useBudgetStore();
+  const { t } = useI18n();
   const { mode } = useThemeStore();
   const theme = themeTokens[mode];
   const isLightMode = mode === 'light';
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'settings' | 'add-transaction' | 'transactions' | 'analytics' | 'transfer'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'settings' | 'add-transaction' | 'transactions' | 'analytics' | 'transfer' | 'guides'>('dashboard');
   const [quickAddPreset, setQuickAddPreset] = useState<{ type: 'expense' | 'income'; category?: string; note?: string } | null>(null);
   const [dataReady, setDataReady] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState<'all' | 'bank' | string>('all');
+  const [dashboardTimeFilter, setDashboardTimeFilter] = useState<'7d' | 'cycle' | 'all'>('7d');
+  const [dashboardCategoryFilter, setDashboardCategoryFilter] = useState<string>('all');
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => setToast({ message, type });
 
@@ -126,6 +131,7 @@ export default function DashboardWeb() {
         fetchEnvelopes(user.id),
         fetchTransactions(user.id),
         fetchRecurringTransactions(user.id),
+        fetchSavingsGoals(user.id),
         processRecurringTransactions(user.id)
       ]).finally(() => setDataReady(true));
       const timer = setTimeout(() => setDataReady(true), 5000);
@@ -145,16 +151,16 @@ export default function DashboardWeb() {
   }, []);
 
   const accountOptions = useMemo(() => {
-    const baseOptions = [{ id: 'bank', label: 'Bank account', icon: '🏦', balance: budget?.bank_balance || 0, currency: budget?.currency || 'USD' }];
+    const baseOptions = [{ id: 'bank', label: t('dashboard.bankAccount'), icon: '🏦', balance: budget?.bank_balance || 0, currency: budget?.currency || 'USD' }];
     const envelopeOptions = envelopes.map((env) => ({ id: env.id, label: env.name, icon: env.icon, balance: env.balance, currency: env.currency }));
     const totalBalance = baseOptions.reduce((sum, item) => sum + item.balance, 0) + envelopeOptions.reduce((sum, item) => sum + item.balance, 0);
 
     return [
-      { id: 'all', label: 'All accounts', icon: '🧾', balance: totalBalance, currency: budget?.currency || 'USD' },
+      { id: 'all', label: t('dashboard.allAccounts'), icon: '🧾', balance: totalBalance, currency: budget?.currency || 'USD' },
       ...baseOptions,
       ...envelopeOptions,
     ];
-  }, [budget?.bank_balance, budget?.currency, envelopes]);
+  }, [budget?.bank_balance, budget?.currency, envelopes, t]);
 
   const selectedAccount = useMemo(
     () => accountOptions.find((option) => option.id === selectedAccountId) || accountOptions[0],
@@ -172,10 +178,38 @@ export default function DashboardWeb() {
     }
   }, [accountOptions, selectedAccount, selectedAccountId]);
 
-  const recentTransactions = useMemo(() =>
-    [...transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5),
+  const dashboardCategoryOptions = useMemo(
+    () => ['all', ...Array.from(new Set(transactions.map((transaction) => transaction.category))).sort((a, b) => a.localeCompare(b))],
     [transactions]
   );
+
+  const recentTransactions = useMemo(() => {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(now.getDate() - 7);
+    const cycleWindow = budget
+      ? getBudgetCycleWindow(now, budget.month_start_day)
+      : { monthStart: new Date(now.getFullYear(), now.getMonth(), 1), monthEnd: now };
+
+    return [...transactions]
+      .filter((transaction) => {
+        const transactionDate = new Date(transaction.date);
+        const matchesAccount = selectedAccountId === 'all'
+          ? true
+          : selectedAccountId === 'bank'
+            ? !transaction.envelope_id
+            : transaction.envelope_id === selectedAccountId;
+        const matchesCategory = dashboardCategoryFilter === 'all' || transaction.category === dashboardCategoryFilter;
+        const matchesTime = dashboardTimeFilter === 'all'
+          ? true
+          : dashboardTimeFilter === '7d'
+            ? transactionDate >= sevenDaysAgo
+            : transactionDate >= cycleWindow.monthStart && transactionDate <= cycleWindow.monthEnd;
+        return matchesAccount && matchesCategory && matchesTime;
+      })
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 5);
+  }, [budget, dashboardCategoryFilter, dashboardTimeFilter, selectedAccountId, transactions]);
 
   const budgetInsights = useMemo(() => {
     if (!budget || !stats) return null;
@@ -291,6 +325,23 @@ export default function DashboardWeb() {
     return items.slice(0, 4);
   }, [budget, budgetInsights, recurringTransactions, stats]);
 
+  const goalHighlights = useMemo(() => {
+    return savingsGoals
+      .map((goal) => {
+        const percent = goal.target_amount > 0 ? Math.min(100, Math.round((goal.current_amount / goal.target_amount) * 100)) : 0;
+        const remaining = Math.max(0, goal.target_amount - goal.current_amount);
+        const daysLeft = Math.max(0, Math.ceil((new Date(goal.target_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)));
+        return {
+          ...goal,
+          percent,
+          remaining,
+          daysLeft,
+        };
+      })
+      .sort((a, b) => a.daysLeft - b.daysLeft)
+      .slice(0, 3);
+  }, [savingsGoals]);
+
   if (!dataReady) {
     return (
       <>
@@ -303,7 +354,7 @@ export default function DashboardWeb() {
     );
   }
 
-  if (currentView === 'settings') return <SettingsWeb onBack={() => setCurrentView('dashboard')} />;
+  if (currentView === 'settings') return <SettingsWeb onBack={() => setCurrentView('dashboard')} onOpenGuides={() => setCurrentView('guides')} />;
   if (currentView === 'add-transaction') {
     return <AddTransactionWeb
       initialType={quickAddPreset?.type}
@@ -318,6 +369,7 @@ export default function DashboardWeb() {
   }
   if (currentView === 'transactions') return <TransactionsWeb onBack={() => setCurrentView('dashboard')} />;
   if (currentView === 'analytics') return <AnalyticsWeb onBack={() => setCurrentView('dashboard')} />;
+  if (currentView === 'guides') return <HelpGuidesWeb onBack={() => setCurrentView('dashboard')} />;
   if (currentView === 'transfer') return <TransferFundsWeb onBack={() => {
     setCurrentView('dashboard');
     if (user) { fetchTransactions(user.id); fetchBudget(user.id); fetchEnvelopes(user.id); }
@@ -397,6 +449,17 @@ export default function DashboardWeb() {
         .dashboard-shell { max-width: 1180px; }
         .account-filter-btn { transition: all 0.2s ease; }
         .account-filter-btn:hover { transform: translateY(-1px); }
+        .help-orb {
+          width: 40px;
+          height: 40px;
+          border-radius: 999px;
+          border: 1px solid rgba(125, 211, 252, 0.35);
+          background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 55%, #38bdf8 100%);
+          color: #fff;
+          font-size: 18px;
+          font-weight: 900;
+          box-shadow: 0 14px 28px rgba(29, 78, 216, 0.28);
+        }
         @media (max-width: 639px) {
           .dashboard-shell {
             max-width: 760px;
@@ -420,17 +483,20 @@ export default function DashboardWeb() {
         <div className="dashboard-shell" style={{ margin: '0 auto', padding: '12px 24px', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span style={{ fontSize: '22px' }}>💰</span>
-            <span style={{ fontSize: '17px', fontWeight: '800', color: theme.text, letterSpacing: '-0.3px' }}>Budget It</span>
+            <span style={{ fontSize: '17px', fontWeight: '800', color: theme.text, letterSpacing: '-0.3px' }}>{t('common.appName')}</span>
           </div>
           {isOffline && (
             <div style={{ fontSize: '11px', fontWeight: '700', color: '#f39c12', backgroundColor: 'rgba(243,156,18,0.15)', border: '1px solid rgba(243,156,18,0.3)', borderRadius: '6px', padding: '3px 8px' }}>⚡ Offline</div>
           )}
           <div className="dashboard-nav-actions" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', flex: '1 1 auto' }}>
+            <button className="nav-btn help-orb" onClick={() => setCurrentView('guides')} title={t('dashboard.helpTitle')} aria-label={t('dashboard.helpTitle')}>
+              {t('common.questionMark')}
+            </button>
             {([
               { label: '+ Add', view: 'add-transaction', bg: 'linear-gradient(135deg, #27ae60, #1e8449)', shadow: 'rgba(39,174,96,0.4)' },
-              { label: '📋 History', view: 'transactions', bg: 'linear-gradient(135deg, #8e44ad, #6c3483)', shadow: 'rgba(142,68,173,0.4)' },
-              { label: '📈 Analytics', view: 'analytics', bg: 'linear-gradient(135deg, #e67e22, #ca6f1e)', shadow: 'rgba(230,126,34,0.4)' },
-              { label: '⚙️ Settings', view: 'settings', bg: 'linear-gradient(135deg, #5d6d7e, #4d5d6e)', shadow: 'rgba(93,109,126,0.4)' },
+              { label: `📋 ${t('dashboard.history')}`, view: 'transactions', bg: 'linear-gradient(135deg, #8e44ad, #6c3483)', shadow: 'rgba(142,68,173,0.4)' },
+              { label: `📈 ${t('dashboard.analytics')}`, view: 'analytics', bg: 'linear-gradient(135deg, #e67e22, #ca6f1e)', shadow: 'rgba(230,126,34,0.4)' },
+              { label: `⚙️ ${t('common.settings')}`, view: 'settings', bg: 'linear-gradient(135deg, #5d6d7e, #4d5d6e)', shadow: 'rgba(93,109,126,0.4)' },
             ] as const).map(({ label, view, bg, shadow }) => (
               <button key={view} className="nav-btn" onClick={() => setCurrentView(view)}
                 style={{ background: bg, color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: `0 2px 8px ${shadow}` }}>
@@ -445,10 +511,10 @@ export default function DashboardWeb() {
 
         {/* Date + user info */}
         <div style={{ marginBottom: '24px' }}>
-          <div style={{ fontSize: '12px', color: theme.textSubtle, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Overview</div>
-          <div style={{ fontSize: isMobile ? '26px' : '38px', color: theme.text, fontWeight: '900', letterSpacing: '-1.2px' }}>Your budget at a glance</div>
+          <div style={{ fontSize: '12px', color: theme.textSubtle, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>{t('dashboard.overview')}</div>
+          <div style={{ fontSize: isMobile ? '26px' : '38px', color: theme.text, fontWeight: '900', letterSpacing: '-1.2px' }}>{t('dashboard.budgetAtGlance')}</div>
           <div style={{ fontSize: '14px', color: theme.textMuted, marginTop: '8px', lineHeight: 1.6 }}>
-            {getDateInfo()} · {getDaysUntilEndOfCycle(budget?.month_start_day)} days left in cycle · <span style={{ color: theme.text, fontWeight: 600 }}>{user?.email}</span>
+            {getDateInfo()} · {getDaysUntilEndOfCycle(budget?.month_start_day)} {t('dashboard.daysLeftInCycle')} · <span style={{ color: theme.text, fontWeight: 600 }}>{user?.email}</span>
           </div>
         </div>
 
@@ -536,20 +602,20 @@ export default function DashboardWeb() {
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '16px' }}>
             {[
               {
-                label: 'Add food expense',
+                label: t('dashboard.quickAddFood'),
                 onClick: () => {
                   setQuickAddPreset({ type: 'expense', category: 'Food', note: 'Quick food entry' });
                   setCurrentView('add-transaction');
                 },
               },
               {
-                label: 'Log income',
+                label: t('dashboard.quickLogIncome'),
                 onClick: () => {
                   setQuickAddPreset({ type: 'income', category: 'Salary', note: 'Quick income entry' });
                   setCurrentView('add-transaction');
                 },
               },
-              { label: 'Move money', onClick: () => setCurrentView('transfer') },
+              { label: t('dashboard.quickMoveMoney'), onClick: () => setCurrentView('transfer') },
             ].map((action) => (
               <button
                 key={action.label}
@@ -700,8 +766,49 @@ export default function DashboardWeb() {
         <div className="section-card" style={{ borderRadius: '20px', padding: '20px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
             <div>
-              <div style={{ fontSize: '11px', color: theme.textSubtle, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Notifications</div>
-              <h2 style={{ fontSize: '20px', fontWeight: 900, color: theme.text, margin: 0, letterSpacing: '-0.5px' }}>Alerts and summaries</h2>
+              <div style={{ fontSize: '11px', color: theme.textSubtle, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Goals</div>
+              <h2 style={{ fontSize: '20px', fontWeight: 900, color: theme.text, margin: 0, letterSpacing: '-0.5px' }}>Savings progress</h2>
+            </div>
+            <button
+              onClick={() => setCurrentView('settings')}
+              style={{ padding: '10px 14px', borderRadius: '12px', border: `1px solid ${theme.border}`, background: theme.surfaceMuted, color: theme.text, fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+            >
+              Manage
+            </button>
+          </div>
+          {goalHighlights.length === 0 ? (
+            <div style={{ fontSize: '13px', color: theme.textMuted, lineHeight: 1.7 }}>
+              Add savings goals in Settings to track progress toward things like an emergency fund, travel, or school fees.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {goalHighlights.map((goal) => (
+                <div key={goal.id} style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 800, color: theme.text }}>{goal.name}</div>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: goal.percent >= 100 ? '#10b981' : theme.primary }}>
+                      {goal.percent}% complete
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '12px', color: theme.textMuted, lineHeight: 1.6, marginBottom: '8px' }}>
+                    {formatCurrency(goal.current_amount, cur)} of {formatCurrency(goal.target_amount, cur)}
+                    {' · '}
+                    {goal.remaining > 0 ? `${formatCurrency(goal.remaining, cur)} to go` : 'Goal reached'}
+                    {' · '}
+                    {goal.daysLeft > 0 ? `${goal.daysLeft} day${goal.daysLeft !== 1 ? 's' : ''} left` : 'Target date reached'}
+                  </div>
+                  <ProgressBar value={goal.current_amount} max={goal.target_amount} color={goal.percent >= 100 ? theme.success : theme.primary} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="section-card" style={{ borderRadius: '20px', padding: '20px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+            <div>
+              <div style={{ fontSize: '11px', color: theme.textSubtle, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>{t('dashboard.notifications')}</div>
+              <h2 style={{ fontSize: '20px', fontWeight: 900, color: theme.text, margin: 0, letterSpacing: '-0.5px' }}>{t('dashboard.alertsAndSummaries')}</h2>
             </div>
             <div style={{ minWidth: '40px', height: '40px', borderRadius: '999px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: theme.text }}>
               {notifications.length}
@@ -726,19 +833,70 @@ export default function DashboardWeb() {
         {/* Recent transactions */}
         <div className="section-card" style={{ borderRadius: '16px', padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '10px' : '0', marginBottom: '16px' }}>
-            <h2 style={{ fontSize: '15px', fontWeight: '700', color: theme.text, margin: 0 }}>Recent Transactions</h2>
+            <h2 style={{ fontSize: '15px', fontWeight: '700', color: theme.text, margin: 0 }}>{t('dashboard.recentTransactions')}</h2>
             <button onClick={() => setCurrentView('transactions')}
               style={{ fontSize: '12px', color: theme.primary, fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>
-              View all →
+              {t('dashboard.viewAll')} →
             </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {([
+                { id: '7d', label: 'Last 7 days' },
+                { id: 'cycle', label: 'Current cycle' },
+                { id: 'all', label: 'All time' },
+              ] as const).map((option) => {
+                const active = dashboardTimeFilter === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setDashboardTimeFilter(option.id)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '999px',
+                      border: `1px solid ${active ? theme.borderStrong : theme.border}`,
+                      backgroundColor: active ? theme.primary : theme.surfaceMuted,
+                      color: active ? '#fff' : theme.text,
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+            <select
+              value={dashboardCategoryFilter}
+              onChange={(e) => setDashboardCategoryFilter(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: '12px',
+                border: `1px solid ${theme.border}`,
+                backgroundColor: theme.surfaceMuted,
+                color: theme.text,
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              {dashboardCategoryOptions.map((option) => (
+                <option key={option} value={option}>{option === 'all' ? 'All categories' : option}</option>
+              ))}
+            </select>
           </div>
           {recentTransactions.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '24px 0', color: theme.textSubtle }}>
               <div style={{ fontSize: '32px', marginBottom: '8px' }}>📭</div>
-              <div style={{ fontSize: '14px' }}>No transactions yet</div>
+              <div style={{ fontSize: '14px' }}>
+                {transactions.length === 0 ? t('dashboard.noTransactions') : 'No transactions match this dashboard view yet.'}
+              </div>
               <button onClick={() => setCurrentView('add-transaction')}
                 style={{ marginTop: '12px', padding: '8px 20px', background: theme.primary, color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
-                Add your first transaction
+                {t('dashboard.addFirstTransaction')}
               </button>
             </div>
           ) : (

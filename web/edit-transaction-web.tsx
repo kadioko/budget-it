@@ -48,6 +48,10 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
   const [success, setSuccess] = useState('');
   const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categoryTouched, setCategoryTouched] = useState(false);
+  const [envelopeTouched, setEnvelopeTouched] = useState(false);
+  const [tagsTouched, setTagsTouched] = useState(false);
+  const [noteTouched, setNoteTouched] = useState(false);
 
   // Find the transaction to edit
   const transaction = transactions.find(t => t.id === transactionId);
@@ -84,6 +88,10 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
       setNote(transaction.note || '');
       setTransactionType(transaction.amount < 0 ? 'income' : 'expense');
       setEnvelopeId(transaction.envelope_id || '');
+      setCategoryTouched(false);
+      setEnvelopeTouched(false);
+      setTagsTouched(false);
+      setNoteTouched(false);
     }
   }, [transaction]);
 
@@ -190,6 +198,64 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
   const matchingMerchants = merchant
     ? merchantSuggestions.filter((candidate) => candidate.toLowerCase().includes(merchant.toLowerCase()) && candidate.toLowerCase() !== merchant.toLowerCase()).slice(0, 4)
     : merchantSuggestions.slice(0, 4);
+  const merchantMemory = merchant
+    ? (() => {
+        const normalizedMerchant = merchant.trim().toLowerCase();
+        if (!normalizedMerchant) return null;
+        const merchantMatches = transactions
+          .filter((item) => item.id !== transactionId && item.merchant?.trim().toLowerCase() === normalizedMerchant)
+          .sort((a, b) => b.date.localeCompare(a.date));
+        if (merchantMatches.length === 0) return null;
+        const latest = merchantMatches[0];
+        const categoryCounts = merchantMatches.reduce<Record<string, number>>((acc, item) => {
+          acc[item.category] = (acc[item.category] || 0) + 1;
+          return acc;
+        }, {});
+        const suggestedCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || latest.category;
+        return {
+          count: merchantMatches.length,
+          suggestedCategory,
+          suggestedEnvelopeId: latest.envelope_id || '',
+          suggestedTags: Array.from(new Set(merchantMatches.flatMap((item) => item.tags || []).filter(Boolean))).slice(0, 4),
+          suggestedNote: latest.note || '',
+        };
+      })()
+    : null;
+
+  const applyMerchantMemory = (candidateMerchant?: string) => {
+    const targetMerchant = candidateMerchant ?? merchant;
+    if (!targetMerchant.trim()) return;
+
+    if (candidateMerchant) {
+      setMerchant(candidateMerchant);
+    }
+
+    const normalizedMerchant = targetMerchant.trim().toLowerCase();
+    const merchantMatches = transactions
+      .filter((item) => item.id !== transactionId && item.merchant?.trim().toLowerCase() === normalizedMerchant)
+      .sort((a, b) => b.date.localeCompare(a.date));
+    if (merchantMatches.length === 0) return;
+
+    const latest = merchantMatches[0];
+    const categoryCounts = merchantMatches.reduce<Record<string, number>>((acc, item) => {
+      acc[item.category] = (acc[item.category] || 0) + 1;
+      return acc;
+    }, {});
+    const suggestedCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || latest.category;
+
+    if (!categoryTouched) {
+      setCategory(suggestedCategory);
+    }
+    if (!envelopeTouched) {
+      setEnvelopeId(latest.envelope_id || '');
+    }
+    if (!tagsTouched && latest.tags?.length) {
+      setTags(latest.tags.join(', '));
+    }
+    if (!noteTouched && latest.note) {
+      setNote(latest.note);
+    }
+  };
 
   return (
     <>
@@ -257,7 +323,7 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
             {envelopes.length > 0 && (
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-main)' }}>Envelope / Account</label>
-                <select value={envelopeId} onChange={(e) => setEnvelopeId(e.target.value)} style={fieldStyle}>
+                <select value={envelopeId} onChange={(e) => { setEnvelopeId(e.target.value); setEnvelopeTouched(true); }} style={fieldStyle}>
                   <option value="">Default Bank Account</option>
                   {envelopes.map((env) => (
                     <option key={env.id} value={env.id}>
@@ -270,7 +336,7 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-main)' }}>Category *</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} required style={fieldStyle}>
+              <select value={category} onChange={(e) => { setCategory(e.target.value); setCategoryTouched(true); }} required style={fieldStyle}>
                 <option value="" disabled>Select a category</option>
                 {(transactionType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
@@ -289,14 +355,27 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-main)' }}>Merchant</label>
-              <input type="text" value={merchant} onChange={(e) => setMerchant(e.target.value)} placeholder="e.g. Carrefour, Uber, Netflix" style={fieldStyle} />
+              <input
+                type="text"
+                value={merchant}
+                onChange={(e) => {
+                  const nextMerchant = e.target.value;
+                  setMerchant(nextMerchant);
+                  const exactMatch = transactions.find((item) => item.id !== transactionId && item.merchant?.trim().toLowerCase() === nextMerchant.trim().toLowerCase());
+                  if (exactMatch) {
+                    applyMerchantMemory(nextMerchant);
+                  }
+                }}
+                placeholder="e.g. Carrefour, Uber, Netflix"
+                style={fieldStyle}
+              />
               {matchingMerchants.length > 0 && (
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
                   {matchingMerchants.map((candidate) => (
                     <button
                       key={candidate}
                       type="button"
-                      onClick={() => setMerchant(candidate)}
+                      onClick={() => applyMerchantMemory(candidate)}
                       style={{ padding: '8px 10px', borderRadius: '999px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-main)', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
                     >
                       {candidate}
@@ -304,16 +383,38 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
                   ))}
                 </div>
               )}
+              {merchantMemory && (
+                <div style={{ marginTop: '10px', padding: '12px 14px', borderRadius: '14px', backgroundColor: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.16)' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '8px' }}>
+                    We found {merchantMemory.count} earlier entr{merchantMemory.count === 1 ? 'y' : 'ies'} for this merchant.
+                    Suggested category: <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>{merchantMemory.suggestedCategory}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => applyMerchantMemory()}
+                      style={{ padding: '8px 12px', borderRadius: '999px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-main)', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                    >
+                      Apply merchant memory
+                    </button>
+                    {merchantMemory.suggestedTags.map((tag) => (
+                      <span key={tag} style={{ padding: '8px 10px', borderRadius: '999px', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600 }}>
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-main)' }}>Tags</label>
-              <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Comma-separated tags" style={fieldStyle} />
+              <input type="text" value={tags} onChange={(e) => { setTags(e.target.value); setTagsTouched(true); }} placeholder="Comma-separated tags" style={fieldStyle} />
             </div>
 
             <div style={{ marginBottom: '32px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-main)' }}>Note (Optional)</label>
-              <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="What was this for?" style={fieldStyle} />
+              <input type="text" value={note} onChange={(e) => { setNote(e.target.value); setNoteTouched(true); }} placeholder="What was this for?" style={fieldStyle} />
             </div>
 
             {error && (

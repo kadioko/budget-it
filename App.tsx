@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from './src/store/auth';
 import { supabase } from './src/lib/supabase';
+import { useI18n, useLanguageStore } from './src/store/language';
 import { applyWebTheme, useThemeStore } from './src/store/theme';
 import DashboardWeb from './web/dashboard-web';
 
@@ -49,6 +50,7 @@ type VerificationBanner = {
 };
 
 function AuthCard({ children }: { children: React.ReactNode }) {
+  const { t } = useI18n();
   return (
     <>
       <style>{`
@@ -78,33 +80,33 @@ function AuthCard({ children }: { children: React.ReactNode }) {
             <div>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '999px', backgroundColor: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.16)', marginBottom: '28px', fontSize: '13px', fontWeight: 700 }}>
                 <span style={{ fontSize: '16px' }}>✨</span>
-                Smarter personal finance, built for everyday use
+                {t('auth.heroBadge')}
               </div>
               <div style={{ fontSize: '52px', lineHeight: 1, marginBottom: '20px' }}>💰</div>
-              <h1 style={{ fontSize: '42px', fontWeight: '900', lineHeight: 1.05, letterSpacing: '-1.2px', marginBottom: '14px' }}>Budget with clarity, not guesswork.</h1>
+              <h1 style={{ fontSize: '42px', fontWeight: '900', lineHeight: 1.05, letterSpacing: '-1.2px', marginBottom: '14px' }}>{t('auth.heroTitle')}</h1>
               <p style={{ fontSize: '16px', lineHeight: 1.7, color: 'rgba(255,255,255,0.78)', maxWidth: '540px' }}>
-                Track spending, monitor your balance, and stay on top of your goals with a cleaner, faster budgeting flow designed to work well on both desktop and mobile.
+                {t('auth.heroSubtitle')}
               </p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               <div className="auth-feature-grid">
-                <div style={featurePillStyle}><span>📊</span><span>Clear daily and monthly tracking</span></div>
-                <div style={featurePillStyle}><span>⚡</span><span>Quick transaction logging</span></div>
-                <div style={featurePillStyle}><span>📱</span><span>Mobile-friendly responsive web app</span></div>
-                <div style={featurePillStyle}><span>🔒</span><span>Secure account-based access</span></div>
+                <div style={featurePillStyle}><span>📊</span><span>{t('auth.featureTracking')}</span></div>
+                <div style={featurePillStyle}><span>⚡</span><span>{t('auth.featureQuickLogging')}</span></div>
+                <div style={featurePillStyle}><span>📱</span><span>{t('auth.featureResponsive')}</span></div>
+                <div style={featurePillStyle}><span>🔒</span><span>{t('auth.featureSecure')}</span></div>
               </div>
               <div className="auth-metrics-grid">
                 <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)' }}>
                   <div style={{ fontSize: '22px', fontWeight: 800 }}>24/7</div>
-                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.72)', marginTop: '4px' }}>budget visibility</div>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.72)', marginTop: '4px' }}>{t('auth.metricVisibility')}</div>
                 </div>
                 <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)' }}>
                   <div style={{ fontSize: '22px', fontWeight: 800 }}>1 view</div>
-                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.72)', marginTop: '4px' }}>for balances and trends</div>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.72)', marginTop: '4px' }}>{t('auth.metricOneView')}</div>
                 </div>
                 <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)' }}>
                   <div style={{ fontSize: '22px', fontWeight: 800 }}>Fast</div>
-                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.72)', marginTop: '4px' }}>setup and onboarding</div>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.72)', marginTop: '4px' }}>{t('auth.metricSetup')}</div>
                 </div>
               </div>
             </div>
@@ -112,8 +114,8 @@ function AuthCard({ children }: { children: React.ReactNode }) {
           <div className="auth-card">
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
               <div style={{ fontSize: '40px', marginBottom: '12px' }}>💰</div>
-              <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#2c3e50', letterSpacing: '-0.5px' }}>Budget It</h1>
-              <p style={{ fontSize: '14px', color: '#95a5a6', marginTop: '6px' }}>Track your spending, save smarter</p>
+              <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#2c3e50', letterSpacing: '-0.5px' }}>{t('common.appName')}</h1>
+              <p style={{ fontSize: '14px', color: '#95a5a6', marginTop: '6px' }}>{t('auth.tagLine')}</p>
             </div>
             {children}
           </div>
@@ -157,6 +159,7 @@ function PasswordInput({ value, onChange, placeholder, disabled }: {
 
 function LoginForm({ onSwitch }: { onSwitch: () => void }) {
   const { signIn, loading } = useAuthStore();
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -164,24 +167,24 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!email || !password) { setError('Please fill in all fields'); return; }
+    if (!email || !password) { setError(t('auth.fillAllFields')); return; }
     try {
       await signIn(email, password);
     } catch (err: any) {
-      setError(err.message || 'Login failed. Check your credentials.');
+      setError(err.message || t('auth.loginError'));
     }
   };
 
   return (
     <AuthCard>
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-        <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#2c3e50', marginBottom: '8px' }}>Welcome back</h2>
-        <p style={{ fontSize: '14px', color: '#7f8c8d', lineHeight: 1.5 }}>Sign in to continue tracking your budget, balances, and recent spending.</p>
+        <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#2c3e50', marginBottom: '8px' }}>{t('auth.welcomeBack')}</h2>
+        <p style={{ fontSize: '14px', color: '#7f8c8d', lineHeight: 1.5 }}>{t('auth.welcomeSubtitle')}</p>
       </div>
       <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <input
           type="email"
-          placeholder="Email address"
+          placeholder={t('auth.emailPlaceholder')}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           disabled={loading}
@@ -190,7 +193,7 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
           onBlur={(e) => (e.target.style.borderColor = '#e0e0e0')}
           autoComplete="email"
         />
-        <PasswordInput value={password} onChange={setPassword} placeholder="Password" disabled={loading} />
+        <PasswordInput value={password} onChange={setPassword} placeholder={t('auth.passwordPlaceholder')} disabled={loading} />
         {error && (
           <div style={{ backgroundColor: '#fdf2f2', border: '1px solid #f5c6c6', color: '#c0392b', padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}>
             ⚠️ {error}
@@ -208,13 +211,13 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
             transition: 'all 0.2s',
           }}
         >
-          {loading ? '⏳ Signing in...' : 'Sign In'}
+          {loading ? t('auth.signingIn') : t('auth.signIn')}
         </button>
       </form>
       <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '14px', color: '#7f8c8d' }}>
-        Don't have an account?{' '}
+        {t('auth.noAccount')}{' '}
         <button onClick={onSwitch} style={{ color: '#3498db', fontWeight: '700', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px' }}>
-          Sign up free
+          {t('auth.signUp')}
         </button>
       </div>
     </AuthCard>
@@ -223,6 +226,7 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
 
 function SignupForm({ onSwitch }: { onSwitch: () => void }) {
   const { signUp, loading } = useAuthStore();
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -232,28 +236,28 @@ function SignupForm({ onSwitch }: { onSwitch: () => void }) {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(''); setSuccess('');
-    if (!email || !password) { setError('Please fill in all fields'); return; }
-    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
-    if (password !== confirm) { setError('Passwords do not match'); return; }
+    if (!email || !password) { setError(t('auth.fillAllFields')); return; }
+    if (password.length < 6) { setError(t('auth.passwordTooShort')); return; }
+    if (password !== confirm) { setError(t('auth.passwordsDoNotMatch')); return; }
     try {
       await signUp(email, password);
       const { user: currentUser } = useAuthStore.getState();
       if (!currentUser) {
-        setSuccess('Account created! Check your email to verify, then sign in.');
+        setSuccess(t('auth.signupSuccess'));
         setTimeout(() => onSwitch(), 3000);
       }
     } catch (err: any) {
-      setError(err.message || 'Signup failed');
+      setError(err.message || t('auth.signupError'));
     }
   };
 
   return (
     <AuthCard>
-      <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#2c3e50', marginBottom: '24px', textAlign: 'center' }}>Create your account</h2>
+      <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#2c3e50', marginBottom: '24px', textAlign: 'center' }}>{t('auth.createAccount')}</h2>
       <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <input
           type="email"
-          placeholder="Email address"
+          placeholder={t('auth.emailPlaceholder')}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           disabled={loading}
@@ -262,8 +266,8 @@ function SignupForm({ onSwitch }: { onSwitch: () => void }) {
           onBlur={(e) => (e.target.style.borderColor = '#e0e0e0')}
           autoComplete="email"
         />
-        <PasswordInput value={password} onChange={setPassword} placeholder="Password (min 6 characters)" disabled={loading} />
-        <PasswordInput value={confirm} onChange={setConfirm} placeholder="Confirm password" disabled={loading} />
+        <PasswordInput value={password} onChange={setPassword} placeholder={t('auth.passwordPlaceholder')} disabled={loading} />
+        <PasswordInput value={confirm} onChange={setConfirm} placeholder={t('auth.confirmPasswordPlaceholder')} disabled={loading} />
         {error && (
           <div style={{ backgroundColor: '#fdf2f2', border: '1px solid #f5c6c6', color: '#c0392b', padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}>
             ⚠️ {error}
@@ -286,13 +290,13 @@ function SignupForm({ onSwitch }: { onSwitch: () => void }) {
             transition: 'all 0.2s',
           }}
         >
-          {loading ? '⏳ Creating account...' : 'Create Account'}
+          {loading ? t('auth.signingUp') : t('auth.signUp')}
         </button>
       </form>
       <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '14px', color: '#7f8c8d' }}>
-        Already have an account?{' '}
+        {t('auth.haveAccount')}{' '}
         <button onClick={onSwitch} style={{ color: '#3498db', fontWeight: '700', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px' }}>
-          Sign in
+          {t('auth.signIn')}
         </button>
       </div>
     </AuthCard>
@@ -328,6 +332,7 @@ function VerificationNotice({ banner, onContinue }: { banner: VerificationBanner
 export default function App() {
   const { user, checkAuth } = useAuthStore();
   const { mode } = useThemeStore();
+  const language = useLanguageStore((state) => state.language);
   const [ready, setReady] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<'login' | 'signup'>('login');
   const [verificationBanner, setVerificationBanner] = useState<VerificationBanner | null>(null);
@@ -335,6 +340,11 @@ export default function App() {
   useEffect(() => {
     applyWebTheme(mode);
   }, [mode]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.lang = language === 'sw' ? 'sw' : 'en';
+  }, [language]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

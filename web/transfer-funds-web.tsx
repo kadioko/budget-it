@@ -13,7 +13,7 @@ const formatCurrency = (amount: number, currency: string) => {
 
 export default function TransferFundsWeb({ onBack }: { onBack: () => void }) {
   const { user } = useAuthStore();
-  const { budget, envelopes, createTransfer, loading } = useBudgetStore();
+  const { budget, envelopes, createTransfer, loading, isOffline } = useBudgetStore();
   const { mode } = useThemeStore();
   const theme = themeTokens[mode];
   const [fromAccountId, setFromAccountId] = useState<'bank' | string>('bank');
@@ -64,6 +64,8 @@ export default function TransferFundsWeb({ onBack }: { onBack: () => void }) {
     boxSizing: 'border-box',
   };
 
+  const hasTransferTargets = accountOptions.length >= 2;
+
   return (
     <>
       <style>{`
@@ -82,7 +84,29 @@ export default function TransferFundsWeb({ onBack }: { onBack: () => void }) {
             </div>
           </div>
 
+          {!budget ? (
+            <div style={{ background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: '24px', padding: '40px 28px', boxShadow: theme.shadow, textAlign: 'center' }}>
+              <div style={{ fontSize: '42px', marginBottom: '14px' }}>🎯</div>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: theme.text, marginBottom: '8px' }}>Set up your budget first</div>
+              <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.7 }}>
+                Transfers need a budget and at least one account context before money can move between places.
+              </div>
+            </div>
+          ) : !hasTransferTargets ? (
+            <div style={{ background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: '24px', padding: '40px 28px', boxShadow: theme.shadow, textAlign: 'center' }}>
+              <div style={{ fontSize: '42px', marginBottom: '14px' }}>💼</div>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: theme.text, marginBottom: '8px' }}>Add another account or envelope first</div>
+              <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.7 }}>
+                Transfers work best once you have your main bank account plus at least one extra envelope to move money into or out of.
+              </div>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} style={{ background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: '24px', padding: '24px', boxShadow: theme.shadow }}>
+            {isOffline && (
+              <div style={{ marginBottom: '16px', padding: '12px 14px', borderRadius: '14px', backgroundColor: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.2)', color: '#b45309' }}>
+                You are offline. Transfers are disabled until the app reconnects because both account balances need to stay in sync.
+              </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '18px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', color: theme.textSubtle, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>From</label>
@@ -121,10 +145,11 @@ export default function TransferFundsWeb({ onBack }: { onBack: () => void }) {
             {error && <div style={{ marginBottom: '16px', padding: '12px 14px', borderRadius: '14px', backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.18)', color: theme.danger }}>{error}</div>}
             {success && <div style={{ marginBottom: '16px', padding: '12px 14px', borderRadius: '14px', backgroundColor: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.18)', color: theme.success }}>{success}</div>}
 
-            <button type="submit" disabled={loading} style={{ width: '100%', padding: '14px', borderRadius: '14px', border: 'none', backgroundColor: loading ? '#94a3b8' : theme.primary, color: '#fff', fontSize: '15px', fontWeight: 800, cursor: loading ? 'not-allowed' : 'pointer' }}>
+            <button type="submit" disabled={loading || isOffline} style={{ width: '100%', padding: '14px', borderRadius: '14px', border: 'none', backgroundColor: loading || isOffline ? '#94a3b8' : theme.primary, color: '#fff', fontSize: '15px', fontWeight: 800, cursor: loading || isOffline ? 'not-allowed' : 'pointer' }}>
               {loading ? 'Moving funds...' : 'Move Funds'}
             </button>
           </form>
+          )}
         </div>
       </div>
     </>
