@@ -3,8 +3,10 @@ import NetInfo from '@react-native-community/netinfo';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
 import { useI18n } from '../src/store/language';
+import { useNotificationSettingsStore } from '../src/store/notifications';
 import { themeTokens, useThemeStore } from '../src/store/theme';
 import { getBudgetCycleWindow } from '../src/lib/budget-logic';
+import { isWebNotificationSupported, requestWebNotificationPermission, sendWebBudgetNotification } from '../src/lib/web-notifications';
 import SettingsWeb from './settings-web';
 import AddTransactionWeb from './add-transaction-web';
 import TransactionsWeb from './transactions-web';
@@ -100,10 +102,29 @@ type DashboardEditDraft = {
   type: 'expense' | 'income';
 };
 
+type DashboardNotification = {
+  id: string;
+  kind: 'overspend' | 'category' | 'recurring' | 'weekly';
+  tone: 'info' | 'warning' | 'success';
+  title: string;
+  body: string;
+};
+
 export default function DashboardWeb() {
   const { user } = useAuthStore();
   const { budget, categoryBudgets, envelopes, stats, transactions, recurringTransactions, savingsGoals, rolloverState, isOffline, pendingActions, setOfflineStatus, syncOfflineActions, fetchBudget, fetchEnvelopes, fetchTransactions, fetchRecurringTransactions, fetchSavingsGoals, processRecurringTransactions, updateTransaction, deleteTransaction, loading } = useBudgetStore();
-  const { t } = useI18n();
+  const { t, tr } = useI18n();
+  const {
+    browserAlertsEnabled,
+    overspendAlertsEnabled,
+    recurringAlertsEnabled,
+    weeklySummaryAlertsEnabled,
+    inbox,
+    loadPreferences,
+    syncPreferences,
+    fetchInbox,
+    triggerScheduler,
+  } = useNotificationSettingsStore();
   const { mode } = useThemeStore();
   const theme = themeTokens[mode];
   const isLightMode = mode === 'light';
@@ -133,15 +154,15 @@ export default function DashboardWeb() {
       
       // If we just came back online and have pending actions, sync them
       if (!offline && pendingActions.length > 0) {
-        showToast('Back online! Syncing data...', 'success');
+        showToast(t('dashboard.backOnlineSyncing'), 'success');
         syncOfflineActions().then(() => {
-          showToast('Sync complete!', 'success');
+          showToast(t('dashboard.syncComplete'), 'success');
         });
       }
     });
 
     return () => unsubscribe();
-  }, [pendingActions.length]);
+  }, [pendingActions.length, syncOfflineActions, t]);
 
   useEffect(() => {
     if (user) {
@@ -170,7 +191,30 @@ export default function DashboardWeb() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof Notification === 'undefined') return;
+    if (!user?.id) return;
+
+    loadPreferences(user.id).catch(() => {});
+    triggerScheduler(user.id)
+      .catch(() => {})
+      .finally(() => {
+        fetchInbox(user.id).catch(() => {});
+      });
+  }, [fetchInbox, loadPreferences, triggerScheduler, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    syncPreferences(user.id).catch(() => {});
+  }, [
+    browserAlertsEnabled,
+    overspendAlertsEnabled,
+    recurringAlertsEnabled,
+    syncPreferences,
+    user?.id,
+    weeklySummaryAlertsEnabled,
+  ]);
+
+  useEffect(() => {
+    if (!isWebNotificationSupported()) return;
     setBrowserAlertsSupported(true);
     setBrowserAlertPermission(Notification.permission);
   }, []);
@@ -297,16 +341,19 @@ export default function DashboardWeb() {
     };
   }, [budget, categoryBudgets, rolloverState.categoryCarryovers, stats, transactions]);
 
-  const notifications = useMemo(() => {
+  const notifications = useMemo<DashboardNotification[]>(() => {
     if (!budget || !stats) return [];
 
-    const items: { id: string; tone: 'info' | 'warning' | 'success'; title: string; body: string }[] = [];
+    const items: DashboardNotification[] = [];
     if (budgetInsights?.projectedGap && budgetInsights.projectedGap > 0) {
       items.push({
         id: 'monthly-over',
+        kind: 'overspend',
         tone: 'warning',
-        title: 'Monthly overspend warning',
-        body: `At the current pace, you are trending ${formatCurrency(budgetInsights.projectedGap, budget.currency)} over your cycle budget.`,
+        title: t('dashboard.monthlyOverspendWarning'),
+        body: tr('dashboard.monthlyOverspendBody', {
+          amount: formatCurrency(budgetInsights.projectedGap, budget.currency),
+        }),
       });
     }
 
@@ -315,11 +362,18 @@ export default function DashboardWeb() {
       if (topRisk) {
         items.push({
           id: `category-${topRisk.category}`,
+          kind: 'category',
           tone: topRisk.status === 'over' ? 'warning' : 'info',
-          title: `${topRisk.category} is getting close`,
+          title: tr('dashboard.categoryCloseTitle', { category: topRisk.category }),
           body: topRisk.status === 'over'
-            ? `You have already gone ${formatCurrency(topRisk.spent - topRisk.limit, budget.currency)} over your ${topRisk.category} limit.`
-            : `${formatCurrency(topRisk.remaining, budget.currency)} remains in ${topRisk.category} for this cycle.`,
+            ? tr('dashboard.categoryOverBody', {
+                amount: formatCurrency(topRisk.spent - topRisk.effectiveLimit, budget.currency),
+                category: topRisk.category,
+              })
+            : tr('dashboard.categoryRemainingBody', {
+                amount: formatCurrency(topRisk.remaining, budget.currency),
+                category: topRisk.category,
+              }),
         });
       }
     }
@@ -336,50 +390,89 @@ export default function DashboardWeb() {
     upcomingRecurring.forEach((transaction) => {
       items.push({
         id: `recurring-${transaction.id}`,
+        kind: 'recurring',
         tone: 'info',
-        title: `Upcoming recurring ${transaction.type}`,
-        body: `${transaction.category} is due in ${transaction.daysUntil} day${transaction.daysUntil !== 1 ? 's' : ''} on ${transaction.next_date}.`,
+        title: tr('dashboard.upcomingRecurringTitle', { type: transaction.type }),
+        body: tr('dashboard.upcomingRecurringBody', {
+          category: transaction.category,
+          days: transaction.daysUntil,
+          suffix: transaction.daysUntil !== 1 ? 's' : '',
+          date: transaction.next_date,
+        }),
       });
     });
 
     if (budgetInsights) {
       items.push({
         id: 'weekly-summary',
+        kind: 'weekly',
         tone: 'success',
-        title: 'Weekly summary',
-        body: `Last 7 days: ${formatCurrency(budgetInsights.weekSpent, budget.currency)} spent. Safe daily spend for the rest of this cycle is ${formatCurrency(budgetInsights.safeDailySpend, budget.currency)}.`,
+        title: t('dashboard.weeklySummaryTitle'),
+        body: tr('dashboard.weeklySummaryNotificationBody', {
+          spent: formatCurrency(budgetInsights.weekSpent, budget.currency),
+          safe: formatCurrency(budgetInsights.safeDailySpend, budget.currency),
+        }),
       });
     }
 
-    return items.slice(0, 4);
-  }, [budget, budgetInsights, recurringTransactions, stats]);
+    return items
+      .filter((item) => {
+        if (item.kind === 'weekly') return weeklySummaryAlertsEnabled;
+        if (item.kind === 'recurring') return recurringAlertsEnabled;
+        return overspendAlertsEnabled;
+      })
+      .slice(0, 4);
+  }, [budget, budgetInsights, overspendAlertsEnabled, recurringAlertsEnabled, recurringTransactions, stats, t, tr, weeklySummaryAlertsEnabled]);
+
+  const combinedNotifications = useMemo<DashboardNotification[]>(() => {
+    const serverNotifications = inbox.map((item) => ({
+      id: item.id,
+      kind: item.kind,
+      tone: item.tone,
+      title: item.title,
+      body: item.body,
+    }));
+
+    const deduped = [...serverNotifications];
+    notifications.forEach((item) => {
+      const exists = serverNotifications.some(
+        (serverItem) => serverItem.kind === item.kind && serverItem.title === item.title && serverItem.body === item.body
+      );
+      if (!exists) deduped.push(item);
+    });
+    return deduped.slice(0, 6);
+  }, [inbox, notifications]);
 
   const enableBrowserAlerts = async () => {
-    if (typeof window === 'undefined' || typeof Notification === 'undefined') return;
-    const permission = await Notification.requestPermission();
+    const permission = await requestWebNotificationPermission();
     setBrowserAlertPermission(permission);
     if (permission === 'granted') {
-      showToast('Browser alerts enabled', 'success');
+      showToast(t('dashboard.browserAlertsEnabled'), 'success');
     }
   };
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof Notification === 'undefined') return;
-    if (browserAlertPermission !== 'granted' || !budget) return;
+    if (!isWebNotificationSupported()) return;
+    if (!browserAlertsEnabled || browserAlertPermission !== 'granted' || !budget) return;
 
     const cycleKey = budget.month_start_day
       ? getBudgetCycleWindow(new Date(), budget.month_start_day).monthStart.toISOString().split('T')[0]
       : new Date().toISOString().split('T')[0];
 
     notifications
-      .filter((notification) => notification.tone !== 'success')
-      .forEach((notification) => {
+      .filter((notification) => notification.tone !== 'success' || weeklySummaryAlertsEnabled)
+      .forEach(async (notification) => {
         const storageKey = `budget-it-browser-alert:${cycleKey}:${notification.id}`;
         if (window.localStorage.getItem(storageKey)) return;
-        new Notification(`Budget It: ${notification.title}`, { body: notification.body });
+        await sendWebBudgetNotification({
+          id: notification.id,
+          title: notification.title,
+          body: notification.body,
+          url: '/',
+        });
         window.localStorage.setItem(storageKey, new Date().toISOString());
       });
-  }, [browserAlertPermission, budget, notifications]);
+  }, [browserAlertPermission, browserAlertsEnabled, budget, notifications, weeklySummaryAlertsEnabled]);
 
   const goalHighlights = useMemo(() => {
     return savingsGoals
@@ -424,7 +517,7 @@ export default function DashboardWeb() {
     if (!transaction || !dashboardEditDraft) return;
     const parsedAmount = Number(dashboardEditDraft.amount);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setDashboardEditError('Enter a valid amount before saving.');
+      setDashboardEditError(t('dashboard.saveTransactionError'));
       return;
     }
 
@@ -450,27 +543,27 @@ export default function DashboardWeb() {
           transferDirection: transaction.transfer_direction || null,
         }
       );
-      showToast('Transaction updated', 'success');
+      showToast(t('dashboard.transactionUpdated'), 'success');
       cancelDashboardEdit();
       if (user?.id) {
         fetchTransactions(user.id);
         fetchBudget(user.id);
       }
     } catch (err: any) {
-      setDashboardEditError(err?.message || 'Could not update this transaction.');
+      setDashboardEditError(err?.message || t('dashboard.updateTransactionError'));
     } finally {
       setDashboardEditBusy(false);
     }
   };
 
   const handleDashboardDelete = async (transactionId: string) => {
-    const confirmed = typeof window === 'undefined' ? true : window.confirm('Delete this transaction from your dashboard list?');
+    const confirmed = typeof window === 'undefined' ? true : window.confirm(t('dashboard.deleteTransactionConfirm'));
     if (!confirmed) return;
 
     try {
       setDashboardDeletingId(transactionId);
       await deleteTransaction(transactionId);
-      showToast('Transaction deleted', 'success');
+      showToast(t('dashboard.transactionDeleted'), 'success');
       if (dashboardEditingTransactionId === transactionId) {
         cancelDashboardEdit();
       }
@@ -479,11 +572,92 @@ export default function DashboardWeb() {
         fetchBudget(user.id);
       }
     } catch (err: any) {
-      showToast(err?.message || 'Could not delete this transaction.', 'error');
+      showToast(err?.message || t('dashboard.deleteTransactionError'), 'error');
     } finally {
       setDashboardDeletingId(null);
     }
   };
+
+  const dashboardInlineEditor = dashboardEditingTransactionId && dashboardEditDraft ? (
+    <div style={{ marginTop: '12px', padding: '14px', borderRadius: '12px', backgroundColor: theme.surfaceStrong, border: `1px solid ${theme.border}` }}>
+        <div style={{ fontSize: '12px', fontWeight: 800, color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: '10px' }}>
+        {t('dashboard.editingSelectedTransaction')}
+        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '10px', marginBottom: '10px' }}>
+        <select
+          value={dashboardEditDraft.type}
+          onChange={(e) => setDashboardEditDraft((current) => current ? { ...current, type: e.target.value as 'expense' | 'income' } : current)}
+          style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${theme.border}`, backgroundColor: theme.background, color: theme.text }}
+        >
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+        </select>
+        <input
+          type="text"
+          value={dashboardEditDraft.amount}
+          onChange={(e) => setDashboardEditDraft((current) => current ? { ...current, amount: e.target.value.replace(/[^\d.]/g, '') } : current)}
+          placeholder={t('dashboard.amountPlaceholder')}
+          style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${theme.border}`, backgroundColor: theme.background, color: theme.text }}
+        />
+        <input
+          type="text"
+          list="dashboard-inline-category-options"
+          value={dashboardEditDraft.category}
+          onChange={(e) => setDashboardEditDraft((current) => current ? { ...current, category: e.target.value } : current)}
+          placeholder={t('dashboard.categoryPlaceholder')}
+          style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${theme.border}`, backgroundColor: theme.background, color: theme.text }}
+        />
+        <datalist id="dashboard-inline-category-options">
+          {(dashboardEditDraft.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map((categoryOption) => (
+            <option key={categoryOption} value={categoryOption} />
+          ))}
+        </datalist>
+        <input
+          type="date"
+          value={dashboardEditDraft.date}
+          onChange={(e) => setDashboardEditDraft((current) => current ? { ...current, date: e.target.value } : current)}
+          style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${theme.border}`, backgroundColor: theme.background, color: theme.text }}
+        />
+        <input
+          type="text"
+          value={dashboardEditDraft.merchant}
+          onChange={(e) => setDashboardEditDraft((current) => current ? { ...current, merchant: e.target.value } : current)}
+          placeholder={t('dashboard.merchantPlaceholder')}
+          style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${theme.border}`, backgroundColor: theme.background, color: theme.text }}
+        />
+        <input
+          type="text"
+          value={dashboardEditDraft.note}
+          onChange={(e) => setDashboardEditDraft((current) => current ? { ...current, note: e.target.value } : current)}
+          placeholder={t('dashboard.notePlaceholder')}
+          style={{ gridColumn: isMobile ? 'auto' : '1 / -1', width: '100%', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${theme.border}`, backgroundColor: theme.background, color: theme.text }}
+        />
+      </div>
+      {dashboardEditError && (
+        <div style={{ marginBottom: '10px', padding: '10px 12px', borderRadius: '10px', backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)', color: '#ef4444', fontSize: '12px', fontWeight: 700 }}>
+          {dashboardEditError}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => saveDashboardEdit(dashboardEditingTransactionId)}
+          disabled={dashboardEditBusy}
+          style={{ padding: '10px 14px', borderRadius: '10px', border: 'none', backgroundColor: theme.primary, color: '#fff', fontSize: '12px', fontWeight: 700, cursor: dashboardEditBusy ? 'not-allowed' : 'pointer', opacity: dashboardEditBusy ? 0.7 : 1 }}
+        >
+                    {dashboardEditBusy ? t('dashboard.saving') : t('dashboard.saveChanges')}
+        </button>
+        <button
+          type="button"
+          onClick={cancelDashboardEdit}
+          disabled={dashboardEditBusy}
+          style={{ padding: '10px 14px', borderRadius: '10px', border: `1px solid ${theme.border}`, backgroundColor: theme.surfaceMuted, color: theme.text, fontSize: '12px', fontWeight: 700, cursor: dashboardEditBusy ? 'not-allowed' : 'pointer', opacity: dashboardEditBusy ? 0.7 : 1 }}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  ) : null;
 
   if (!dataReady) {
     return (
@@ -525,8 +699,8 @@ export default function DashboardWeb() {
         <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: theme.background, padding: '20px' }}>
           <div style={{ backgroundColor: theme.surface, borderRadius: '20px', padding: '48px 40px', maxWidth: '420px', width: '100%', textAlign: 'center', boxShadow: theme.shadow, animation: 'fadeIn 0.4s ease' }}>
             <div style={{ fontSize: '56px', marginBottom: '20px' }}>🎯</div>
-            <h1 style={{ fontSize: '24px', fontWeight: '800', color: theme.text, marginBottom: '12px' }}>Welcome to Budget It!</h1>
-            <p style={{ fontSize: '15px', color: theme.textSubtle, marginBottom: '32px', lineHeight: 1.6 }}>Set up your daily and monthly spending targets to start tracking your finances.</p>
+            <h1 style={{ fontSize: '24px', fontWeight: '800', color: theme.text, marginBottom: '12px' }}>{t('dashboard.welcomeTitle')}</h1>
+            <p style={{ fontSize: '15px', color: theme.textSubtle, marginBottom: '32px', lineHeight: 1.6 }}>{t('dashboard.welcomeSubtitle')}</p>
             <button onClick={() => setCurrentView('settings')} style={{ width: '100%', padding: '16px', background: theme.primary, color: '#fff', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', boxShadow: `0 4px 12px ${theme.shadow}` }}>
               Set Up My Budget →
             </button>
@@ -552,13 +726,13 @@ export default function DashboardWeb() {
                 <span style={{ fontSize: '22px' }}>💰</span>
                 <span style={{ fontSize: '17px', fontWeight: '800', color: theme.text }}>Budget It</span>
               </div>
-              <div style={{ fontSize: '12px', color: theme.textSubtle, fontWeight: 700 }}>Preparing dashboard...</div>
+              <div style={{ fontSize: '12px', color: theme.textSubtle, fontWeight: 700 }}>{t('dashboard.preparingDashboard')}</div>
             </div>
           </div>
           <div style={{ maxWidth: '760px', margin: '0 auto', padding: '24px 16px 60px' }}>
             <div style={{ marginBottom: '24px' }}>
               <div style={{ fontSize: '12px', color: theme.textSubtle, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Overview</div>
-              <div style={{ fontSize: '28px', color: theme.text, fontWeight: '900', lineHeight: 1.1, letterSpacing: '-1px' }}>Loading your budget at a glance</div>
+              <div style={{ fontSize: '28px', color: theme.text, fontWeight: '900', lineHeight: 1.1, letterSpacing: '-1px' }}>{t('dashboard.loadingBudgetTitle')}</div>
               <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.6 }}>Your account is signed in. We’re finishing your dashboard data now.</div>
             </div>
             <div className="dashboard-loading-card" style={{ borderRadius: '28px', height: isMobile ? '220px' : '260px', marginBottom: '20px' }} />
@@ -945,86 +1119,6 @@ export default function DashboardWeb() {
                 </div>
               ))}
             </div>
-            {dashboardEditingTransactionId && dashboardEditDraft && (
-              <div style={{ marginTop: '12px', padding: '14px', borderRadius: '12px', backgroundColor: theme.surfaceStrong, border: `1px solid ${theme.border}` }}>
-                <div style={{ fontSize: '12px', fontWeight: 800, color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: '10px' }}>
-                  Editing selected transaction
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '10px', marginBottom: '10px' }}>
-                  <select
-                    value={dashboardEditDraft.type}
-                    onChange={(e) => setDashboardEditDraft((current) => current ? { ...current, type: e.target.value as 'expense' | 'income' } : current)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${theme.border}`, backgroundColor: theme.background, color: theme.text }}
-                  >
-                    <option value="expense">Expense</option>
-                    <option value="income">Income</option>
-                  </select>
-                  <input
-                    type="text"
-                    value={dashboardEditDraft.amount}
-                    onChange={(e) => setDashboardEditDraft((current) => current ? { ...current, amount: e.target.value.replace(/[^\d.]/g, '') } : current)}
-                    placeholder="Amount"
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${theme.border}`, backgroundColor: theme.background, color: theme.text }}
-                  />
-                  <input
-                    type="text"
-                    list="dashboard-inline-category-options"
-                    value={dashboardEditDraft.category}
-                    onChange={(e) => setDashboardEditDraft((current) => current ? { ...current, category: e.target.value } : current)}
-                    placeholder="Category"
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${theme.border}`, backgroundColor: theme.background, color: theme.text }}
-                  />
-                  <datalist id="dashboard-inline-category-options">
-                    {(dashboardEditDraft.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map((categoryOption) => (
-                      <option key={categoryOption} value={categoryOption} />
-                    ))}
-                  </datalist>
-                  <input
-                    type="date"
-                    value={dashboardEditDraft.date}
-                    onChange={(e) => setDashboardEditDraft((current) => current ? { ...current, date: e.target.value } : current)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${theme.border}`, backgroundColor: theme.background, color: theme.text }}
-                  />
-                  <input
-                    type="text"
-                    value={dashboardEditDraft.merchant}
-                    onChange={(e) => setDashboardEditDraft((current) => current ? { ...current, merchant: e.target.value } : current)}
-                    placeholder="Merchant"
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${theme.border}`, backgroundColor: theme.background, color: theme.text }}
-                  />
-                  <input
-                    type="text"
-                    value={dashboardEditDraft.note}
-                    onChange={(e) => setDashboardEditDraft((current) => current ? { ...current, note: e.target.value } : current)}
-                    placeholder="Note"
-                    style={{ gridColumn: isMobile ? 'auto' : '1 / -1', width: '100%', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${theme.border}`, backgroundColor: theme.background, color: theme.text }}
-                  />
-                </div>
-                {dashboardEditError && (
-                  <div style={{ marginBottom: '10px', padding: '10px 12px', borderRadius: '10px', backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)', color: '#ef4444', fontSize: '12px', fontWeight: 700 }}>
-                    {dashboardEditError}
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={() => saveDashboardEdit(dashboardEditingTransactionId)}
-                    disabled={dashboardEditBusy}
-                    style={{ padding: '10px 14px', borderRadius: '10px', border: 'none', backgroundColor: theme.primary, color: '#fff', fontSize: '12px', fontWeight: 700, cursor: dashboardEditBusy ? 'not-allowed' : 'pointer', opacity: dashboardEditBusy ? 0.7 : 1 }}
-                  >
-                    {dashboardEditBusy ? 'Saving...' : 'Save changes'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={cancelDashboardEdit}
-                    disabled={dashboardEditBusy}
-                    style={{ padding: '10px 14px', borderRadius: '10px', border: `1px solid ${theme.border}`, backgroundColor: theme.surfaceMuted, color: theme.text, fontSize: '12px', fontWeight: 700, cursor: dashboardEditBusy ? 'not-allowed' : 'pointer', opacity: dashboardEditBusy ? 0.7 : 1 }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
           )}
         </div>
 
@@ -1035,31 +1129,31 @@ export default function DashboardWeb() {
               <h2 style={{ fontSize: '20px', fontWeight: 900, color: theme.text, margin: 0, letterSpacing: '-0.5px' }}>{t('dashboard.alertsAndSummaries')}</h2>
             </div>
             <div style={{ minWidth: '40px', height: '40px', borderRadius: '999px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: theme.text }}>
-              {notifications.length}
+              {combinedNotifications.length}
             </div>
           </div>
-          {browserAlertsSupported && browserAlertPermission !== 'granted' && (
+          {browserAlertsSupported && browserAlertsEnabled && browserAlertPermission !== 'granted' && (
             <div style={{ marginBottom: '14px', padding: '14px 16px', borderRadius: '16px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}` }}>
-              <div style={{ fontSize: '13px', color: theme.text, fontWeight: 700, marginBottom: '6px' }}>Enable browser alerts</div>
+              <div style={{ fontSize: '13px', color: theme.text, fontWeight: 700, marginBottom: '6px' }}>{t('dashboard.enableBrowserAlertsTitle')}</div>
               <div style={{ fontSize: '12px', color: theme.textMuted, lineHeight: 1.6, marginBottom: '10px' }}>
-                Turn on browser notifications for overspend warnings and upcoming recurring items when you have the app open in your browser.
+                {t('dashboard.enableBrowserAlertsBody')}
               </div>
               <button
                 type="button"
                 onClick={enableBrowserAlerts}
                 style={{ padding: '10px 14px', borderRadius: '10px', border: 'none', backgroundColor: theme.primary, color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
               >
-                {browserAlertPermission === 'denied' ? 'Notifications blocked in browser settings' : 'Enable alerts'}
+                {browserAlertPermission === 'denied' ? t('dashboard.notificationsBlocked') : t('dashboard.enableAlerts')}
               </button>
             </div>
           )}
-          {notifications.length === 0 ? (
+          {combinedNotifications.length === 0 ? (
             <div style={{ fontSize: '13px', color: theme.textMuted, lineHeight: 1.7 }}>
-              You are all caught up. Weekly summaries, overspend warnings, and upcoming recurring items will appear here.
+              {t('dashboard.notificationsEmpty')}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {notifications.map((notification) => (
+              {combinedNotifications.map((notification) => (
                 <div key={notification.id} style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: notification.tone === 'warning' ? 'rgba(239,68,68,0.08)' : notification.tone === 'success' ? 'rgba(16,185,129,0.08)' : theme.surfaceMuted, border: `1px solid ${notification.tone === 'warning' ? 'rgba(239,68,68,0.18)' : notification.tone === 'success' ? 'rgba(16,185,129,0.18)' : theme.border}` }}>
                   <div style={{ fontSize: '14px', fontWeight: 800, color: theme.text, marginBottom: '4px' }}>{notification.title}</div>
                   <div style={{ fontSize: '13px', color: theme.textMuted, lineHeight: 1.6 }}>{notification.body}</div>
@@ -1081,9 +1175,9 @@ export default function DashboardWeb() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {([
-                { id: '7d', label: 'Last 7 days' },
-                { id: 'cycle', label: 'Current cycle' },
-                { id: 'all', label: 'All time' },
+                { id: '7d', label: t('dashboard.timeLast7Days') },
+                { id: 'cycle', label: t('dashboard.timeCurrentCycle') },
+                { id: 'all', label: t('dashboard.timeAllTime') },
               ] as const).map((option) => {
                 const active = dashboardTimeFilter === option.id;
                 return (
@@ -1123,18 +1217,19 @@ export default function DashboardWeb() {
               }}
             >
               {dashboardCategoryOptions.map((option) => (
-                <option key={option} value={option}>{option === 'all' ? 'All categories' : option}</option>
+                <option key={option} value={option}>{option === 'all' ? t('dashboard.allCategories') : option}</option>
               ))}
             </select>
             <div style={{ fontSize: '11px', color: theme.textSubtle, lineHeight: 1.5 }}>
-              Double-click a recent transaction to edit it inline.
+              {t('dashboard.editHint')}
             </div>
           </div>
+          {dashboardInlineEditor}
           {recentTransactions.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '24px 0', color: theme.textSubtle }}>
               <div style={{ fontSize: '32px', marginBottom: '8px' }}>📭</div>
               <div style={{ fontSize: '14px' }}>
-                {transactions.length === 0 ? t('dashboard.noTransactions') : 'No transactions match this dashboard view yet.'}
+                {transactions.length === 0 ? t('dashboard.noTransactions') : t('dashboard.noTransactionsMatch')}
               </div>
               <button onClick={() => setCurrentView('add-transaction')}
                 style={{ marginTop: '12px', padding: '8px 20px', background: theme.primary, color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
@@ -1149,7 +1244,7 @@ export default function DashboardWeb() {
                 const isEditing = dashboardEditingTransactionId === t.id;
                 const isDeleting = dashboardDeletingId === t.id;
                 const categoryLabel = isTransfer
-                  ? `Transfer ${t.transfer_direction === 'incoming' ? 'in' : 'out'}`
+                  ? (t.transfer_direction === 'incoming' ? t('dashboard.transferIn') : t('dashboard.transferOut'))
                   : t.category;
                 const metadata = [
                   new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -1175,8 +1270,29 @@ export default function DashboardWeb() {
                         <div style={{ fontSize: '11px', color: theme.textSubtle, overflowWrap: 'anywhere' }}>{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{t.note ? ` · ${t.note}` : ''}</div>
                       </div>
                     </div>
-                    <div title={metadata} style={{ fontSize: '14px', fontWeight: '700', color: isIncome ? '#2ecc71' : isTransfer ? '#8b5cf6' : '#ff7675', alignSelf: isMobile ? 'flex-end' : 'auto' }}>
-                      {isIncome ? '+' : '−'}{formatCurrency(Math.abs(t.amount), cur)}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: isMobile ? 'stretch' : 'flex-end', width: isMobile ? '100%' : 'auto' }}>
+                      <div title={metadata} style={{ fontSize: '14px', fontWeight: '700', color: isIncome ? '#2ecc71' : isTransfer ? '#8b5cf6' : '#ff7675', alignSelf: isMobile ? 'flex-end' : 'auto' }}>
+                        {isIncome ? '+' : '−'}{formatCurrency(Math.abs(t.amount), cur)}
+                      </div>
+                      {!isTransfer && (
+                        <div style={{ display: 'flex', gap: '6px', alignSelf: isMobile ? 'stretch' : 'flex-end' }}>
+                          <button
+                            type="button"
+                            onClick={(event) => { event.stopPropagation(); beginDashboardEdit(t.id); }}
+                            style={{ padding: '7px 10px', borderRadius: '10px', border: `1px solid ${theme.border}`, backgroundColor: theme.background, color: theme.text, fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            {isEditing ? t('dashboard.editing') : t('dashboard.edit')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => { event.stopPropagation(); handleDashboardDelete(t.id); }}
+                            disabled={isDeleting}
+                            style={{ padding: '7px 10px', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.18)', backgroundColor: 'rgba(239,68,68,0.12)', color: '#ef4444', fontSize: '11px', fontWeight: 700, cursor: isDeleting ? 'not-allowed' : 'pointer', opacity: isDeleting ? 0.7 : 1 }}
+                          >
+                            {isDeleting ? t('dashboard.deleting') : t('dashboard.delete')}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

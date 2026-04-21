@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
+import { isWebNotificationSupported, requestWebNotificationPermission } from '../src/lib/web-notifications';
 import { useI18n, useLanguageStore } from '../src/store/language';
+import { useNotificationSettingsStore } from '../src/store/notifications';
 import { themeTokens, useThemeStore } from '../src/store/theme';
 import { CategoryBudgetMap } from '../src/types';
 
@@ -38,8 +40,22 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
   const { mode, setMode, toggleMode } = useThemeStore();
   const { language, t } = useI18n();
   const setLanguage = useLanguageStore((state) => state.setLanguage);
+  const {
+    browserAlertsEnabled,
+    overspendAlertsEnabled,
+    recurringAlertsEnabled,
+    weeklySummaryAlertsEnabled,
+    setBrowserAlertsEnabled,
+    setOverspendAlertsEnabled,
+    setRecurringAlertsEnabled,
+    setWeeklySummaryAlertsEnabled,
+    loadPreferences,
+    syncPreferences,
+  } = useNotificationSettingsStore();
   const theme = themeTokens[mode];
   const [isMobile, setIsMobile] = useState(false);
+  const [browserAlertsSupported, setBrowserAlertsSupported] = useState(false);
+  const [browserAlertPermission, setBrowserAlertPermission] = useState<'default' | 'denied' | 'granted'>('default');
 
   const [dailyTarget, setDailyTarget] = useState(
     budget?.daily_target.toString() || ''
@@ -139,6 +155,37 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
 
     return () => window.removeEventListener('resize', updateViewport);
   }, []);
+
+  useEffect(() => {
+    if (!isWebNotificationSupported()) return;
+    setBrowserAlertsSupported(true);
+    setBrowserAlertPermission(Notification.permission);
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    loadPreferences(user.id).catch(() => {});
+  }, [loadPreferences, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    syncPreferences(user.id).catch(() => {});
+  }, [
+    browserAlertsEnabled,
+    overspendAlertsEnabled,
+    recurringAlertsEnabled,
+    syncPreferences,
+    user?.id,
+    weeklySummaryAlertsEnabled,
+  ]);
+
+  const handleEnableBrowserAlerts = async () => {
+    const permission = await requestWebNotificationPermission();
+    setBrowserAlertPermission(permission);
+    if (permission === 'granted') {
+      setBrowserAlertsEnabled(true);
+    }
+  };
 
   const handleSaveBudget = async () => {
     setBudgetMsg(null);
@@ -457,6 +504,92 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
           <button onClick={() => onOpenGuides?.()} style={{ width: '100%', padding: '14px', background: theme.primary, color: '#fff', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', boxShadow: theme.shadow }}>
             {t('settings.openQuickGuides')}
           </button>
+        </div>
+
+        <div style={card}>
+          <div style={sectionTitle}><span>🔔</span> {t('settings.alertsAndReminders')}</div>
+          <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.6, marginBottom: '16px' }}>
+            {t('settings.alertsSubtitle')}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+            {[
+              {
+                title: t('settings.browserInstalledAlerts'),
+                description: browserAlertsSupported
+                  ? browserAlertPermission === 'granted'
+                    ? t('settings.browserAlertsEnabledBody')
+                    : t('settings.browserAlertsDisabledBody')
+                  : t('settings.browserAlertsUnsupportedBody'),
+                checked: browserAlertsSupported && browserAlertsEnabled,
+                disabled: !browserAlertsSupported,
+                onChange: () => setBrowserAlertsEnabled(!browserAlertsEnabled),
+              },
+              {
+                title: t('settings.overspendWarnings'),
+                description: t('settings.overspendWarningsBody'),
+                checked: overspendAlertsEnabled,
+                onChange: () => setOverspendAlertsEnabled(!overspendAlertsEnabled),
+              },
+              {
+                title: t('settings.recurringReminders'),
+                description: t('settings.recurringRemindersBody'),
+                checked: recurringAlertsEnabled,
+                onChange: () => setRecurringAlertsEnabled(!recurringAlertsEnabled),
+              },
+              {
+                title: t('settings.weeklySummaryUpdates'),
+                description: t('settings.weeklySummaryUpdatesBody'),
+                checked: weeklySummaryAlertsEnabled,
+                onChange: () => setWeeklySummaryAlertsEnabled(!weeklySummaryAlertsEnabled),
+              },
+            ].map((item) => (
+              <div key={item.title} style={{ padding: '16px', borderRadius: '18px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '14px' }}>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 800, color: theme.text, marginBottom: '4px' }}>{item.title}</div>
+                    <div style={{ fontSize: '12px', color: theme.textMuted, lineHeight: 1.6 }}>{item.description}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={item.onChange}
+                    disabled={item.disabled}
+                    style={{
+                      minWidth: '74px',
+                      padding: '8px 10px',
+                      borderRadius: '999px',
+                      border: `1px solid ${item.checked ? theme.borderStrong : theme.border}`,
+                      backgroundColor: item.checked ? theme.primary : theme.background,
+                      color: item.checked ? '#fff' : theme.text,
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      cursor: item.disabled ? 'not-allowed' : 'pointer',
+                      opacity: item.disabled ? 0.55 : 1,
+                    }}
+                  >
+                    {item.checked ? t('settings.on') : t('settings.off')}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {browserAlertsSupported && browserAlertPermission !== 'granted' && (
+            <button
+              type="button"
+              onClick={handleEnableBrowserAlerts}
+              style={{ width: '100%', padding: '14px', background: theme.primary, color: '#fff', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', boxShadow: theme.shadow, marginBottom: '12px' }}
+            >
+              {browserAlertPermission === 'denied' ? t('dashboard.notificationsBlocked') : t('settings.allowBrowserNotifications')}
+            </button>
+          )}
+
+          <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}` }}>
+            <div style={{ fontSize: '13px', fontWeight: 800, color: theme.text, marginBottom: '6px' }}>{t('settings.phoneFriendlyTip')}</div>
+            <div style={{ fontSize: '12px', color: theme.textMuted, lineHeight: 1.7 }}>
+              {t('settings.phoneFriendlyTipBody')}
+            </div>
+          </div>
         </div>
 
         <div style={card}>

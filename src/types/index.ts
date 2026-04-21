@@ -76,6 +76,32 @@ export type SavingsGoal = {
   updated_at: string;
 };
 
+export type NotificationTone = 'info' | 'warning' | 'success';
+export type NotificationKind = 'overspend' | 'category' | 'recurring' | 'weekly';
+
+export type BudgetNotificationRecord = {
+  id: string;
+  user_id: string;
+  kind: NotificationKind;
+  tone: NotificationTone;
+  title: string;
+  body: string;
+  dedupe_key: string;
+  metadata?: Record<string, any> | null;
+  scheduled_for: string;
+  read_at?: string | null;
+  created_at: string;
+};
+
+export type NotificationPreferences = {
+  user_id: string;
+  browser_alerts_enabled: boolean;
+  overspend_alerts_enabled: boolean;
+  recurring_alerts_enabled: boolean;
+  weekly_summary_alerts_enabled: boolean;
+  updated_at?: string;
+};
+
 export type BudgetStats = {
   spentToday: number;
   spentMonthToDate: number;
