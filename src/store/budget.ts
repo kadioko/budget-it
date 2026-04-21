@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { supabase } from '@/lib/supabase';
 import { Budget, Transaction, BudgetStats, RecurringTransaction, Envelope, CategoryBudgetMap, SavingsGoal } from '@/types/index';
-import { calculateBudgetStats } from '@/lib/budget-logic';
+import { calculateBudgetStats, getBudgetCycleWindow } from '@/lib/budget-logic';
 
 interface PendingAction {
   id: string;
@@ -24,6 +24,16 @@ interface TransactionDetailsInput {
   transferDirection?: 'incoming' | 'outgoing' | null;
 }
 
+interface BudgetRolloverState {
+  lastAppliedCycleStart: string | null;
+  categoryCarryovers: CategoryBudgetMap;
+  lastSummary: {
+    cycleStart: string;
+    cycleEnd: string;
+    categoryCarryovers: CategoryBudgetMap;
+  } | null;
+}
+
 interface BudgetState {
   budget: Budget | null;
   categoryBudgets: CategoryBudgetMap;
@@ -31,6 +41,7 @@ interface BudgetState {
   transactions: Transaction[];
   recurringTransactions: RecurringTransaction[];
   savingsGoals: SavingsGoal[];
+  rolloverState: BudgetRolloverState;
   stats: BudgetStats | null;
   loading: boolean;
   error: string | null;
@@ -120,6 +131,7 @@ interface BudgetState {
   ) => Promise<void>;
   deleteSavingsGoal: (goalId: string) => Promise<void>;
   processRecurringTransactions: (userId: string) => Promise<void>;
+  applyMonthlyRollover: () => void;
   calculateStats: () => void;
   clearData: () => void;
 }
@@ -133,6 +145,11 @@ export const useBudgetStore = create<BudgetState>()(
       transactions: [],
       recurringTransactions: [],
       savingsGoals: [],
+      rolloverState: {
+        lastAppliedCycleStart: null,
+        categoryCarryovers: {},
+        lastSummary: null,
+      },
       stats: null,
       loading: false,
       error: null,
@@ -192,7 +209,21 @@ export const useBudgetStore = create<BudgetState>()(
       },
 
       clearData: () => {
-        set({ budget: null, categoryBudgets: {}, transactions: [], recurringTransactions: [], savingsGoals: [], stats: null, lastSync: null, pendingActions: [] });
+        set({
+          budget: null,
+          categoryBudgets: {},
+          transactions: [],
+          recurringTransactions: [],
+          savingsGoals: [],
+          rolloverState: {
+            lastAppliedCycleStart: null,
+            categoryCarryovers: {},
+            lastSummary: null,
+          },
+          stats: null,
+          lastSync: null,
+          pendingActions: [],
+        });
       },
 
   fetchBudget: async (userId: string) => {
@@ -206,13 +237,14 @@ export const useBudgetStore = create<BudgetState>()(
 
       if (error) throw error;
       const nextBudget = data || null;
-      set({
-        budget: nextBudget,
-        categoryBudgets: nextBudget?.category_budgets && typeof nextBudget.category_budgets === 'object'
-          ? nextBudget.category_budgets
-          : {},
-      });
-      get().calculateStats();
+        set({
+          budget: nextBudget,
+          categoryBudgets: nextBudget?.category_budgets && typeof nextBudget.category_budgets === 'object'
+            ? nextBudget.category_budgets
+            : {},
+        });
+        get().applyMonthlyRollover();
+        get().calculateStats();
     } catch (err: any) {
       set({ error: err.message });
     } finally {
@@ -337,6 +369,7 @@ export const useBudgetStore = create<BudgetState>()(
 
       if (error) throw error;
       set({ transactions: data || [] });
+      get().applyMonthlyRollover();
       get().calculateStats();
     } catch (err: any) {
       set({ error: err.message });
@@ -1003,7 +1036,7 @@ export const useBudgetStore = create<BudgetState>()(
     }
   },
 
-  processRecurringTransactions: async (userId: string) => {
+    processRecurringTransactions: async (userId: string) => {
     try {
       // 1. Fetch recurring transactions for user
       const { data: recurring, error: fetchErr } = await supabase
@@ -1057,12 +1090,59 @@ export const useBudgetStore = create<BudgetState>()(
       }
       
       // Refresh state
-      await get().fetchRecurringTransactions(userId);
-    } catch (err) {
-      console.error('Failed to process recurring transactions:', err);
-    }
-  },
+        await get().fetchRecurringTransactions(userId);
+      } catch (err) {
+        console.error('Failed to process recurring transactions:', err);
+      }
+    },
 
+  applyMonthlyRollover: () => {
+      try {
+        const { budget, transactions, categoryBudgets, rolloverState } = get();
+        if (!budget) return;
+
+        const now = new Date();
+        const currentCycle = getBudgetCycleWindow(now, budget.month_start_day);
+        const currentCycleStart = currentCycle.monthStart.toISOString().split('T')[0];
+        if (rolloverState.lastAppliedCycleStart === currentCycleStart) return;
+
+        const previousCycle = getBudgetCycleWindow(new Date(currentCycle.monthStart.getTime() - 24 * 60 * 60 * 1000), budget.month_start_day);
+        const previousCycleStart = previousCycle.monthStart.toISOString().split('T')[0];
+        const previousCycleEnd = previousCycle.monthEnd.toISOString().split('T')[0];
+        const sourceBudgets = budget.category_budgets && Object.keys(budget.category_budgets).length > 0
+          ? budget.category_budgets
+          : categoryBudgets;
+
+        const categoryCarryovers = Object.fromEntries(
+          Object.entries(sourceBudgets || {}).map(([category, limit]) => {
+            const spent = transactions
+              .filter((transaction) =>
+                transaction.amount > 0 &&
+                transaction.category === category &&
+                transaction.date >= previousCycleStart &&
+                transaction.date <= previousCycleEnd
+              )
+              .reduce((sum, transaction) => sum + transaction.amount, 0);
+            return [category, Math.max(0, Number(limit) - spent)];
+          }).filter(([, carryover]) => Number.isFinite(carryover))
+        );
+
+        set({
+          rolloverState: {
+            lastAppliedCycleStart: currentCycleStart,
+            categoryCarryovers,
+            lastSummary: {
+              cycleStart: previousCycleStart,
+              cycleEnd: previousCycleEnd,
+              categoryCarryovers,
+            },
+          },
+        });
+      } catch (error) {
+        console.error('Failed to apply monthly rollover:', error);
+      }
+    },
+  
   calculateStats: () => {
     try {
       const { budget, transactions } = get();

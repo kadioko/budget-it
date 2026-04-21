@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
+import { Transaction } from '../src/types';
 
 const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Other'];
 const INCOME_CATEGORIES = ['Salary', 'Business', 'Investment', 'Gift', 'Other'];
@@ -24,6 +25,81 @@ const formatCurrency = (amount: number, currency: string) => {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(amount);
+};
+
+const tokenize = (value: string) =>
+  value
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 1);
+
+const inferCategoryFromHistory = (
+  transactions: Transaction[],
+  transactionType: 'expense' | 'income',
+  merchant: string,
+  note: string,
+  tags: string
+) => {
+  const merchantText = merchant.trim().toLowerCase();
+  const noteTokens = tokenize(note);
+  const tagTokens = tags.split(',').map((tag) => tag.trim().toLowerCase()).filter(Boolean);
+  if (!merchantText && noteTokens.length === 0 && tagTokens.length === 0) return null;
+
+  const categoryScores = new Map<string, { score: number; examples: number }>();
+
+  transactions.forEach((transaction) => {
+    const candidateType = transaction.amount < 0 ? 'income' : 'expense';
+    if (candidateType !== transactionType) return;
+
+    let score = 0;
+    const candidateMerchant = transaction.merchant?.trim().toLowerCase() || '';
+    const candidateNoteTokens = tokenize(transaction.note || '');
+    const candidateTags = (transaction.tags || []).map((tag) => tag.toLowerCase());
+
+    if (merchantText && candidateMerchant) {
+      if (candidateMerchant === merchantText) score += 7;
+      else if (candidateMerchant.includes(merchantText) || merchantText.includes(candidateMerchant)) score += 4;
+    }
+
+    if (noteTokens.length > 0) {
+      const overlap = noteTokens.filter((token) => candidateNoteTokens.includes(token));
+      score += overlap.length * 2;
+    }
+
+    if (tagTokens.length > 0) {
+      const tagOverlap = tagTokens.filter((token) => candidateTags.includes(token));
+      score += tagOverlap.length * 3;
+    }
+
+    if (score === 0 && merchantText && candidateMerchant && transaction.category) {
+      const merchantWords = tokenize(merchantText);
+      const candidateWords = tokenize(candidateMerchant);
+      const sharedMerchantWords = merchantWords.filter((token) => candidateWords.includes(token));
+      score += sharedMerchantWords.length * 2;
+    }
+
+    if (score <= 0) return;
+
+    const current = categoryScores.get(transaction.category) || { score: 0, examples: 0 };
+    categoryScores.set(transaction.category, {
+      score: current.score + score,
+      examples: current.examples + 1,
+    });
+  });
+
+  const ranked = Array.from(categoryScores.entries())
+    .map(([category, stats]) => ({ category, ...stats }))
+    .sort((a, b) => b.score - a.score);
+
+  if (ranked.length === 0) return null;
+
+  const top = ranked[0];
+  return {
+    category: top.category,
+    confidence: top.score >= 10 ? 'high' : top.score >= 6 ? 'medium' : 'light',
+    examples: top.examples,
+  };
 };
 
 interface AddTransactionWebProps {
@@ -156,6 +232,10 @@ export default function AddTransactionWeb({
         return isRecurring ? { isRecurring: true, intervalLabel: dayGap >= 27 ? 'monthly-ish' : 'weekly-ish' } : null;
       })()
     : null;
+  const smartCategorySuggestion = useMemo(
+    () => inferCategoryFromHistory(transactions, transactionType, merchant, note, tags),
+    [merchant, note, tags, transactionType, transactions]
+  );
   const merchantMemory = merchant
     ? (() => {
         const normalizedMerchant = merchant.trim().toLowerCase();
@@ -545,6 +625,23 @@ export default function AddTransactionWeb({
                 {previousMerchantMatch && !merchantMemory && (
                   <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '8px' }}>
                     Suggested category: <span style={{ color: '#f8fafc', fontWeight: 700 }}>{previousMerchantMatch.category}</span>
+                  </div>
+                )}
+                {smartCategorySuggestion && (!merchantMemory || smartCategorySuggestion.category !== merchantMemory.suggestedCategory) && (
+                  <div style={{ marginTop: '10px', padding: '12px 14px', borderRadius: '14px', backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.18)' }}>
+                    <div style={{ fontSize: '12px', color: '#bbf7d0', lineHeight: 1.6, marginBottom: '8px' }}>
+                      Best match from your history: <span style={{ color: '#f8fafc', fontWeight: 700 }}>{smartCategorySuggestion.category}</span> based on {smartCategorySuggestion.examples} similar entr{smartCategorySuggestion.examples === 1 ? 'y' : 'ies'}.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCategory(smartCategorySuggestion.category);
+                        setCategoryTouched(true);
+                      }}
+                      style={{ padding: '8px 12px', borderRadius: '999px', border: '1px solid rgba(16,185,129,0.24)', backgroundColor: 'rgba(15,23,42,0.45)', color: '#dcfce7', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      Use {smartCategorySuggestion.category} ({smartCategorySuggestion.confidence} confidence)
+                    </button>
                   </div>
                 )}
               </div>

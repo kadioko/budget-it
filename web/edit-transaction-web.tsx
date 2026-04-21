@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
+import { Transaction } from '../src/types';
 
 const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Other'];
 const INCOME_CATEGORIES = ['Salary', 'Business', 'Investment', 'Gift', 'Other'];
@@ -24,6 +25,57 @@ const formatCurrency = (amount: number, currency: string) => {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(amount);
+};
+
+const tokenize = (value: string) =>
+  value
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 1);
+
+const inferCategoryFromHistory = (
+  transactions: Transaction[],
+  transactionType: 'expense' | 'income',
+  merchant: string,
+  note: string,
+  tags: string,
+  currentTransactionId: string
+) => {
+  const merchantText = merchant.trim().toLowerCase();
+  const noteTokens = tokenize(note);
+  const tagTokens = tags.split(',').map((tag) => tag.trim().toLowerCase()).filter(Boolean);
+  if (!merchantText && noteTokens.length === 0 && tagTokens.length === 0) return null;
+
+  const categoryScores = new Map<string, { score: number; examples: number }>();
+
+  transactions.forEach((transaction) => {
+    if (transaction.id === currentTransactionId) return;
+    const candidateType = transaction.amount < 0 ? 'income' : 'expense';
+    if (candidateType !== transactionType) return;
+
+    let score = 0;
+    const candidateMerchant = transaction.merchant?.trim().toLowerCase() || '';
+    const candidateNoteTokens = tokenize(transaction.note || '');
+    const candidateTags = (transaction.tags || []).map((tag) => tag.toLowerCase());
+
+    if (merchantText && candidateMerchant) {
+      if (candidateMerchant === merchantText) score += 7;
+      else if (candidateMerchant.includes(merchantText) || merchantText.includes(candidateMerchant)) score += 4;
+    }
+
+    score += noteTokens.filter((token) => candidateNoteTokens.includes(token)).length * 2;
+    score += tagTokens.filter((token) => candidateTags.includes(token)).length * 3;
+    if (score <= 0) return;
+
+    const current = categoryScores.get(transaction.category) || { score: 0, examples: 0 };
+    categoryScores.set(transaction.category, { score: current.score + score, examples: current.examples + 1 });
+  });
+
+  const ranked = Array.from(categoryScores.entries())
+    .map(([category, stats]) => ({ category, ...stats }))
+    .sort((a, b) => b.score - a.score);
+  return ranked[0] ? { category: ranked[0].category, examples: ranked[0].examples } : null;
 };
 
 interface EditTransactionWebProps {
@@ -198,6 +250,10 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
   const matchingMerchants = merchant
     ? merchantSuggestions.filter((candidate) => candidate.toLowerCase().includes(merchant.toLowerCase()) && candidate.toLowerCase() !== merchant.toLowerCase()).slice(0, 4)
     : merchantSuggestions.slice(0, 4);
+  const smartCategorySuggestion = useMemo(
+    () => inferCategoryFromHistory(transactions, transactionType, merchant, note, tags, transactionId),
+    [merchant, note, tags, transactionId, transactionType, transactions]
+  );
   const merchantMemory = merchant
     ? (() => {
         const normalizedMerchant = merchant.trim().toLowerCase();
@@ -403,6 +459,20 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
                       </span>
                     ))}
                   </div>
+                </div>
+              )}
+              {smartCategorySuggestion && (!merchantMemory || smartCategorySuggestion.category !== merchantMemory.suggestedCategory) && (
+                <div style={{ marginTop: '10px', padding: '12px 14px', borderRadius: '14px', backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.18)' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '8px' }}>
+                    Best match from your history: <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>{smartCategorySuggestion.category}</span> from {smartCategorySuggestion.examples} similar entr{smartCategorySuggestion.examples === 1 ? 'y' : 'ies'}.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setCategory(smartCategorySuggestion.category); setCategoryTouched(true); }}
+                    style={{ padding: '8px 12px', borderRadius: '999px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-main)', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                  >
+                    Use {smartCategorySuggestion.category}
+                  </button>
                 </div>
               )}
             </div>

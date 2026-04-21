@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Chart as ChartJS,
   ArcElement,
@@ -48,9 +48,42 @@ const formatCurrency = (amount: number, currency: string) => {
 
 const toDateString = (date: Date) => date.toISOString().split('T')[0];
 
+const parseCsvLine = (line: string) => {
+  const result: string[] = [];
+  let current = '';
+  let insideQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const next = line[index + 1];
+
+    if (char === '"' && insideQuotes && next === '"') {
+      current += '"';
+      index += 1;
+    } else if (char === '"') {
+      insideQuotes = !insideQuotes;
+    } else if (char === ',' && !insideQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  result.push(current.trim());
+  return result;
+};
+
+const csvEscape = (value: string) => {
+  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+};
+
 export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
   const { user } = useAuthStore();
-  const { transactions, budget, envelopes, loading, error, isOffline, fetchTransactions } = useBudgetStore();
+  const { transactions, budget, envelopes, loading, error, isOffline, fetchTransactions, fetchBudget, addTransaction } = useBudgetStore();
   const { mode } = useThemeStore();
   const theme = themeTokens[mode];
   
@@ -58,6 +91,9 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
   const [selectedAccountId, setSelectedAccountId] = useState<'all' | 'bank' | string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isMobile, setIsMobile] = useState(false);
+  const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [importingCsv, setImportingCsv] = useState(false);
+  const csvInputRef = useRef<HTMLInputElement | null>(null);
 
   // Fetch transactions on mount
   useEffect(() => {
@@ -264,6 +300,78 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
       window.removeEventListener('resize', handleResize);
     };
   }, []);
+
+  const handleCsvImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    try {
+      setImportingCsv(true);
+      setImportMessage(null);
+      const raw = await file.text();
+      const rows = raw
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      if (rows.length < 2) {
+        throw new Error('CSV is empty or missing transaction rows.');
+      }
+
+      const headers = parseCsvLine(rows[0]).map((header) => header.toLowerCase());
+      const dateIndex = headers.findIndex((header) => header === 'date');
+      const categoryIndex = headers.findIndex((header) => header === 'category');
+      const amountIndex = headers.findIndex((header) => header === 'amount');
+      const typeIndex = headers.findIndex((header) => header === 'type');
+      const noteIndex = headers.findIndex((header) => header === 'note');
+      const merchantIndex = headers.findIndex((header) => header === 'merchant');
+      const tagsIndex = headers.findIndex((header) => header === 'tags');
+
+      if (dateIndex === -1 || categoryIndex === -1 || amountIndex === -1) {
+        throw new Error('CSV needs at least Date, Category, and Amount columns.');
+      }
+
+      let importedCount = 0;
+      for (const row of rows.slice(1)) {
+        const values = parseCsvLine(row);
+        const date = values[dateIndex];
+        const category = values[categoryIndex];
+        const amount = Number(values[amountIndex]);
+        const type = typeIndex >= 0 ? values[typeIndex]?.toLowerCase() : 'expense';
+        const note = noteIndex >= 0 ? values[noteIndex] : '';
+        const merchant = merchantIndex >= 0 ? values[merchantIndex] : '';
+        const tags = tagsIndex >= 0
+          ? values[tagsIndex].split(/[,;]+/).map((tag) => tag.trim()).filter(Boolean)
+          : [];
+
+        if (!date || !category || !Number.isFinite(amount) || amount <= 0) {
+          continue;
+        }
+
+        const signedAmount = type === 'income' ? -Math.abs(amount) : Math.abs(amount);
+        await addTransaction(user.id, signedAmount, category, date, note || undefined, null, {
+          merchant: merchant || undefined,
+          tags,
+        });
+        importedCount += 1;
+      }
+
+      if (importedCount === 0) {
+        throw new Error('No valid transactions were found in that CSV.');
+      }
+
+      await fetchTransactions(user.id);
+      await fetchBudget(user.id);
+      setImportMessage({ type: 'success', text: `Imported ${importedCount} transaction${importedCount === 1 ? '' : 's'} from CSV.` });
+    } catch (err: any) {
+      setImportMessage({ type: 'error', text: err?.message || 'Could not import that CSV file.' });
+    } finally {
+      setImportingCsv(false);
+      if (event.target) {
+        event.target.value = '';
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -683,19 +791,49 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
 
           {/* Export Button */}
           <div className="analytics-shell-card" style={{ borderRadius: '24px', padding: '20px', marginTop: '20px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Export</div>
-            <div style={{ fontSize: '18px', fontWeight: 800, color: theme.text, marginBottom: '14px', letterSpacing: '-0.4px' }}>Download your transactions</div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Data tools</div>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: theme.text, marginBottom: '14px', letterSpacing: '-0.4px' }}>Import or export your transactions</div>
+            {importMessage && (
+              <div style={{ marginBottom: '14px', padding: '12px 14px', borderRadius: '14px', backgroundColor: importMessage.type === 'success' ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${importMessage.type === 'success' ? 'rgba(16,185,129,0.18)' : 'rgba(239,68,68,0.18)'}`, color: importMessage.type === 'success' ? theme.success : theme.danger, fontSize: '13px', lineHeight: 1.6 }}>
+                {importMessage.text}
+              </div>
+            )}
+            <input ref={csvInputRef} type="file" accept=".csv,text/csv" onChange={handleCsvImport} style={{ display: 'none' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+              <button
+                type="button"
+                onClick={() => csvInputRef.current?.click()}
+                disabled={importingCsv || !user}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  background: 'linear-gradient(135deg, #059669, #0f766e)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '14px',
+                  fontSize: '16px',
+                  fontWeight: '700',
+                  cursor: importingCsv || !user ? 'not-allowed' : 'pointer',
+                  opacity: importingCsv || !user ? 0.7 : 1,
+                  transition: 'opacity 0.2s',
+                  boxShadow: '0 14px 30px rgba(5,150,105,0.22)',
+                }}
+              >
+                {importingCsv ? 'Importing CSV...' : 'Import Transactions (CSV)'}
+              </button>
             <button
               onClick={() => {
                 // Simple CSV export
                 const csvContent = [
-                  ['Date', 'Category', 'Amount', 'Type', 'Note'],
+                  ['Date', 'Category', 'Amount', 'Type', 'Note', 'Merchant', 'Tags'],
                   ...filteredTransactions.map(t => [
-                    t.date,
-                    t.category,
+                    csvEscape(t.date),
+                    csvEscape(t.category),
                     Math.abs(t.amount).toString(),
                     t.amount < 0 ? 'Income' : 'Expense',
-                    t.note || ''
+                    csvEscape(t.note || ''),
+                    csvEscape(t.merchant || ''),
+                    csvEscape((t.tags || []).join(', '))
                   ])
                 ].map(row => row.join(',')).join('\n');
                 
@@ -725,6 +863,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
             >
               📥 Export Transactions (CSV)
             </button>
+            </div>
           </div>
         </div>
       </div>

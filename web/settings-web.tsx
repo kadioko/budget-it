@@ -34,7 +34,7 @@ const formatNumberInput = (value: string) => {
 
 export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => void; onOpenGuides?: () => void }) {
   const { user, signOut } = useAuthStore();
-  const { budget, categoryBudgets, loading, createBudget, updateBudget, updateBankBalance, saveCategoryBudgets, recurringTransactions, fetchRecurringTransactions, addRecurringTransaction, deleteRecurringTransaction, savingsGoals, fetchSavingsGoals, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal, envelopes, fetchEnvelopes, createEnvelope, updateEnvelope, deleteEnvelope } = useBudgetStore();
+  const { budget, categoryBudgets, rolloverState, loading, createBudget, updateBudget, updateBankBalance, saveCategoryBudgets, recurringTransactions, fetchRecurringTransactions, addRecurringTransaction, deleteRecurringTransaction, savingsGoals, fetchSavingsGoals, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal, envelopes, fetchEnvelopes, createEnvelope, updateEnvelope, deleteEnvelope } = useBudgetStore();
   const { mode, setMode, toggleMode } = useThemeStore();
   const { language, t } = useI18n();
   const setLanguage = useLanguageStore((state) => state.setLanguage);
@@ -658,12 +658,32 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
           <div style={{ fontSize: '12px', color: theme.textSubtle, marginBottom: '16px' }}>
             Enter 0 for any category you do not want to track yet.
           </div>
-          <button onClick={handleSaveCategoryBudgets} disabled={loading || !budget}
-            style={{ width: '100%', padding: '14px', background: loading || !budget ? '#94a3b8' : theme.primary, color: '#fff', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: '700', cursor: loading || !budget ? 'not-allowed' : 'pointer', boxShadow: loading || !budget ? 'none' : theme.shadow }}>
-            {loading ? 'Saving...' : 'Save Category Limits'}
-          </button>
-          {categoryBudgetMsg && <div style={{ fontSize: '12px', color: categoryBudgetMsg.type === 'success' ? '#10b981' : '#ef4444', marginTop: '6px', fontWeight: '600' }}>{categoryBudgetMsg.text}</div>}
-        </div>
+            <button onClick={handleSaveCategoryBudgets} disabled={loading || !budget}
+              style={{ width: '100%', padding: '14px', background: loading || !budget ? '#94a3b8' : theme.primary, color: '#fff', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: '700', cursor: loading || !budget ? 'not-allowed' : 'pointer', boxShadow: loading || !budget ? 'none' : theme.shadow }}>
+              {loading ? 'Saving...' : 'Save Category Limits'}
+            </button>
+            {categoryBudgetMsg && <div style={{ fontSize: '12px', color: categoryBudgetMsg.type === 'success' ? '#10b981' : '#ef4444', marginTop: '6px', fontWeight: '600' }}>{categoryBudgetMsg.text}</div>}
+            {rolloverState.lastSummary && (
+              <div style={{ marginTop: '12px', padding: '12px 14px', borderRadius: '14px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}` }}>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: theme.text, marginBottom: '6px' }}>
+                  Last rollover summary
+                </div>
+                <div style={{ fontSize: '12px', color: theme.textMuted, lineHeight: 1.6 }}>
+                  Cycle ended {new Date(rolloverState.lastSummary.cycleEnd).toLocaleDateString()}. Unused category limits were carried into the new cycle where available.
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                  {Object.entries(rolloverState.lastSummary.categoryCarryovers)
+                    .filter(([, amount]) => amount > 0)
+                    .slice(0, 4)
+                    .map(([category, amount]) => (
+                      <span key={category} style={{ padding: '8px 10px', borderRadius: '999px', backgroundColor: theme.background, color: theme.text, fontSize: '12px', fontWeight: '700', border: `1px solid ${theme.border}` }}>
+                        {category}: +{formatCurrency(amount, budget?.currency || 'USD')}
+                      </span>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
 
         {/* Envelopes Section */}
         <div style={card}>
