@@ -39,6 +39,7 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
   const [envelopeId, setEnvelopeId] = useState(envelopes.find(e => e.is_default)?.id || envelopes[0]?.id || '');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Other'];
   const INCOME_CATEGORIES = ['Salary', 'Business', 'Investment', 'Gift', 'Other'];
@@ -65,6 +66,7 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
 
     if (!amount || parseFloat(amount) <= 0) {
       setError('Please enter a valid amount');
@@ -77,6 +79,7 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
     }
 
     try {
+      setIsSubmitting(true);
       const finalAmount = transactionType === 'expense' ? parseFloat(amount) : -parseFloat(amount);
       await addTransaction(
         user.id,
@@ -93,8 +96,12 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
       setTimeout(() => onBack(), 1400);
     } catch (err: any) {
       setError(err.message || 'Failed to add transaction');
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  const isBusy = loading || isSubmitting;
 
   return (
     <>
@@ -364,24 +371,24 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={isBusy}
                 style={{
                   width: '100%',
                   padding: '16px',
-                  backgroundColor: loading ? '#334155' : (transactionType === 'income' ? '#10b981' : '#ef4444'),
+                  backgroundColor: isBusy ? '#334155' : (transactionType === 'income' ? '#10b981' : '#ef4444'),
                   color: '#fff',
                   border: 'none',
                   borderRadius: '12px',
                   fontSize: '16px',
                   fontWeight: '700',
-                  cursor: loading ? 'not-allowed' : 'pointer',
+                  cursor: isBusy ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s',
-                  boxShadow: loading ? 'none' : `0 4px 12px ${transactionType === 'income' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`
+                  boxShadow: isBusy ? 'none' : `0 4px 12px ${transactionType === 'income' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`
                 }}
-                onMouseEnter={(e) => !loading && (e.currentTarget.style.transform = 'translateY(-2px)')}
-                onMouseLeave={(e) => !loading && (e.currentTarget.style.transform = 'translateY(0)')}
+                onMouseEnter={(e) => !isBusy && (e.currentTarget.style.transform = 'translateY(-2px)')}
+                onMouseLeave={(e) => !isBusy && (e.currentTarget.style.transform = 'translateY(0)')}
               >
-                {loading ? 'Adding...' : `Add ${transactionType === 'income' ? 'Income' : 'Expense'}`}
+                {isBusy ? 'Saving transaction...' : `Add ${transactionType === 'income' ? 'Income' : 'Expense'}`}
               </button>
             </form>
           </div>

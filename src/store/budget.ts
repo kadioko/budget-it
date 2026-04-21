@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { supabase } from '@/lib/supabase';
-import { Budget, Transaction, BudgetStats, RecurringTransaction, Envelope } from '@/types/index';
+import { Budget, Transaction, BudgetStats, RecurringTransaction, Envelope, CategoryBudgetMap } from '@/types/index';
 import { calculateBudgetStats } from '@/lib/budget-logic';
 
 interface PendingAction {
@@ -15,6 +15,7 @@ interface PendingAction {
 
 interface BudgetState {
   budget: Budget | null;
+  categoryBudgets: CategoryBudgetMap;
   envelopes: Envelope[];
   transactions: Transaction[];
   recurringTransactions: RecurringTransaction[];
@@ -48,6 +49,7 @@ interface BudgetState {
     monthStartDay: number
   ) => Promise<void>;
   updateBankBalance: (budgetId: string, bankBalance: number) => Promise<void>;
+  saveCategoryBudgets: (budgetId: string, categoryBudgets: CategoryBudgetMap) => Promise<void>;
   addTransaction: (
     userId: string,
     amount: number,
@@ -84,6 +86,7 @@ export const useBudgetStore = create<BudgetState>()(
   persist(
     (set, get) => ({
       budget: null,
+      categoryBudgets: {},
       envelopes: [],
       transactions: [],
       recurringTransactions: [],
@@ -131,7 +134,7 @@ export const useBudgetStore = create<BudgetState>()(
       },
 
       clearData: () => {
-        set({ budget: null, transactions: [], recurringTransactions: [], stats: null, lastSync: null, pendingActions: [] });
+        set({ budget: null, categoryBudgets: {}, transactions: [], recurringTransactions: [], stats: null, lastSync: null, pendingActions: [] });
       },
 
   fetchBudget: async (userId: string) => {
@@ -144,7 +147,13 @@ export const useBudgetStore = create<BudgetState>()(
         .maybeSingle();
 
       if (error) throw error;
-      set({ budget: data || null });
+      const nextBudget = data || null;
+      set({
+        budget: nextBudget,
+        categoryBudgets: nextBudget?.category_budgets && typeof nextBudget.category_budgets === 'object'
+          ? nextBudget.category_budgets
+          : get().categoryBudgets,
+      });
       get().calculateStats();
     } catch (err: any) {
       set({ error: err.message });
@@ -320,7 +329,12 @@ export const useBudgetStore = create<BudgetState>()(
         .single();
 
       if (error) throw error;
-      set({ budget: data });
+      set({
+        budget: data,
+        categoryBudgets: data?.category_budgets && typeof data.category_budgets === 'object'
+          ? data.category_budgets
+          : get().categoryBudgets,
+      });
     } catch (err: any) {
       set({ error: err.message });
       throw err;
@@ -352,7 +366,12 @@ export const useBudgetStore = create<BudgetState>()(
         .single();
 
       if (error) throw error;
-      set({ budget: data });
+      set({
+        budget: data,
+        categoryBudgets: data?.category_budgets && typeof data.category_budgets === 'object'
+          ? data.category_budgets
+          : get().categoryBudgets,
+      });
     } catch (err: any) {
       set({ error: err.message });
       throw err;
@@ -528,6 +547,45 @@ export const useBudgetStore = create<BudgetState>()(
     } catch (err: any) {
       set({ error: err.message });
       throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  saveCategoryBudgets: async (budgetId: string, categoryBudgets: CategoryBudgetMap) => {
+    set({ loading: true, error: null });
+    const sanitizedBudgets = Object.fromEntries(
+      Object.entries(categoryBudgets).filter(([, amount]) => Number.isFinite(amount) && amount > 0)
+    );
+
+    try {
+      const { data, error } = await supabase
+        .from('budgets')
+        .update({
+          category_budgets: sanitizedBudgets,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', budgetId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      set({ budget: data, categoryBudgets: sanitizedBudgets });
+    } catch (err: any) {
+      // Fallback to local persistence when the remote schema does not yet include category_budgets.
+      set({
+        categoryBudgets: sanitizedBudgets,
+        budget: get().budget ? { ...get().budget!, category_budgets: sanitizedBudgets } : get().budget,
+      });
+      const message = err?.message || '';
+      if (
+        !message.includes('category_budgets') &&
+        !message.includes('Could not find') &&
+        !message.includes('schema cache')
+      ) {
+        set({ error: message });
+        throw err;
+      }
     } finally {
       set({ loading: false });
     }

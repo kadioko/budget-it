@@ -1,3 +1,5 @@
+export type CategoryBudgetMap = Record<string, number>;
+
 export type Profile = {
   id: string;
   created_at: string;
@@ -20,6 +22,7 @@ export type Budget = {
   user_id: string;
   daily_target: number;
   monthly_target: number;
+  category_budgets?: CategoryBudgetMap | null;
   currency: string;
   month_start_day: number;
   bank_balance: number;

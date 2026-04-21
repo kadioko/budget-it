@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Chart as ChartJS,
   ArcElement,
@@ -9,7 +9,7 @@ import {
   BarElement,
   Title
 } from 'chart.js';
-import { Doughnut, Bar } from 'react-chartjs-2';
+import { Doughnut } from 'react-chartjs-2';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
 import { themeTokens, useThemeStore } from '../src/store/theme';
@@ -43,6 +43,17 @@ const formatCurrency = (amount: number, currency: string) => {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(amount);
+};
+
+const toDateString = (date: Date) => date.toISOString().split('T')[0];
+
+const getMonthWindow = (baseDate: Date, monthOffset = 0) => {
+  const start = new Date(baseDate.getFullYear(), baseDate.getMonth() + monthOffset, 1);
+  const end = new Date(baseDate.getFullYear(), baseDate.getMonth() + monthOffset + 1, 0);
+  return {
+    start: toDateString(start),
+    end: toDateString(end),
+  };
 };
 
 export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
@@ -128,6 +139,42 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
   };
 
   const analytics = calculateAnalytics();
+  const monthComparison = useMemo(() => {
+    if (!transactions.length) return [];
+
+    const now = new Date();
+    const currentMonth = getMonthWindow(now, 0);
+    const previousMonth = getMonthWindow(now, -1);
+    const categoryTotals = new Map<string, { current: number; previous: number }>();
+
+    transactions.forEach((transaction) => {
+      if (transaction.amount <= 0) return;
+      const existing = categoryTotals.get(transaction.category) || { current: 0, previous: 0 };
+      if (transaction.date >= currentMonth.start && transaction.date <= currentMonth.end) {
+        existing.current += transaction.amount;
+      } else if (transaction.date >= previousMonth.start && transaction.date <= previousMonth.end) {
+        existing.previous += transaction.amount;
+      }
+      categoryTotals.set(transaction.category, existing);
+    });
+
+    return Array.from(categoryTotals.entries())
+      .map(([category, totals]) => {
+        const delta = totals.current - totals.previous;
+        const deltaPercent = totals.previous === 0
+          ? (totals.current > 0 ? 100 : 0)
+          : Math.round((delta / totals.previous) * 100);
+        return {
+          category,
+          current: totals.current,
+          previous: totals.previous,
+          delta,
+          deltaPercent,
+        };
+      })
+      .filter((item) => item.current > 0 || item.previous > 0)
+      .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+  }, [transactions]);
 
   // Simple bar chart component
   const SimpleBarChart = ({ data, title, color }: { data: { label: string; value: number }[]; title: string; color: string }) => {
@@ -419,6 +466,17 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
                 <div style={{ width: isMobile ? '100%' : '250px', maxWidth: '250px', height: isMobile ? '220px' : '250px', marginBottom: '20px', padding: '14px', borderRadius: '20px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}` }}>
                   <Doughnut data={doughnutData} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } } }} />
                 </div>
+                <div style={{ width: '100%', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '10px', marginBottom: '20px' }}>
+                  {categoryData.map((item, index) => (
+                    <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '14px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}` }}>
+                      <span style={{ width: '12px', height: '12px', borderRadius: '999px', backgroundColor: chartColors[index % chartColors.length], flexShrink: 0 }} />
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: theme.text, overflowWrap: 'anywhere' }}>{item.label}</div>
+                        <div style={{ fontSize: '12px', color: theme.textMuted }}>{formatCurrency(item.value, budget?.currency || 'TZS')}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 <div style={{ width: '100%' }}>
                   <SimpleBarChart 
                     data={topCategories} 
@@ -436,6 +494,48 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
                 color="#27ae60" 
               />
             )}
+
+            <div style={{ marginTop: '8px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Trends</div>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, color: theme.text, margin: '0 0 16px 0', letterSpacing: '-0.4px' }}>Current month vs previous month</h3>
+              {monthComparison.length === 0 ? (
+                <div style={{ padding: '16px', borderRadius: '16px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}`, fontSize: '13px', color: theme.textMuted, lineHeight: 1.6 }}>
+                  Add more transaction history to compare month-over-month spending patterns by category.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {monthComparison.slice(0, 6).map((item) => {
+                    const maxValue = Math.max(item.current, item.previous, 1);
+                    const trendColor = item.delta > 0 ? theme.danger : item.delta < 0 ? theme.success : theme.textMuted;
+                    const trendLabel = item.delta > 0 ? 'Higher' : item.delta < 0 ? 'Lower' : 'Flat';
+                    return (
+                      <div key={item.category} style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: '12px', marginBottom: '12px' }}>
+                          <div>
+                            <div style={{ fontSize: '14px', fontWeight: 800, color: theme.text }}>{item.category}</div>
+                            <div style={{ fontSize: '12px', color: theme.textMuted, marginTop: '4px' }}>
+                              This month {formatCurrency(item.current, budget?.currency || 'TZS')} · Previous month {formatCurrency(item.previous, budget?.currency || 'TZS')}
+                            </div>
+                          </div>
+                          <div style={{ fontSize: '12px', fontWeight: 800, color: trendColor, backgroundColor: `${trendColor}12`, borderRadius: '999px', padding: '6px 10px' }}>
+                            {item.delta > 0 ? '↑' : item.delta < 0 ? '↓' : '→'} {trendLabel} {Math.abs(item.deltaPercent)}%
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', flex: 1, height: '42px' }}>
+                            <div style={{ width: '50%', height: `${Math.max(14, (item.previous / maxValue) * 100)}%`, borderRadius: '10px 10px 4px 4px', backgroundColor: 'rgba(148,163,184,0.45)' }} />
+                            <div style={{ width: '50%', height: `${Math.max(14, (item.current / maxValue) * 100)}%`, borderRadius: '10px 10px 4px 4px', backgroundColor: trendColor }} />
+                          </div>
+                          <div style={{ width: isMobile ? '100px' : '120px', fontSize: '12px', color: theme.textMuted, lineHeight: 1.5 }}>
+                            Change: {item.delta >= 0 ? '+' : '-'}{formatCurrency(Math.abs(item.delta), budget?.currency || 'TZS')}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             {/* Averages */}
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '24px' }}>

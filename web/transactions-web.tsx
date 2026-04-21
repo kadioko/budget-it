@@ -40,6 +40,7 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [runningBalance, setRunningBalance] = useState(0);
   const [editingTransaction, setEditingTransaction] = useState<string | null>(null);
+  const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(20);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -88,11 +89,14 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
   }, []);
 
   const handleDelete = async (transactionId: string) => {
+    setDeletingTransactionId(transactionId);
     try {
       await deleteTransaction(transactionId);
       setShowDeleteConfirm(null);
     } catch (error) {
       console.error('Failed to delete transaction:', error);
+    } finally {
+      setDeletingTransactionId(null);
     }
   };
 
@@ -294,9 +298,21 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
               <div style={{ display: 'flex', flexDirection: 'column', padding: '12px' }}>
                 {filteredTransactions.slice(0, visibleCount).map((t, index) => {
                   const isExpense = t.amount > 0;
+                  const isDeleting = deletingTransactionId === t.id;
                   return (
                     <div key={t.id} style={{
-                      backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}`, borderRadius: '20px', marginBottom: index < filteredTransactions.slice(0, visibleCount).length - 1 ? '10px' : '0', boxShadow: theme.shadow
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: isMobile ? 'stretch' : 'center',
+                      flexDirection: isMobile ? 'column' : 'row',
+                      gap: isMobile ? '16px' : '20px',
+                      padding: '16px',
+                      backgroundColor: theme.surfaceMuted,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: '20px',
+                      marginBottom: index < filteredTransactions.slice(0, visibleCount).length - 1 ? '10px' : '0',
+                      boxShadow: theme.shadow,
+                      opacity: isDeleting ? 0.72 : 1,
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, width: '100%', minWidth: 0 }}>
                         <div style={{
@@ -332,17 +348,19 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
                         <div style={{ display: 'flex', gap: '8px', width: isMobile ? '100%' : 'auto' }}>
                           <button
                             onClick={() => handleEdit(t.id)}
+                            disabled={Boolean(deletingTransactionId)}
                             style={{
                               backgroundColor: 'rgba(37,99,235,0.08)',
-                              color: '#2563eb',
+                              color: deletingTransactionId ? theme.textSubtle : '#2563eb',
                               border: '1px solid rgba(37,99,235,0.14)',
                               borderRadius: '12px',
                               padding: '10px 16px',
                               fontSize: '13px',
                               fontWeight: '700',
-                              cursor: 'pointer',
+                              cursor: deletingTransactionId ? 'not-allowed' : 'pointer',
                               transition: 'all 0.2s',
                               flex: isMobile ? 1 : '0 0 auto',
+                              opacity: deletingTransactionId ? 0.7 : 1,
                             }}
                             onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(59,130,246,0.1)'; e.currentTarget.style.color = '#fff'; }}
                             onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(37,99,235,0.08)'; e.currentTarget.style.color = '#2563eb'; }}
@@ -352,22 +370,24 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
 
                           <button
                             onClick={() => setShowDeleteConfirm(t.id)}
+                            disabled={Boolean(deletingTransactionId)}
                             style={{
                               backgroundColor: 'rgba(239,68,68,0.08)',
-                              color: '#ef4444',
+                              color: deletingTransactionId ? theme.textSubtle : '#ef4444',
                               border: '1px solid rgba(239,68,68,0.14)',
                               borderRadius: '12px',
                               padding: '10px 16px',
                               fontSize: '13px',
                               fontWeight: '700',
-                              cursor: 'pointer',
+                              cursor: deletingTransactionId ? 'not-allowed' : 'pointer',
                               transition: 'all 0.2s',
                               flex: isMobile ? 1 : '0 0 auto',
+                              opacity: deletingTransactionId ? 0.7 : 1,
                             }}
                             onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'; e.currentTarget.style.color = '#fff'; }}
                             onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.08)'; e.currentTarget.style.color = '#ef4444'; }}
                           >
-                            Delete
+                            {isDeleting ? 'Deleting...' : 'Delete'}
                           </button>
                         </div>
                       </div>
@@ -455,6 +475,7 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
                   </button>
                   <button
                     onClick={() => handleDelete(showDeleteConfirm)}
+                    disabled={Boolean(deletingTransactionId)}
                     style={{
                       flex: 1,
                       padding: '14px 20px',
@@ -464,14 +485,15 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
                       color: '#fff',
                       fontSize: '15px',
                       fontWeight: '700',
-                      cursor: 'pointer',
+                      cursor: deletingTransactionId ? 'not-allowed' : 'pointer',
                       boxShadow: '0 4px 12px rgba(239,68,68,0.3)',
                       transition: 'all 0.2s',
+                      opacity: deletingTransactionId ? 0.7 : 1,
                     }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
                   >
-                    Delete
+                    {deletingTransactionId ? 'Deleting...' : 'Delete'}
                   </button>
                 </div>
               </div>

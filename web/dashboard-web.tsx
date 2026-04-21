@@ -3,6 +3,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
 import { themeTokens, useThemeStore } from '../src/store/theme';
+import { getMonthBoundary } from '../src/lib/budget-logic';
 import SettingsWeb from './settings-web';
 import AddTransactionWeb from './add-transaction-web';
 import TransactionsWeb from './transactions-web';
@@ -85,7 +86,7 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
 
 export default function DashboardWeb() {
   const { user } = useAuthStore();
-  const { budget, envelopes, stats, transactions, isOffline, pendingActions, setOfflineStatus, syncOfflineActions, fetchBudget, fetchEnvelopes, fetchTransactions, processRecurringTransactions } = useBudgetStore();
+  const { budget, categoryBudgets, envelopes, stats, transactions, isOffline, pendingActions, setOfflineStatus, syncOfflineActions, fetchBudget, fetchEnvelopes, fetchTransactions, processRecurringTransactions } = useBudgetStore();
   const { mode } = useThemeStore();
   const theme = themeTokens[mode];
   const isLightMode = mode === 'light';
@@ -171,6 +172,63 @@ export default function DashboardWeb() {
     [...transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5),
     [transactions]
   );
+
+  const budgetInsights = useMemo(() => {
+    if (!budget || !stats) return null;
+
+    const today = new Date();
+    const { monthStart, monthEnd } = getMonthBoundary(today, budget.month_start_day);
+    const monthStartStr = monthStart.toISOString().split('T')[0];
+    const monthEndStr = monthEnd.toISOString().split('T')[0];
+    const todayStr = today.toISOString().split('T')[0];
+    const elapsedDays = Math.max(1, Math.ceil((today.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    const remainingDays = Math.max(1, Math.ceil((monthEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+    const burnRate = stats.spentMonthToDate / elapsedDays;
+    const safeDailySpend = stats.monthlyRemaining / remainingDays;
+    const weeklyStart = new Date(today);
+    weeklyStart.setDate(today.getDate() - 6);
+    const weeklyStartStr = weeklyStart.toISOString().split('T')[0];
+    const weekSpent = transactions
+      .filter((transaction) => transaction.amount > 0 && transaction.date >= weeklyStartStr && transaction.date <= todayStr)
+      .reduce((sum, transaction) => sum + transaction.amount, 0);
+
+    const trackedCategoryBudgets = budget.category_budgets && Object.keys(budget.category_budgets).length > 0
+      ? budget.category_budgets
+      : categoryBudgets;
+
+    const categoryRows = Object.entries(trackedCategoryBudgets || {})
+      .filter(([, limit]) => Number.isFinite(limit) && limit > 0)
+      .map(([category, limit]) => {
+        const spent = transactions
+          .filter((transaction) =>
+            transaction.amount > 0 &&
+            transaction.category === category &&
+            transaction.date >= monthStartStr &&
+            transaction.date <= monthEndStr
+          )
+          .reduce((sum, transaction) => sum + transaction.amount, 0);
+        const remaining = Math.max(0, limit - spent);
+        const percent = limit > 0 ? Math.min(100, Math.round((spent / limit) * 100)) : 0;
+        return {
+          category,
+          limit,
+          spent,
+          remaining,
+          percent,
+          status: spent > limit ? 'over' : percent >= 85 ? 'warning' : 'ok',
+        };
+      })
+      .sort((a, b) => b.percent - a.percent);
+
+    return {
+      burnRate,
+      safeDailySpend,
+      projectedGap: stats.projectedMonthEnd - budget.monthly_target,
+      weekSpent,
+      remainingDays,
+      categoryRows,
+    };
+  }, [budget, categoryBudgets, stats, transactions]);
 
   if (!dataReady) {
     return (
@@ -463,6 +521,74 @@ export default function DashboardWeb() {
             </div>
           </div>
         </div>
+
+        {budgetInsights && (
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.1fr 0.9fr', gap: '16px', marginBottom: '20px' }}>
+            <div className="section-card" style={{ borderRadius: '20px', padding: '20px' }}>
+              <div style={{ fontSize: '11px', color: theme.textSubtle, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Insights</div>
+              <h2 style={{ fontSize: '20px', fontWeight: 900, color: theme.text, margin: '0 0 16px 0', letterSpacing: '-0.5px' }}>Spending pace</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}` }}>
+                  <div style={{ fontSize: '11px', color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Average daily spend</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: theme.text }}>{formatCurrency(budgetInsights.burnRate, cur)}</div>
+                </div>
+                <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}` }}>
+                  <div style={{ fontSize: '11px', color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Safe daily spend</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: theme.text }}>{formatCurrency(budgetInsights.safeDailySpend, cur)}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: budgetInsights.projectedGap > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.12)', border: `1px solid ${budgetInsights.projectedGap > 0 ? 'rgba(239,68,68,0.18)' : 'rgba(16,185,129,0.18)'}` }}>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: theme.text, marginBottom: '4px' }}>
+                    {budgetInsights.projectedGap > 0
+                      ? `At this pace, you may exceed your monthly budget by ${formatCurrency(Math.abs(budgetInsights.projectedGap), cur)}.`
+                      : `You are currently pacing ${formatCurrency(Math.abs(budgetInsights.projectedGap), cur)} under your monthly target.`}
+                  </div>
+                  <div style={{ fontSize: '12px', color: theme.textMuted, lineHeight: 1.6 }}>
+                    Keep daily spending near {formatCurrency(budgetInsights.safeDailySpend, cur)} for the remaining {budgetInsights.remainingDays} day{budgetInsights.remainingDays !== 1 ? 's' : ''} to stay on track.
+                  </div>
+                </div>
+                <div style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}` }}>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: theme.text, marginBottom: '4px' }}>Weekly summary</div>
+                  <div style={{ fontSize: '12px', color: theme.textMuted, lineHeight: 1.6 }}>
+                    You have spent {formatCurrency(budgetInsights.weekSpent, cur)} over the last 7 days, averaging {formatCurrency(budgetInsights.weekSpent / 7, cur)} per day.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="section-card" style={{ borderRadius: '20px', padding: '20px' }}>
+              <div style={{ fontSize: '11px', color: theme.textSubtle, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Category Watch</div>
+              <h2 style={{ fontSize: '20px', fontWeight: 900, color: theme.text, margin: '0 0 16px 0', letterSpacing: '-0.5px' }}>Tracked limits</h2>
+              {budgetInsights.categoryRows.length === 0 ? (
+                <div style={{ fontSize: '13px', color: theme.textMuted, lineHeight: 1.7 }}>
+                  Add category limits in Settings to see progress bars and early warnings here.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {budgetInsights.categoryRows.slice(0, 4).map((item) => (
+                    <div key={item.category} style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}` }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                        <div style={{ fontSize: '14px', fontWeight: 700, color: theme.text }}>{item.category}</div>
+                        <div style={{ fontSize: '12px', fontWeight: 700, color: item.status === 'over' ? theme.danger : item.status === 'warning' ? '#d97706' : theme.success }}>
+                          {item.status === 'over' ? 'Over limit' : item.status === 'warning' ? 'Almost there' : 'On track'}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '12px', color: theme.textMuted, marginBottom: '8px' }}>
+                        {formatCurrency(item.spent, cur)} of {formatCurrency(item.limit, cur)}
+                        {' · '}
+                        {item.status === 'over'
+                          ? `${formatCurrency(item.spent - item.limit, cur)} over`
+                          : `${formatCurrency(item.remaining, cur)} remaining`}
+                      </div>
+                      <ProgressBar value={item.spent} max={item.limit} color={item.status === 'over' ? theme.danger : item.status === 'warning' ? '#f59e0b' : theme.success} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Recent transactions */}
         <div className="section-card" style={{ borderRadius: '16px', padding: '20px' }}>

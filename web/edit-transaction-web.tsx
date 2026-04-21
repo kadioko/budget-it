@@ -45,6 +45,7 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Find the transaction to edit
   const transaction = transactions.find(t => t.id === transactionId);
@@ -85,6 +86,7 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
 
     if (!amount || parseFloat(amount) <= 0) {
       setError('Please enter a valid amount');
@@ -97,6 +99,7 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
     }
 
     try {
+      setIsSubmitting(true);
       // For income, we store as negative amount to increase balance
       const transactionAmount = transactionType === 'income' ? -Math.abs(parseFloat(amount)) : parseFloat(amount);
       
@@ -114,6 +117,8 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
       setTimeout(() => { onSave(); onBack(); }, 1400);
     } catch (err: any) {
       setError(err.message || 'Failed to update transaction');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -166,6 +171,7 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
     transition: 'border-color 0.2s',
     boxSizing: 'border-box',
   };
+  const isBusy = loading || isSubmitting;
 
   return (
     <>
@@ -292,14 +298,14 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={isBusy}
               style={{
                 width: '100%', padding: '16px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none',
-                borderRadius: '12px', fontSize: '18px', fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.7 : 1, transition: 'background-color 0.2s'
+                borderRadius: '12px', fontSize: '18px', fontWeight: 'bold', cursor: isBusy ? 'not-allowed' : 'pointer',
+                opacity: isBusy ? 0.7 : 1, transition: 'background-color 0.2s'
               }}
             >
-              {loading ? 'Saving...' : 'Update Transaction'}
+              {isBusy ? 'Saving changes...' : 'Update Transaction'}
             </button>
             
           </form>

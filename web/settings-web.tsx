@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
 import { themeTokens, useThemeStore } from '../src/store/theme';
+import { CategoryBudgetMap } from '../src/types';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'INR', 'TZS'];
+const CATEGORY_LIMIT_OPTIONS = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Rent', 'Other'];
 
 const formatCurrency = (amount: number, currency: string) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount);
@@ -31,7 +33,7 @@ const formatNumberInput = (value: string) => {
 
 export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   const { user, signOut } = useAuthStore();
-  const { budget, loading, createBudget, updateBudget, updateBankBalance, recurringTransactions, fetchRecurringTransactions, addRecurringTransaction, deleteRecurringTransaction, envelopes, fetchEnvelopes, createEnvelope, updateEnvelope, deleteEnvelope } = useBudgetStore();
+  const { budget, categoryBudgets, loading, createBudget, updateBudget, updateBankBalance, saveCategoryBudgets, recurringTransactions, fetchRecurringTransactions, addRecurringTransaction, deleteRecurringTransaction, envelopes, fetchEnvelopes, createEnvelope, updateEnvelope, deleteEnvelope } = useBudgetStore();
   const { mode, setMode, toggleMode } = useThemeStore();
   const theme = themeTokens[mode];
   const [isMobile, setIsMobile] = useState(false);
@@ -50,6 +52,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
     budget?.bank_balance?.toString() || '0'
   );
   const [budgetMsg, setBudgetMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [categoryBudgetMsg, setCategoryBudgetMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [balanceMsg, setBalanceMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [recurringMsg, setRecurringMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [envMsg, setEnvMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -71,6 +74,7 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
   const [envIcon, setEnvIcon] = useState('💰');
   const [envBalance, setEnvBalance] = useState('');
   const [editedEnvelopeBalances, setEditedEnvelopeBalances] = useState<Record<string, string>>({});
+  const [editedCategoryBudgets, setEditedCategoryBudgets] = useState<Record<string, string>>({});
 
   const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Rent', 'Other'];
   const INCOME_CATEGORIES = ['Salary', 'Business', 'Investment', 'Gift', 'Other'];
@@ -91,6 +95,18 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
       setBankBalance(formatNumberInput(budget.bank_balance?.toString() || '0'));
     }
   }, [budget]);
+
+  useEffect(() => {
+    const sourceBudgets = budget?.category_budgets && Object.keys(budget.category_budgets).length > 0
+      ? budget.category_budgets
+      : categoryBudgets;
+
+    setEditedCategoryBudgets(
+      Object.fromEntries(
+        CATEGORY_LIMIT_OPTIONS.map((category) => [category, formatNumberInput((sourceBudgets?.[category] ?? 0).toString())])
+      )
+    );
+  }, [budget?.category_budgets, categoryBudgets]);
 
   useEffect(() => {
     setEditedEnvelopeBalances(
@@ -143,6 +159,25 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
       setBalanceMsg({ text: 'Bank balance updated successfully!', type: 'success' });
     } catch (error: any) {
       setBalanceMsg({ text: error.message || 'Failed to update balance', type: 'error' });
+    }
+  };
+
+  const handleSaveCategoryBudgets = async () => {
+    setCategoryBudgetMsg(null);
+    if (!budget) {
+      setCategoryBudgetMsg({ text: 'Save your main budget first before adding category limits.', type: 'error' });
+      return;
+    }
+
+    const nextCategoryBudgets: CategoryBudgetMap = Object.fromEntries(
+      CATEGORY_LIMIT_OPTIONS.map((category) => [category, parseAmountInput(editedCategoryBudgets[category] || '0')])
+    );
+
+    try {
+      await saveCategoryBudgets(budget.id, nextCategoryBudgets);
+      setCategoryBudgetMsg({ text: 'Category budgets saved successfully.', type: 'success' });
+    } catch (error: any) {
+      setCategoryBudgetMsg({ text: error?.message || 'Failed to save category budgets', type: 'error' });
     }
   };
 
@@ -345,6 +380,39 @@ export default function SettingsWeb({ onBack }: { onBack: () => void }) {
             {loading ? 'Saving...' : '💾 Save Budget Settings'}
           </button>
           {budgetMsg && <div style={{ fontSize: '12px', color: budgetMsg.type === 'success' ? '#10b981' : '#ef4444', marginTop: '6px', fontWeight: '600' }}>{budgetMsg.text}</div>}
+        </div>
+
+        <div style={card}>
+          <div style={sectionTitle}><span>ðŸ“Š</span> Category Limits</div>
+          <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.6, marginBottom: '18px' }}>
+            Set monthly spending caps for the categories you want to track more closely. These limits feed dashboard warnings and progress states.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+            {CATEGORY_LIMIT_OPTIONS.map((category) => (
+              <div key={category}>
+                <label style={lbl}>{category} Limit ({currency})</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={editedCategoryBudgets[category] ?? ''}
+                  onChange={e => setEditedCategoryBudgets((current) => ({
+                    ...current,
+                    [category]: formatNumberInput(e.target.value),
+                  }))}
+                  placeholder="0.00"
+                  style={fieldStyle}
+                />
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: '12px', color: theme.textSubtle, marginBottom: '16px' }}>
+            Enter 0 for any category you do not want to track yet.
+          </div>
+          <button onClick={handleSaveCategoryBudgets} disabled={loading || !budget}
+            style={{ width: '100%', padding: '14px', background: loading || !budget ? '#94a3b8' : theme.primary, color: '#fff', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: '700', cursor: loading || !budget ? 'not-allowed' : 'pointer', boxShadow: loading || !budget ? 'none' : theme.shadow }}>
+            {loading ? 'Saving...' : 'Save Category Limits'}
+          </button>
+          {categoryBudgetMsg && <div style={{ fontSize: '12px', color: categoryBudgetMsg.type === 'success' ? '#10b981' : '#ef4444', marginTop: '6px', fontWeight: '600' }}>{categoryBudgetMsg.text}</div>}
         </div>
 
         {/* Envelopes Section */}
