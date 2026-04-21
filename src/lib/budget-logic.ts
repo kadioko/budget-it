@@ -1,6 +1,10 @@
 import { startOfMonth, endOfMonth, differenceInDays, parseISO } from 'date-fns';
 import { Transaction, Budget } from '@/types/index';
 
+export function isTransferTransaction(transaction: Transaction) {
+  return transaction.kind === 'transfer' || transaction.category === 'Transfer';
+}
+
 export function getMonthBoundary(date: Date, monthStartDay: number) {
   const year = date.getFullYear();
   const month = date.getMonth();
@@ -24,12 +28,23 @@ export function getMonthBoundary(date: Date, monthStartDay: number) {
   return { monthStart, monthEnd };
 }
 
+export function getBudgetCycleWindow(
+  date: Date,
+  monthStartDay: number,
+  offsetCycles = 0
+) {
+  const anchor = new Date(date);
+  anchor.setMonth(anchor.getMonth() + offsetCycles);
+  return getMonthBoundary(anchor, monthStartDay);
+}
+
 export function calculateSpentToday(
   transactions: Transaction[],
   today: Date
 ): number {
   const todayStr = today.toISOString().split('T')[0];
   return transactions
+    .filter((t) => !isTransferTransaction(t))
     .filter((t) => t.date === todayStr)
     .reduce((sum, t) => sum + t.amount, 0);
 }
@@ -44,6 +59,7 @@ export function calculateSpentMonthToDate(
   const todayStr = today.toISOString().split('T')[0];
 
   return transactions
+    .filter((t) => !isTransferTransaction(t))
     .filter((t) => t.date >= monthStartStr && t.date <= todayStr)
     .reduce((sum, t) => sum + t.amount, 0);
 }
@@ -72,7 +88,7 @@ export function calculateStreak(
     // Stop if we've gone before the first transaction
     if (dateStr < earliestDate) break;
 
-    const dayTransactions = sortedTxns.filter((t) => t.date === dateStr);
+    const dayTransactions = sortedTxns.filter((t) => t.date === dateStr && !isTransferTransaction(t));
 
     // Only count days that have at least one transaction
     if (dayTransactions.length === 0) {

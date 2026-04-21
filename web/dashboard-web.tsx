@@ -3,11 +3,12 @@ import NetInfo from '@react-native-community/netinfo';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
 import { themeTokens, useThemeStore } from '../src/store/theme';
-import { getMonthBoundary } from '../src/lib/budget-logic';
+import { getBudgetCycleWindow } from '../src/lib/budget-logic';
 import SettingsWeb from './settings-web';
 import AddTransactionWeb from './add-transaction-web';
 import TransactionsWeb from './transactions-web';
 import AnalyticsWeb from './analytics-web';
+import TransferFundsWeb from './transfer-funds-web';
 
 const formatCurrency = (amount: number, currency: string) => {
   if (isNaN(amount) || amount === null || amount === undefined) amount = 0;
@@ -17,9 +18,10 @@ const formatCurrency = (amount: number, currency: string) => {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount);
 };
 
-const getDaysUntilEndOfMonth = () => {
+const getDaysUntilEndOfCycle = (monthStartDay = 1) => {
   const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
+  const { monthEnd } = getBudgetCycleWindow(now, monthStartDay);
+  return Math.max(0, Math.ceil((monthEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
 };
 
 const getDateInfo = () => new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -86,12 +88,13 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
 
 export default function DashboardWeb() {
   const { user } = useAuthStore();
-  const { budget, categoryBudgets, envelopes, stats, transactions, isOffline, pendingActions, setOfflineStatus, syncOfflineActions, fetchBudget, fetchEnvelopes, fetchTransactions, processRecurringTransactions } = useBudgetStore();
+  const { budget, categoryBudgets, envelopes, stats, transactions, recurringTransactions, isOffline, pendingActions, setOfflineStatus, syncOfflineActions, fetchBudget, fetchEnvelopes, fetchTransactions, fetchRecurringTransactions, processRecurringTransactions } = useBudgetStore();
   const { mode } = useThemeStore();
   const theme = themeTokens[mode];
   const isLightMode = mode === 'light';
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'settings' | 'add-transaction' | 'transactions' | 'analytics'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'settings' | 'add-transaction' | 'transactions' | 'analytics' | 'transfer'>('dashboard');
+  const [quickAddPreset, setQuickAddPreset] = useState<{ type: 'expense' | 'income'; category?: string; note?: string } | null>(null);
   const [dataReady, setDataReady] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState<'all' | 'bank' | string>('all');
@@ -122,6 +125,7 @@ export default function DashboardWeb() {
         fetchBudget(user.id), 
         fetchEnvelopes(user.id),
         fetchTransactions(user.id),
+        fetchRecurringTransactions(user.id),
         processRecurringTransactions(user.id)
       ]).finally(() => setDataReady(true));
       const timer = setTimeout(() => setDataReady(true), 5000);
@@ -177,7 +181,7 @@ export default function DashboardWeb() {
     if (!budget || !stats) return null;
 
     const today = new Date();
-    const { monthStart, monthEnd } = getMonthBoundary(today, budget.month_start_day);
+    const { monthStart, monthEnd } = getBudgetCycleWindow(today, budget.month_start_day);
     const monthStartStr = monthStart.toISOString().split('T')[0];
     const monthEndStr = monthEnd.toISOString().split('T')[0];
     const todayStr = today.toISOString().split('T')[0];
@@ -230,6 +234,63 @@ export default function DashboardWeb() {
     };
   }, [budget, categoryBudgets, stats, transactions]);
 
+  const notifications = useMemo(() => {
+    if (!budget || !stats) return [];
+
+    const items: { id: string; tone: 'info' | 'warning' | 'success'; title: string; body: string }[] = [];
+    if (budgetInsights?.projectedGap && budgetInsights.projectedGap > 0) {
+      items.push({
+        id: 'monthly-over',
+        tone: 'warning',
+        title: 'Monthly overspend warning',
+        body: `At the current pace, you are trending ${formatCurrency(budgetInsights.projectedGap, budget.currency)} over your cycle budget.`,
+      });
+    }
+
+    if (budgetInsights?.categoryRows.some((row) => row.status === 'warning' || row.status === 'over')) {
+      const topRisk = budgetInsights.categoryRows.find((row) => row.status === 'over') || budgetInsights.categoryRows.find((row) => row.status === 'warning');
+      if (topRisk) {
+        items.push({
+          id: `category-${topRisk.category}`,
+          tone: topRisk.status === 'over' ? 'warning' : 'info',
+          title: `${topRisk.category} is getting close`,
+          body: topRisk.status === 'over'
+            ? `You have already gone ${formatCurrency(topRisk.spent - topRisk.limit, budget.currency)} over your ${topRisk.category} limit.`
+            : `${formatCurrency(topRisk.remaining, budget.currency)} remains in ${topRisk.category} for this cycle.`,
+        });
+      }
+    }
+
+    const upcomingRecurring = recurringTransactions
+      .map((transaction) => ({
+        ...transaction,
+        daysUntil: Math.ceil((new Date(transaction.next_date).getTime() - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24)),
+      }))
+      .filter((transaction) => transaction.daysUntil >= 0 && transaction.daysUntil <= 7)
+      .sort((a, b) => a.daysUntil - b.daysUntil)
+      .slice(0, 2);
+
+    upcomingRecurring.forEach((transaction) => {
+      items.push({
+        id: `recurring-${transaction.id}`,
+        tone: 'info',
+        title: `Upcoming recurring ${transaction.type}`,
+        body: `${transaction.category} is due in ${transaction.daysUntil} day${transaction.daysUntil !== 1 ? 's' : ''} on ${transaction.next_date}.`,
+      });
+    });
+
+    if (budgetInsights) {
+      items.push({
+        id: 'weekly-summary',
+        tone: 'success',
+        title: 'Weekly summary',
+        body: `Last 7 days: ${formatCurrency(budgetInsights.weekSpent, budget.currency)} spent. Safe daily spend for the rest of this cycle is ${formatCurrency(budgetInsights.safeDailySpend, budget.currency)}.`,
+      });
+    }
+
+    return items.slice(0, 4);
+  }, [budget, budgetInsights, recurringTransactions, stats]);
+
   if (!dataReady) {
     return (
       <>
@@ -244,13 +305,23 @@ export default function DashboardWeb() {
 
   if (currentView === 'settings') return <SettingsWeb onBack={() => setCurrentView('dashboard')} />;
   if (currentView === 'add-transaction') {
-    return <AddTransactionWeb onBack={() => {
-      setCurrentView('dashboard');
-      if (user) { fetchTransactions(user.id); fetchBudget(user.id); }
-    }} />;
+    return <AddTransactionWeb
+      initialType={quickAddPreset?.type}
+      initialCategory={quickAddPreset?.category}
+      initialNote={quickAddPreset?.note}
+      onBack={() => {
+        setQuickAddPreset(null);
+        setCurrentView('dashboard');
+        if (user) { fetchTransactions(user.id); fetchBudget(user.id); }
+      }}
+    />;
   }
   if (currentView === 'transactions') return <TransactionsWeb onBack={() => setCurrentView('dashboard')} />;
   if (currentView === 'analytics') return <AnalyticsWeb onBack={() => setCurrentView('dashboard')} />;
+  if (currentView === 'transfer') return <TransferFundsWeb onBack={() => {
+    setCurrentView('dashboard');
+    if (user) { fetchTransactions(user.id); fetchBudget(user.id); fetchEnvelopes(user.id); }
+  }} />;
 
   if (!budget) {
     return (
@@ -377,7 +448,7 @@ export default function DashboardWeb() {
           <div style={{ fontSize: '12px', color: theme.textSubtle, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Overview</div>
           <div style={{ fontSize: isMobile ? '26px' : '38px', color: theme.text, fontWeight: '900', letterSpacing: '-1.2px' }}>Your budget at a glance</div>
           <div style={{ fontSize: '14px', color: theme.textMuted, marginTop: '8px', lineHeight: 1.6 }}>
-            {getDateInfo()} · {getDaysUntilEndOfMonth()} days left in month · <span style={{ color: theme.text, fontWeight: 600 }}>{user?.email}</span>
+            {getDateInfo()} · {getDaysUntilEndOfCycle(budget?.month_start_day)} days left in cycle · <span style={{ color: theme.text, fontWeight: 600 }}>{user?.email}</span>
           </div>
         </div>
 
@@ -461,6 +532,42 @@ export default function DashboardWeb() {
               <div style={{ fontSize: '11px', color: isLightMode ? theme.textSubtle : 'rgba(255,255,255,0.72)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Projection</div>
               <div style={{ fontSize: '16px', fontWeight: '800' }}>{formatCurrency(stats.projectedMonthEnd, cur)}</div>
             </div>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '16px' }}>
+            {[
+              {
+                label: 'Add food expense',
+                onClick: () => {
+                  setQuickAddPreset({ type: 'expense', category: 'Food', note: 'Quick food entry' });
+                  setCurrentView('add-transaction');
+                },
+              },
+              {
+                label: 'Log income',
+                onClick: () => {
+                  setQuickAddPreset({ type: 'income', category: 'Salary', note: 'Quick income entry' });
+                  setCurrentView('add-transaction');
+                },
+              },
+              { label: 'Move money', onClick: () => setCurrentView('transfer') },
+            ].map((action) => (
+              <button
+                key={action.label}
+                onClick={action.onClick}
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: '999px',
+                  border: isLightMode ? `1px solid ${theme.border}` : '1px solid rgba(255,255,255,0.12)',
+                  backgroundColor: isLightMode ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.08)',
+                  color: isLightMode ? theme.text : '#fff',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {action.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -590,6 +697,32 @@ export default function DashboardWeb() {
           </div>
         )}
 
+        <div className="section-card" style={{ borderRadius: '20px', padding: '20px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+            <div>
+              <div style={{ fontSize: '11px', color: theme.textSubtle, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Notifications</div>
+              <h2 style={{ fontSize: '20px', fontWeight: 900, color: theme.text, margin: 0, letterSpacing: '-0.5px' }}>Alerts and summaries</h2>
+            </div>
+            <div style={{ minWidth: '40px', height: '40px', borderRadius: '999px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: theme.text }}>
+              {notifications.length}
+            </div>
+          </div>
+          {notifications.length === 0 ? (
+            <div style={{ fontSize: '13px', color: theme.textMuted, lineHeight: 1.7 }}>
+              You are all caught up. Weekly summaries, overspend warnings, and upcoming recurring items will appear here.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {notifications.map((notification) => (
+                <div key={notification.id} style={{ padding: '14px 16px', borderRadius: '18px', backgroundColor: notification.tone === 'warning' ? 'rgba(239,68,68,0.08)' : notification.tone === 'success' ? 'rgba(16,185,129,0.08)' : theme.surfaceMuted, border: `1px solid ${notification.tone === 'warning' ? 'rgba(239,68,68,0.18)' : notification.tone === 'success' ? 'rgba(16,185,129,0.18)' : theme.border}` }}>
+                  <div style={{ fontSize: '14px', fontWeight: 800, color: theme.text, marginBottom: '4px' }}>{notification.title}</div>
+                  <div style={{ fontSize: '13px', color: theme.textMuted, lineHeight: 1.6 }}>{notification.body}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Recent transactions */}
         <div className="section-card" style={{ borderRadius: '16px', padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '10px' : '0', marginBottom: '16px' }}>
@@ -612,18 +745,35 @@ export default function DashboardWeb() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {recentTransactions.map(t => {
                 const isIncome = t.amount < 0;
+                const isTransfer = t.kind === 'transfer';
+                const categoryLabel = isTransfer
+                  ? `Transfer ${t.transfer_direction === 'incoming' ? 'in' : 'out'}`
+                  : t.category;
+                const metadata = [
+                  new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                  t.merchant || null,
+                  t.note || null,
+                  t.tags?.length ? `#${t.tags.join(' #')}` : null,
+                ].filter(Boolean).join(' · ');
                 return (
                   <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '10px' : '12px', padding: '10px 12px', backgroundColor: theme.surfaceMuted, borderRadius: '10px', border: `1px solid ${theme.border}` }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, width: isMobile ? '100%' : 'auto' }}>
-                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: isIncome ? 'rgba(39,174,96,0.2)' : 'rgba(231,76,60,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: isTransfer ? 'rgba(139,92,246,0.18)' : isIncome ? 'rgba(39,174,96,0.2)' : 'rgba(231,76,60,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>
                         {isIncome ? '💰' : '💸'}
                       </div>
                       <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontSize: '13px', fontWeight: '600', color: theme.text, overflowWrap: 'anywhere' }}>{t.category}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <div style={{ fontSize: '13px', fontWeight: '600', color: theme.text, overflowWrap: 'anywhere' }}>{categoryLabel}</div>
+                          {t.is_recurring && (
+                            <span style={{ fontSize: '10px', fontWeight: 800, color: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.18)', borderRadius: '999px', padding: '3px 8px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                              Recurring
+                            </span>
+                          )}
+                        </div>
                         <div style={{ fontSize: '11px', color: theme.textSubtle, overflowWrap: 'anywhere' }}>{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{t.note ? ` · ${t.note}` : ''}</div>
                       </div>
                     </div>
-                    <div style={{ fontSize: '14px', fontWeight: '700', color: isIncome ? '#2ecc71' : '#ff7675', alignSelf: isMobile ? 'flex-end' : 'auto' }}>
+                    <div title={metadata} style={{ fontSize: '14px', fontWeight: '700', color: isIncome ? '#2ecc71' : isTransfer ? '#8b5cf6' : '#ff7675', alignSelf: isMobile ? 'flex-end' : 'auto' }}>
                       {isIncome ? '+' : '−'}{formatCurrency(Math.abs(t.amount), cur)}
                     </div>
                   </div>

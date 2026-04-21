@@ -1,4 +1,6 @@
 export type CategoryBudgetMap = Record<string, number>;
+export type TransactionKind = 'standard' | 'transfer';
+export type TransferDirection = 'incoming' | 'outgoing';
 
 export type Profile = {
   id: string;
@@ -37,6 +39,14 @@ export type Transaction = {
   category: string;
   date: string;
   note: string | null;
+  merchant?: string | null;
+  tags?: string[] | null;
+  is_recurring?: boolean;
+  recurring_source_id?: string | null;
+  kind?: TransactionKind;
+  transfer_group_id?: string | null;
+  transfer_peer_envelope_id?: string | null;
+  transfer_direction?: TransferDirection | null;
   envelope_id?: string | null;
   created_at: string;
 };

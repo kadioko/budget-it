@@ -13,6 +13,7 @@ import { Doughnut } from 'react-chartjs-2';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
 import { themeTokens, useThemeStore } from '../src/store/theme';
+import { getBudgetCycleWindow } from '../src/lib/budget-logic';
 
 ChartJS.register(
   ArcElement,
@@ -47,15 +48,6 @@ const formatCurrency = (amount: number, currency: string) => {
 
 const toDateString = (date: Date) => date.toISOString().split('T')[0];
 
-const getMonthWindow = (baseDate: Date, monthOffset = 0) => {
-  const start = new Date(baseDate.getFullYear(), baseDate.getMonth() + monthOffset, 1);
-  const end = new Date(baseDate.getFullYear(), baseDate.getMonth() + monthOffset + 1, 0);
-  return {
-    start: toDateString(start),
-    end: toDateString(end),
-  };
-};
-
 export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
   const { user } = useAuthStore();
   const { transactions, budget, loading, fetchTransactions } = useBudgetStore();
@@ -79,17 +71,20 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
 
     const now = new Date();
     let startDate = new Date();
+    let endDate = new Date(now);
     
     if (selectedPeriod === 'week') {
       startDate.setDate(now.getDate() - 7);
     } else if (selectedPeriod === 'month') {
-      startDate.setMonth(now.getMonth() - 1);
+      const cycle = budget ? getBudgetCycleWindow(now, budget.month_start_day) : { monthStart: new Date(now.getFullYear(), now.getMonth(), 1), monthEnd: now };
+      startDate = cycle.monthStart;
+      endDate = cycle.monthEnd;
     } else {
       startDate = new Date(0); // All time
     }
 
     const filteredTransactions = transactions.filter(t => 
-      new Date(t.date) >= startDate
+      new Date(t.date) >= startDate && new Date(t.date) <= endDate
     );
 
     // Calculate category breakdown
@@ -116,7 +111,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
     });
 
     // Calculate daily averages
-    const daysDiff = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const daysDiff = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
     const avgDailyIncome = totalIncome / daysDiff;
     const avgDailyExpenses = totalExpenses / daysDiff;
 
@@ -143,16 +138,20 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
     if (!transactions.length) return [];
 
     const now = new Date();
-    const currentMonth = getMonthWindow(now, 0);
-    const previousMonth = getMonthWindow(now, -1);
+    const currentCycle = budget
+      ? getBudgetCycleWindow(now, budget.month_start_day)
+      : { monthStart: new Date(now.getFullYear(), now.getMonth(), 1), monthEnd: new Date(now.getFullYear(), now.getMonth() + 1, 0) };
+    const previousCycle = budget
+      ? getBudgetCycleWindow(new Date(currentCycle.monthStart.getTime() - 24 * 60 * 60 * 1000), budget.month_start_day)
+      : { monthStart: new Date(now.getFullYear(), now.getMonth() - 1, 1), monthEnd: new Date(now.getFullYear(), now.getMonth(), 0) };
     const categoryTotals = new Map<string, { current: number; previous: number }>();
 
     transactions.forEach((transaction) => {
       if (transaction.amount <= 0) return;
       const existing = categoryTotals.get(transaction.category) || { current: 0, previous: 0 };
-      if (transaction.date >= currentMonth.start && transaction.date <= currentMonth.end) {
+      if (transaction.date >= toDateString(currentCycle.monthStart) && transaction.date <= toDateString(currentCycle.monthEnd)) {
         existing.current += transaction.amount;
-      } else if (transaction.date >= previousMonth.start && transaction.date <= previousMonth.end) {
+      } else if (transaction.date >= toDateString(previousCycle.monthStart) && transaction.date <= toDateString(previousCycle.monthEnd)) {
         existing.previous += transaction.amount;
       }
       categoryTotals.set(transaction.category, existing);

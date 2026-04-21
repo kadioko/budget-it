@@ -40,6 +40,8 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
   const [displayAmount, setDisplayAmount] = useState('');
   const [category, setCategory] = useState('Food');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [merchant, setMerchant] = useState('');
+  const [tags, setTags] = useState('');
   const [note, setNote] = useState('');
   const [envelopeId, setEnvelopeId] = useState('');
   const [error, setError] = useState('');
@@ -77,6 +79,8 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
       setDisplayAmount(formatAmountWithCommas(cleanAmount));
       setCategory(transaction.category);
       setDate(transaction.date);
+      setMerchant(transaction.merchant || '');
+      setTags((transaction.tags || []).join(', '));
       setNote(transaction.note || '');
       setTransactionType(transaction.amount < 0 ? 'income' : 'expense');
       setEnvelopeId(transaction.envelope_id || '');
@@ -109,7 +113,17 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
         category,
         date,
         note || undefined,
-        envelopeId || null
+        envelopeId || null,
+        {
+          merchant: merchant || undefined,
+          tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+          isRecurring: transaction?.is_recurring || false,
+          recurringSourceId: transaction?.recurring_source_id || null,
+          kind: transaction?.kind || 'standard',
+          transferGroupId: transaction?.transfer_group_id || null,
+          transferPeerEnvelopeId: transaction?.transfer_peer_envelope_id || null,
+          transferDirection: transaction?.transfer_direction || null,
+        }
       );
       
       const transactionTypeText = transactionType === 'income' ? 'Income' : 'Expense';
@@ -172,6 +186,10 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
     boxSizing: 'border-box',
   };
   const isBusy = loading || isSubmitting;
+  const merchantSuggestions = Array.from(new Set(transactions.map((item) => item.merchant).filter(Boolean))) as string[];
+  const matchingMerchants = merchant
+    ? merchantSuggestions.filter((candidate) => candidate.toLowerCase().includes(merchant.toLowerCase()) && candidate.toLowerCase() !== merchant.toLowerCase()).slice(0, 4)
+    : merchantSuggestions.slice(0, 4);
 
   return (
     <>
@@ -267,6 +285,30 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-main)' }}>Date *</label>
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required style={fieldStyle} />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-main)' }}>Merchant</label>
+              <input type="text" value={merchant} onChange={(e) => setMerchant(e.target.value)} placeholder="e.g. Carrefour, Uber, Netflix" style={fieldStyle} />
+              {matchingMerchants.length > 0 && (
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                  {matchingMerchants.map((candidate) => (
+                    <button
+                      key={candidate}
+                      type="button"
+                      onClick={() => setMerchant(candidate)}
+                      style={{ padding: '8px 10px', borderRadius: '999px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-main)', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                    >
+                      {candidate}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-main)' }}>Tags</label>
+              <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Comma-separated tags" style={fieldStyle} />
             </div>
 
             <div style={{ marginBottom: '32px' }}>

@@ -13,6 +13,17 @@ interface PendingAction {
   timestamp: string;
 }
 
+interface TransactionDetailsInput {
+  merchant?: string;
+  tags?: string[];
+  isRecurring?: boolean;
+  recurringSourceId?: string | null;
+  kind?: 'standard' | 'transfer';
+  transferGroupId?: string | null;
+  transferPeerEnvelopeId?: string | null;
+  transferDirection?: 'incoming' | 'outgoing' | null;
+}
+
 interface BudgetState {
   budget: Budget | null;
   categoryBudgets: CategoryBudgetMap;
@@ -56,7 +67,8 @@ interface BudgetState {
     category: string,
     date: string,
     note?: string,
-    envelopeId?: string | null
+    envelopeId?: string | null,
+    details?: TransactionDetailsInput
   ) => Promise<void>;
   updateTransaction: (
     transactionId: string,
@@ -64,9 +76,18 @@ interface BudgetState {
     category: string,
     date: string,
     note?: string,
-    envelopeId?: string | null
+    envelopeId?: string | null,
+    details?: TransactionDetailsInput
   ) => Promise<void>;
   deleteTransaction: (transactionId: string) => Promise<void>;
+  createTransfer: (
+    userId: string,
+    amount: number,
+    fromAccountId: 'bank' | string,
+    toAccountId: 'bank' | string,
+    date: string,
+    note?: string
+  ) => Promise<void>;
   addRecurringTransaction: (
     userId: string,
     amount: number,
@@ -111,8 +132,23 @@ export const useBudgetStore = create<BudgetState>()(
 
           for (const action of sortedActions) {
             if (action.type === 'ADD_TRANSACTION') {
-              const { userId, amount, category, date, note } = action.payload;
-              await supabase.from('transactions').insert([{ user_id: userId, amount, category, date, note }]);
+              const { userId, amount, category, date, note, envelopeId, details } = action.payload;
+              await supabase.from('transactions').insert([{
+                user_id: userId,
+                amount,
+                category,
+                date,
+                note,
+                envelope_id: envelopeId || null,
+                merchant: details?.merchant || null,
+                tags: details?.tags || [],
+                is_recurring: Boolean(details?.isRecurring),
+                recurring_source_id: details?.recurringSourceId || null,
+                kind: details?.kind || 'standard',
+                transfer_group_id: details?.transferGroupId || null,
+                transfer_peer_envelope_id: details?.transferPeerEnvelopeId || null,
+                transfer_direction: details?.transferDirection || null,
+              }]);
             } else if (action.type === 'DELETE_TRANSACTION') {
               await supabase.from('transactions').delete().eq('id', action.payload.transactionId);
             }
@@ -152,7 +188,7 @@ export const useBudgetStore = create<BudgetState>()(
         budget: nextBudget,
         categoryBudgets: nextBudget?.category_budgets && typeof nextBudget.category_budgets === 'object'
           ? nextBudget.category_budgets
-          : get().categoryBudgets,
+          : {},
       });
       get().calculateStats();
     } catch (err: any) {
@@ -321,6 +357,7 @@ export const useBudgetStore = create<BudgetState>()(
             user_id: userId,
             daily_target: dailyTarget,
             monthly_target: monthlyTarget,
+            category_budgets: {},
             currency,
             month_start_day: monthStartDay,
           },
@@ -333,7 +370,7 @@ export const useBudgetStore = create<BudgetState>()(
         budget: data,
         categoryBudgets: data?.category_budgets && typeof data.category_budgets === 'object'
           ? data.category_budgets
-          : get().categoryBudgets,
+          : {},
       });
     } catch (err: any) {
       set({ error: err.message });
@@ -370,7 +407,7 @@ export const useBudgetStore = create<BudgetState>()(
         budget: data,
         categoryBudgets: data?.category_budgets && typeof data.category_budgets === 'object'
           ? data.category_budgets
-          : get().categoryBudgets,
+          : {},
       });
     } catch (err: any) {
       set({ error: err.message });
@@ -386,7 +423,8 @@ export const useBudgetStore = create<BudgetState>()(
     category: string,
     date: string,
     note?: string,
-    envelopeId?: string | null
+    envelopeId?: string | null,
+    details?: TransactionDetailsInput
   ) => {
     set({ loading: true, error: null });
     try {
@@ -398,6 +436,14 @@ export const useBudgetStore = create<BudgetState>()(
           category,
           date,
           note: note || null,
+          merchant: details?.merchant || null,
+          tags: details?.tags || [],
+          is_recurring: Boolean(details?.isRecurring),
+          recurring_source_id: details?.recurringSourceId || null,
+          kind: details?.kind || 'standard',
+          transfer_group_id: details?.transferGroupId || null,
+          transfer_peer_envelope_id: details?.transferPeerEnvelopeId || null,
+          transfer_direction: details?.transferDirection || null,
           envelope_id: envelopeId || null,
           created_at: new Date().toISOString()
         };
@@ -406,7 +452,7 @@ export const useBudgetStore = create<BudgetState>()(
           pendingActions: [...state.pendingActions, {
             id: `act-${Date.now()}`,
             type: 'ADD_TRANSACTION',
-            payload: { userId, amount, category, date, note, envelopeId },
+            payload: { userId, amount, category, date, note, envelopeId, details },
             timestamp: new Date().toISOString()
           }]
         }));
@@ -422,6 +468,14 @@ export const useBudgetStore = create<BudgetState>()(
           category,
           date,
           note: note || null,
+          merchant: details?.merchant || null,
+          tags: details?.tags || [],
+          is_recurring: Boolean(details?.isRecurring),
+          recurring_source_id: details?.recurringSourceId || null,
+          kind: details?.kind || 'standard',
+          transfer_group_id: details?.transferGroupId || null,
+          transfer_peer_envelope_id: details?.transferPeerEnvelopeId || null,
+          transfer_direction: details?.transferDirection || null,
           envelope_id: envelopeId || null,
         }])
         .select()
@@ -463,7 +517,8 @@ export const useBudgetStore = create<BudgetState>()(
     category: string,
     date: string,
     note?: string,
-    envelopeId?: string | null
+    envelopeId?: string | null,
+    details?: TransactionDetailsInput
   ) => {
     set({ loading: true, error: null });
     try {
@@ -477,6 +532,14 @@ export const useBudgetStore = create<BudgetState>()(
           category,
           date,
           note: note || null,
+          merchant: details?.merchant || null,
+          tags: details?.tags || [],
+          is_recurring: Boolean(details?.isRecurring),
+          recurring_source_id: details?.recurringSourceId || null,
+          kind: details?.kind || existingTx.kind || 'standard',
+          transfer_group_id: details?.transferGroupId || existingTx.transfer_group_id || null,
+          transfer_peer_envelope_id: details?.transferPeerEnvelopeId || null,
+          transfer_direction: details?.transferDirection || null,
           envelope_id: envelopeId || null,
         })
         .eq('id', transactionId)
@@ -543,7 +606,12 @@ export const useBudgetStore = create<BudgetState>()(
         .single();
 
       if (error) throw error;
-      set({ budget: data });
+      set({
+        budget: data,
+        categoryBudgets: data?.category_budgets && typeof data.category_budgets === 'object'
+          ? data.category_budgets
+          : {},
+      });
     } catch (err: any) {
       set({ error: err.message });
       throw err;
@@ -572,20 +640,118 @@ export const useBudgetStore = create<BudgetState>()(
       if (error) throw error;
       set({ budget: data, categoryBudgets: sanitizedBudgets });
     } catch (err: any) {
-      // Fallback to local persistence when the remote schema does not yet include category_budgets.
-      set({
-        categoryBudgets: sanitizedBudgets,
-        budget: get().budget ? { ...get().budget!, category_budgets: sanitizedBudgets } : get().budget,
-      });
       const message = err?.message || '';
       if (
-        !message.includes('category_budgets') &&
-        !message.includes('Could not find') &&
-        !message.includes('schema cache')
+        message.includes('category_budgets') ||
+        message.includes('Could not find') ||
+        message.includes('schema cache')
       ) {
+        set({ error: 'Category budget syncing is not enabled in Supabase yet. Run add_category_budgets_column.sql, then try again.' });
+      } else {
         set({ error: message });
-        throw err;
       }
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  createTransfer: async (
+    userId: string,
+    amount: number,
+    fromAccountId: 'bank' | string,
+    toAccountId: 'bank' | string,
+    date: string,
+    note?: string
+  ) => {
+    set({ loading: true, error: null });
+    try {
+      if (amount <= 0) throw new Error('Transfer amount must be greater than zero.');
+      if (fromAccountId === toAccountId) throw new Error('Choose different source and destination accounts.');
+      if (get().isOffline) throw new Error('Transfers require an online connection right now.');
+
+      const transferGroupId = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `transfer-${Date.now()}`;
+
+      const fromEnvelopeId = fromAccountId === 'bank' ? null : fromAccountId;
+      const toEnvelopeId = toAccountId === 'bank' ? null : toAccountId;
+
+      const payload = [
+        {
+          user_id: userId,
+          amount,
+          category: 'Transfer',
+          date,
+          note: note || 'Transfer out',
+          kind: 'transfer',
+          transfer_group_id: transferGroupId,
+          transfer_peer_envelope_id: toEnvelopeId,
+          transfer_direction: 'outgoing',
+          envelope_id: fromEnvelopeId,
+          tags: ['transfer'],
+          is_recurring: false,
+        },
+        {
+          user_id: userId,
+          amount: -amount,
+          category: 'Transfer',
+          date,
+          note: note || 'Transfer in',
+          kind: 'transfer',
+          transfer_group_id: transferGroupId,
+          transfer_peer_envelope_id: fromEnvelopeId,
+          transfer_direction: 'incoming',
+          envelope_id: toEnvelopeId,
+          tags: ['transfer'],
+          is_recurring: false,
+        },
+      ];
+
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert(payload)
+        .select();
+
+      if (error) throw error;
+
+      if (fromEnvelopeId) {
+        const sourceEnvelope = get().envelopes.find((envelope) => envelope.id === fromEnvelopeId);
+        if (sourceEnvelope) {
+          await get().updateEnvelope(
+            sourceEnvelope.id,
+            sourceEnvelope.name,
+            sourceEnvelope.icon,
+            sourceEnvelope.balance - amount,
+            sourceEnvelope.currency
+          );
+        }
+      } else {
+        const currentBudget = get().budget;
+        if (currentBudget) await get().updateBankBalance(currentBudget.id, currentBudget.bank_balance - amount);
+      }
+
+      if (toEnvelopeId) {
+        const targetEnvelope = get().envelopes.find((envelope) => envelope.id === toEnvelopeId);
+        if (targetEnvelope) {
+          await get().updateEnvelope(
+            targetEnvelope.id,
+            targetEnvelope.name,
+            targetEnvelope.icon,
+            targetEnvelope.balance + amount,
+            targetEnvelope.currency
+          );
+        }
+      } else {
+        const currentBudget = get().budget;
+        if (currentBudget) await get().updateBankBalance(currentBudget.id, currentBudget.bank_balance + amount);
+      }
+
+      set({ transactions: [...(data || []), ...get().transactions] });
+      get().calculateStats();
+    } catch (err: any) {
+      set({ error: err.message });
+      throw err;
     } finally {
       set({ loading: false });
     }
@@ -730,7 +896,12 @@ export const useBudgetStore = create<BudgetState>()(
             amount,
             rt.category,
             nextDate.toISOString().split('T')[0],
-            rt.note ? `${rt.note} (Auto-added)` : '(Auto-added)'
+            rt.note ? `${rt.note} (Auto-added)` : '(Auto-added)',
+            undefined,
+            {
+              isRecurring: true,
+              recurringSourceId: rt.id,
+            }
           );
 
           // Calculate next date

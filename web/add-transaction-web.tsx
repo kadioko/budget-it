@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
 
@@ -26,16 +26,30 @@ const formatCurrency = (amount: number, currency: string) => {
   }).format(amount);
 };
 
-export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
+interface AddTransactionWebProps {
+  onBack: () => void;
+  initialType?: 'expense' | 'income';
+  initialCategory?: string;
+  initialNote?: string;
+}
+
+export default function AddTransactionWeb({
+  onBack,
+  initialType = 'expense',
+  initialCategory,
+  initialNote = '',
+}: AddTransactionWebProps) {
   const { user } = useAuthStore();
-  const { addTransaction, loading, envelopes, budget } = useBudgetStore();
+  const { addTransaction, loading, envelopes, budget, transactions } = useBudgetStore();
   
   const [amount, setAmount] = useState('');
   const [displayAmount, setDisplayAmount] = useState('');
-  const [category, setCategory] = useState('Food');
-  const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
+  const [category, setCategory] = useState(initialCategory || 'Food');
+  const [transactionType, setTransactionType] = useState<'expense' | 'income'>(initialType);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [note, setNote] = useState('');
+  const [merchant, setMerchant] = useState('');
+  const [tags, setTags] = useState('');
+  const [note, setNote] = useState(initialNote);
   const [envelopeId, setEnvelopeId] = useState(envelopes.find(e => e.is_default)?.id || envelopes[0]?.id || '');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -43,6 +57,13 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
 
   const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Other'];
   const INCOME_CATEGORIES = ['Salary', 'Business', 'Investment', 'Gift', 'Other'];
+
+  useEffect(() => {
+    setTransactionType(initialType);
+    const validCategories = initialType === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+    setCategory(initialCategory && validCategories.includes(initialCategory) ? initialCategory : validCategories[0]);
+    setNote(initialNote);
+  }, [initialCategory, initialNote, initialType]);
 
   const formatAmountWithCommas = (value: string) => {
     const cleanValue = value.replace(/[^\d.]/g, '');
@@ -87,7 +108,12 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
         category,
         date,
         note || undefined,
-        envelopeId || null
+        envelopeId || null,
+        {
+          merchant: merchant || undefined,
+          tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+          isRecurring: recurringHint?.isRecurring || false,
+        }
       );
       
       const transactionTypeText = transactionType === 'income' ? 'Income' : 'Expense';
@@ -102,6 +128,28 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
   };
 
   const isBusy = loading || isSubmitting;
+  const merchantSuggestions = Array.from(new Set(transactions.map((transaction) => transaction.merchant).filter(Boolean))) as string[];
+  const matchingMerchants = merchant
+    ? merchantSuggestions.filter((candidate) => candidate.toLowerCase().includes(merchant.toLowerCase()) && candidate.toLowerCase() !== merchant.toLowerCase()).slice(0, 4)
+    : merchantSuggestions.slice(0, 4);
+  const previousMerchantMatch = merchant
+    ? transactions.find((transaction) => transaction.merchant?.toLowerCase() === merchant.toLowerCase())
+    : null;
+  const recurringHint = merchant
+    ? (() => {
+        const relevantTransactions = transactions
+          .filter((transaction) =>
+            transaction.merchant?.toLowerCase() === merchant.toLowerCase() ||
+            transaction.category === category
+          )
+          .sort((a, b) => b.date.localeCompare(a.date));
+        if (relevantTransactions.length < 2) return null;
+        const [latest, previous] = relevantTransactions;
+        const dayGap = Math.abs(Math.round((new Date(latest.date).getTime() - new Date(previous.date).getTime()) / (1000 * 60 * 60 * 24)));
+        const isRecurring = (dayGap >= 27 && dayGap <= 35) || (dayGap >= 6 && dayGap <= 8);
+        return isRecurring ? { isRecurring: true, intervalLabel: dayGap >= 27 ? 'monthly-ish' : 'weekly-ish' } : null;
+      })()
+    : null;
 
   return (
     <>
@@ -333,6 +381,87 @@ export default function AddTransactionWeb({ onBack }: { onBack: () => void }) {
                   }}
                   required
                 />
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '700', color: '#94a3b8', marginBottom: '8px' }}>
+                  Merchant
+                </label>
+                <input
+                  type="text"
+                  value={merchant}
+                  onChange={(e) => {
+                    const nextMerchant = e.target.value;
+                    setMerchant(nextMerchant);
+                    const match = transactions.find((transaction) => transaction.merchant?.toLowerCase() === nextMerchant.toLowerCase());
+                    if (match) {
+                      setCategory(match.category);
+                      setTags((match.tags || []).join(', '));
+                    }
+                  }}
+                  placeholder="e.g. Carrefour, Netflix, Uber"
+                  style={{
+                    width: '100%',
+                    padding: '16px',
+                    border: '1px solid #334155',
+                    borderRadius: '12px',
+                    fontSize: '15px',
+                    backgroundColor: '#0f172a',
+                    color: '#f8fafc',
+                  }}
+                />
+                {matchingMerchants.length > 0 && (
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                    {matchingMerchants.map((candidate) => (
+                      <button
+                        key={candidate}
+                        type="button"
+                        onClick={() => {
+                          setMerchant(candidate);
+                          const match = transactions.find((transaction) => transaction.merchant?.toLowerCase() === candidate.toLowerCase());
+                          if (match) {
+                            setCategory(match.category);
+                            setTags((match.tags || []).join(', '));
+                          }
+                        }}
+                        style={{ padding: '8px 10px', borderRadius: '999px', border: '1px solid #334155', backgroundColor: '#162235', color: '#cbd5e1', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        {candidate}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {previousMerchantMatch && (
+                  <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '8px' }}>
+                    Suggested category: <span style={{ color: '#f8fafc', fontWeight: 700 }}>{previousMerchantMatch.category}</span>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '700', color: '#94a3b8', marginBottom: '8px' }}>
+                  Tags
+                </label>
+                <input
+                  type="text"
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                  placeholder="Comma-separated tags, e.g. groceries, household"
+                  style={{
+                    width: '100%',
+                    padding: '16px',
+                    border: '1px solid #334155',
+                    borderRadius: '12px',
+                    fontSize: '15px',
+                    backgroundColor: '#0f172a',
+                    color: '#f8fafc',
+                  }}
+                />
+                {recurringHint && (
+                  <div style={{ marginTop: '10px', padding: '10px 12px', borderRadius: '12px', backgroundColor: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.18)', color: '#bfdbfe', fontSize: '12px', lineHeight: 1.6 }}>
+                    Similar transactions suggest this looks {recurringHint.intervalLabel}. It will be tagged as recurring for future insights.
+                  </div>
+                )}
               </div>
 
               <div style={{ marginBottom: '32px' }}>

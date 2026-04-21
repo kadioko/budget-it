@@ -298,6 +298,7 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
               <div style={{ display: 'flex', flexDirection: 'column', padding: '12px' }}>
                 {filteredTransactions.slice(0, visibleCount).map((t, index) => {
                   const isExpense = t.amount > 0;
+                  const isTransfer = t.kind === 'transfer';
                   const isDeleting = deletingTransactionId === t.id;
                   return (
                     <div key={t.id} style={{
@@ -326,11 +327,14 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
                             <div style={{ fontSize: '16px', fontWeight: '800', color: theme.text, overflowWrap: 'anywhere' }}>{t.category}</div>
-                            <span style={{ fontSize: '11px', fontWeight: '700', color: !isExpense ? '#16a34a' : '#dc2626', backgroundColor: !isExpense ? 'rgba(22,163,74,0.08)' : 'rgba(220,38,38,0.08)', borderRadius: '999px', padding: '4px 8px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>{!isExpense ? 'Income' : 'Expense'}</span>
+                            <span style={{ fontSize: '11px', fontWeight: '700', color: isTransfer ? '#7c3aed' : !isExpense ? '#16a34a' : '#dc2626', backgroundColor: isTransfer ? 'rgba(124,58,237,0.1)' : !isExpense ? 'rgba(22,163,74,0.08)' : 'rgba(220,38,38,0.08)', borderRadius: '999px', padding: '4px 8px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>{isTransfer ? 'Transfer' : !isExpense ? 'Income' : 'Expense'}</span>
+                            {t.is_recurring && <span style={{ fontSize: '11px', fontWeight: '700', color: '#2563eb', backgroundColor: 'rgba(37,99,235,0.08)', borderRadius: '999px', padding: '4px 8px', letterSpacing: '0.4px' }}>Recurring</span>}
                           </div>
                           <div style={{ fontSize: '13px', color: theme.textSubtle, fontWeight: '500', overflowWrap: 'anywhere', lineHeight: 1.5 }}>
                             {new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {t.merchant && <span style={{ color: theme.textMuted }}> • {t.merchant}</span>}
                             {t.note && <span style={{ color: theme.textMuted }}> • {t.note}</span>}
+                            {t.tags && t.tags.length > 0 && <span style={{ color: theme.textMuted }}> • {t.tags.join(', ')}</span>}
                           </div>
                         </div>
                       </div>
