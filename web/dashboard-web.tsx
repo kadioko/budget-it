@@ -777,6 +777,21 @@ export default function DashboardWeb() {
           font-weight: 900;
           box-shadow: 0 14px 28px rgba(29, 78, 216, 0.28);
         }
+        .mobile-help-fab {
+          position: fixed;
+          right: 18px;
+          bottom: 22px;
+          z-index: 120;
+          width: 52px;
+          height: 52px;
+          border-radius: 999px;
+          border: 1px solid rgba(125, 211, 252, 0.3);
+          background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 55%, #38bdf8 100%);
+          color: #fff;
+          font-size: 22px;
+          font-weight: 900;
+          box-shadow: 0 18px 30px rgba(29, 78, 216, 0.32);
+        }
         @media (max-width: 639px) {
           .dashboard-shell {
             max-width: 760px;
@@ -785,10 +800,18 @@ export default function DashboardWeb() {
             width: 100%;
             justify-content: stretch !important;
           }
+          .dashboard-top-help {
+            display: none !important;
+          }
           .dashboard-nav-actions .nav-btn {
             flex: 1 1 calc(50% - 6px);
             text-align: center;
             min-height: 40px;
+          }
+        }
+        @media (min-width: 640px) {
+          .mobile-help-fab {
+            display: none !important;
           }
         }
       `}</style>
@@ -806,7 +829,7 @@ export default function DashboardWeb() {
             <div style={{ fontSize: '11px', fontWeight: '700', color: '#f39c12', backgroundColor: 'rgba(243,156,18,0.15)', border: '1px solid rgba(243,156,18,0.3)', borderRadius: '6px', padding: '3px 8px' }}>⚡ Offline</div>
           )}
           <div className="dashboard-nav-actions" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', flex: '1 1 auto' }}>
-            <button className="nav-btn help-orb" onClick={() => setCurrentView('guides')} title={t('dashboard.helpTitle')} aria-label={t('dashboard.helpTitle')}>
+            <button className="nav-btn help-orb dashboard-top-help" onClick={() => setCurrentView('guides')} title={t('dashboard.helpTitle')} aria-label={t('dashboard.helpTitle')}>
               {t('common.questionMark')}
             </button>
             {([
@@ -823,6 +846,18 @@ export default function DashboardWeb() {
           </div>
         </div>
       </div>
+
+      {isMobile && (
+        <button
+          className="mobile-help-fab"
+          type="button"
+          onClick={() => setCurrentView('guides')}
+          title={t('dashboard.helpTitle')}
+          aria-label={t('dashboard.helpTitle')}
+        >
+          {t('common.questionMark')}
+        </button>
+      )}
 
       <div className="dashboard-shell" style={{ margin: '0 auto', padding: '28px 24px 72px', animation: 'fadeIn 0.3s ease' }}>
 
