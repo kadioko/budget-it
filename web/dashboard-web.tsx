@@ -1279,22 +1279,22 @@ export default function DashboardWeb() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {recentTransactions.map(t => {
-                const isIncome = t.amount < 0;
-                const isTransfer = t.kind === 'transfer';
-                const isEditing = dashboardEditingTransactionId === t.id;
-                const isDeleting = dashboardDeletingId === t.id;
+              {recentTransactions.map(tx => {
+                const isIncome = tx.amount < 0;
+                const isTransfer = tx.kind === 'transfer';
+                const isEditing = dashboardEditingTransactionId === tx.id;
+                const isDeleting = dashboardDeletingId === tx.id;
                 const categoryLabel = isTransfer
-                  ? (t.transfer_direction === 'incoming' ? t('dashboard.transferIn') : t('dashboard.transferOut'))
-                  : t.category;
+                  ? (tx.transfer_direction === 'incoming' ? t('dashboard.transferIn') : t('dashboard.transferOut'))
+                  : tx.category;
                 const metadata = [
-                  new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                  t.merchant || null,
-                  t.note || null,
-                  t.tags?.length ? `#${t.tags.join(' #')}` : null,
+                  new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                  tx.merchant || null,
+                  tx.note || null,
+                  tx.tags?.length ? `#${tx.tags.join(' #')}` : null,
                 ].filter(Boolean).join(' · ');
                 return (
-                  <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '10px' : '12px', padding: '10px 12px', backgroundColor: theme.surfaceMuted, borderRadius: '10px', border: `1px solid ${theme.border}`, cursor: !isTransfer ? 'pointer' : 'default' }} onDoubleClick={() => { if (!isTransfer) beginDashboardEdit(t.id); }}>
+                  <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '10px' : '12px', padding: '10px 12px', backgroundColor: theme.surfaceMuted, borderRadius: '10px', border: `1px solid ${theme.border}`, cursor: !isTransfer ? 'pointer' : 'default' }} onDoubleClick={() => { if (!isTransfer) beginDashboardEdit(tx.id); }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, width: isMobile ? '100%' : 'auto' }}>
                       <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: isTransfer ? 'rgba(139,92,246,0.18)' : isIncome ? 'rgba(39,174,96,0.2)' : 'rgba(231,76,60,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>
                         {isIncome ? '💰' : '💸'}
@@ -1302,31 +1302,31 @@ export default function DashboardWeb() {
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <div style={{ fontSize: '13px', fontWeight: '600', color: theme.text, overflowWrap: 'anywhere' }}>{categoryLabel}</div>
-                          {t.is_recurring && (
+                          {tx.is_recurring && (
                             <span style={{ fontSize: '10px', fontWeight: 800, color: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.18)', borderRadius: '999px', padding: '3px 8px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
                               Recurring
                             </span>
                           )}
                         </div>
-                        <div style={{ fontSize: '11px', color: theme.textSubtle, overflowWrap: 'anywhere' }}>{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{t.note ? ` · ${t.note}` : ''}</div>
+                        <div style={{ fontSize: '11px', color: theme.textSubtle, overflowWrap: 'anywhere' }}>{new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{tx.note ? ` · ${tx.note}` : ''}</div>
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: isMobile ? 'stretch' : 'flex-end', width: isMobile ? '100%' : 'auto' }}>
                       <div title={metadata} style={{ fontSize: '14px', fontWeight: '700', color: isIncome ? '#2ecc71' : isTransfer ? '#8b5cf6' : '#ff7675', alignSelf: isMobile ? 'flex-end' : 'auto' }}>
-                        {isIncome ? '+' : '−'}{formatCurrency(Math.abs(t.amount), cur)}
+                        {isIncome ? '+' : '−'}{formatCurrency(Math.abs(tx.amount), cur)}
                       </div>
                       {!isTransfer && (
                         <div style={{ display: 'flex', gap: '6px', alignSelf: isMobile ? 'stretch' : 'flex-end' }}>
                           <button
                             type="button"
-                            onClick={(event) => { event.stopPropagation(); beginDashboardEdit(t.id); }}
+                            onClick={(event) => { event.stopPropagation(); beginDashboardEdit(tx.id); }}
                             style={{ padding: '7px 10px', borderRadius: '10px', border: `1px solid ${theme.border}`, backgroundColor: theme.background, color: theme.text, fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
                           >
                             {isEditing ? t('dashboard.editing') : t('dashboard.edit')}
                           </button>
                           <button
                             type="button"
-                            onClick={(event) => { event.stopPropagation(); handleDashboardDelete(t.id); }}
+                            onClick={(event) => { event.stopPropagation(); handleDashboardDelete(tx.id); }}
                             disabled={isDeleting}
                             style={{ padding: '7px 10px', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.18)', backgroundColor: 'rgba(239,68,68,0.12)', color: '#ef4444', fontSize: '11px', fontWeight: 700, cursor: isDeleting ? 'not-allowed' : 'pointer', opacity: isDeleting ? 0.7 : 1 }}
                           >
