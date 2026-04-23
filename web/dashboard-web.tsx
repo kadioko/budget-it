@@ -227,7 +227,7 @@ export default function DashboardWeb() {
 
   const accountOptions = useMemo(() => {
     const baseOptions = [{ id: 'bank', label: t('dashboard.bankAccount'), icon: '🏦', balance: budget?.bank_balance || 0, currency: budget?.currency || 'USD' }];
-    const envelopeOptions = envelopes.map((env) => ({ id: env.id, label: env.name, icon: env.icon, balance: env.balance, currency: env.currency }));
+    const envelopeOptions = (envelopes || []).map((env) => ({ id: env.id, label: env.name, icon: env.icon, balance: env.balance, currency: env.currency }));
     const totalBalance = baseOptions.reduce((sum, item) => sum + item.balance, 0) + envelopeOptions.reduce((sum, item) => sum + item.balance, 0);
 
     return [
@@ -254,7 +254,7 @@ export default function DashboardWeb() {
   }, [accountOptions, selectedAccount, selectedAccountId]);
 
   const dashboardCategoryOptions = useMemo(
-    () => ['all', ...Array.from(new Set(transactions.map((transaction) => transaction.category))).sort((a, b) => a.localeCompare(b))],
+    () => ['all', ...Array.from(new Set((transactions || []).map((transaction) => transaction.category))).sort((a, b) => a.localeCompare(b))],
     [transactions]
   );
 
@@ -384,7 +384,7 @@ export default function DashboardWeb() {
       }
     }
 
-    const upcomingRecurring = recurringTransactions
+    const upcomingRecurring = (recurringTransactions || [])
       .map((transaction) => ({
         ...transaction,
         daysUntil: Math.ceil((new Date(transaction.next_date).getTime() - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24)),
@@ -481,7 +481,7 @@ export default function DashboardWeb() {
   }, [browserAlertPermission, browserAlertsEnabled, budget, notifications, weeklySummaryAlertsEnabled]);
 
   const goalHighlights = useMemo(() => {
-    return savingsGoals
+    return (savingsGoals || [])
       .map((goal) => {
         const percent = goal.target_amount > 0 ? Math.min(100, Math.round((goal.current_amount / goal.target_amount) * 100)) : 0;
         const remaining = Math.max(0, goal.target_amount - goal.current_amount);
