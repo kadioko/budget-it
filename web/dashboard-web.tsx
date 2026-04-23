@@ -146,7 +146,12 @@ export default function DashboardWeb() {
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => setToast({ message, type });
 
-  // Network listener
+  // Network listener - use refs to avoid re-subscribing on store changes
+  const syncOfflineActionsRef = useRef(syncOfflineActions);
+  const tRef = useRef(t);
+  syncOfflineActionsRef.current = syncOfflineActions;
+  tRef.current = t;
+  
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
       const offline = !(state.isConnected && state.isInternetReachable !== false);
@@ -154,15 +159,16 @@ export default function DashboardWeb() {
       
       // If we just came back online and have pending actions, sync them
       if (!offline && pendingActions.length > 0) {
-        showToast(t('dashboard.backOnlineSyncing'), 'success');
-        syncOfflineActions().then(() => {
-          showToast(t('dashboard.syncComplete'), 'success');
+        showToast(tRef.current('dashboard.backOnlineSyncing'), 'success');
+        syncOfflineActionsRef.current().then(() => {
+          showToast(tRef.current('dashboard.syncComplete'), 'success');
         });
       }
     });
 
     return () => unsubscribe();
-  }, [pendingActions.length, syncOfflineActions, t]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingActions.length]);
 
   useEffect(() => {
     if (user) {
