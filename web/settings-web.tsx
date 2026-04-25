@@ -766,7 +766,28 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
         </div>
 
         <div style={card}>
-          <div style={sectionTitle}><span>ðŸ“Š</span> Category Limits</div>
+          <div style={sectionTitle}>
+            <span
+              aria-hidden="true"
+              style={{
+                width: '22px',
+                height: '22px',
+                borderRadius: '6px',
+                display: 'inline-grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                alignItems: 'end',
+                gap: '3px',
+                padding: '4px',
+                backgroundColor: 'rgba(20,184,166,0.12)',
+                border: '1px solid rgba(20,184,166,0.22)',
+              }}
+            >
+              <span style={{ height: '7px', borderRadius: '999px', backgroundColor: '#14b8a6' }} />
+              <span style={{ height: '12px', borderRadius: '999px', backgroundColor: '#0f766e' }} />
+              <span style={{ height: '16px', borderRadius: '999px', backgroundColor: '#38bdf8' }} />
+            </span>
+            Category Limits
+          </div>
           <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.6, marginBottom: '18px' }}>
             Set monthly spending caps for the categories you want to track more closely. These limits feed dashboard warnings and progress states.
           </div>
