@@ -7,6 +7,16 @@ const getEmailRedirectTo = () => {
   return `${window.location.origin}/?auth_action=email_verified`;
 };
 
+const getPasswordResetRedirectTo = () => {
+  if (typeof window === 'undefined') return undefined;
+  return `${window.location.origin}/?auth_action=password_recovery`;
+};
+
+const getOAuthRedirectTo = () => {
+  if (typeof window === 'undefined') return undefined;
+  return `${window.location.origin}/`;
+};
+
 interface AuthState {
   user: any | null;
   profile: Profile | null;
@@ -14,6 +24,9 @@ interface AuthState {
   error: string | null;
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  resetPasswordForEmail: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
   signOut: () => Promise<void>;
   checkAuth: () => Promise<void>;
   setProfile: (profile: Profile) => void;
@@ -62,6 +75,55 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (data.user) {
         set({ user: data.user });
       }
+    } catch (err: any) {
+      set({ error: err.message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  signInWithGoogle: async () => {
+    set({ loading: true, error: null });
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: getOAuthRedirectTo(),
+        },
+      });
+
+      if (error) throw error;
+    } catch (err: any) {
+      set({ error: err.message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  resetPasswordForEmail: async (email: string) => {
+    set({ loading: true, error: null });
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: getPasswordResetRedirectTo(),
+      });
+
+      if (error) throw error;
+    } catch (err: any) {
+      set({ error: err.message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  updatePassword: async (password: string) => {
+    set({ loading: true, error: null });
+    try {
+      const { data, error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+      if (data.user) set({ user: data.user });
     } catch (err: any) {
       set({ error: err.message });
       throw err;

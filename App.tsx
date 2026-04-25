@@ -49,6 +49,16 @@ type VerificationBanner = {
   message: string;
 };
 
+function BrandMark({ size = 44 }: { size?: number }) {
+  return (
+    <img
+      src="/icon.svg"
+      alt="Budget It"
+      style={{ width: `${size}px`, height: `${size}px`, display: 'inline-block', borderRadius: '12px', objectFit: 'contain' }}
+    />
+  );
+}
+
 function AuthCard({ children }: { children: React.ReactNode }) {
   const { t } = useI18n();
   return (
@@ -82,7 +92,7 @@ function AuthCard({ children }: { children: React.ReactNode }) {
                 <span style={{ fontSize: '16px' }}>✨</span>
                 {t('auth.heroBadge')}
               </div>
-              <div style={{ fontSize: '52px', lineHeight: 1, marginBottom: '20px' }}>💰</div>
+              <div style={{ marginBottom: '20px' }}><BrandMark size={64} /></div>
               <h1 style={{ fontSize: '42px', fontWeight: '900', lineHeight: 1.05, letterSpacing: '-1.2px', marginBottom: '14px' }}>{t('auth.heroTitle')}</h1>
               <p style={{ fontSize: '16px', lineHeight: 1.7, color: 'rgba(255,255,255,0.78)', maxWidth: '540px' }}>
                 {t('auth.heroSubtitle')}
@@ -113,7 +123,7 @@ function AuthCard({ children }: { children: React.ReactNode }) {
           </div>
           <div className="auth-card">
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-              <div style={{ fontSize: '40px', marginBottom: '12px' }}>💰</div>
+              <div style={{ marginBottom: '12px' }}><BrandMark size={48} /></div>
               <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#2c3e50', letterSpacing: '-0.5px' }}>{t('common.appName')}</h1>
               <p style={{ fontSize: '14px', color: '#95a5a6', marginTop: '6px' }}>{t('auth.tagLine')}</p>
             </div>
@@ -157,16 +167,57 @@ function PasswordInput({ value, onChange, placeholder, disabled }: {
   );
 }
 
+function GoogleButton({ disabled, onClick, label }: { disabled: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        width: '100%',
+        padding: '13px 14px',
+        borderRadius: '10px',
+        border: '1.5px solid #d8dee8',
+        background: '#fff',
+        color: '#1f2937',
+        fontSize: '15px',
+        fontWeight: 800,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.72 : 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '10px',
+      }}
+    >
+      <span style={{ width: '20px', height: '20px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: 'conic-gradient(from 0deg, #4285f4 0 25%, #34a853 0 50%, #fbbc05 0 75%, #ea4335 0)' }}>G</span>
+      {label}
+    </button>
+  );
+}
+
+function AuthDivider() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#94a3b8', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.7px' }}>
+      <span style={{ height: '1px', background: '#e2e8f0', flex: 1 }} />
+      or
+      <span style={{ height: '1px', background: '#e2e8f0', flex: 1 }} />
+    </div>
+  );
+}
+
 function LoginForm({ onSwitch }: { onSwitch: () => void }) {
-  const { signIn, loading } = useAuthStore();
+  const { signIn, signInWithGoogle, resetPasswordForEmail, loading } = useAuthStore();
   const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [resetMode, setResetMode] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError(''); setSuccess('');
     if (!email || !password) { setError(t('auth.fillAllFields')); return; }
     try {
       await signIn(email, password);
@@ -175,13 +226,36 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
     }
   };
 
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(''); setSuccess('');
+    if (!email) { setError('Enter your email address first.'); return; }
+    try {
+      await resetPasswordForEmail(email);
+      setSuccess('Password reset email sent. Open the link in that email to set a new password.');
+    } catch (err: any) {
+      setError(err.message || 'Could not send password reset email.');
+    }
+  };
+
+  const handleGoogle = async () => {
+    setError(''); setSuccess('');
+    try {
+      await signInWithGoogle();
+    } catch (err: any) {
+      setError(err.message || 'Google sign-in failed.');
+    }
+  };
+
   return (
     <AuthCard>
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-        <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#2c3e50', marginBottom: '8px' }}>{t('auth.welcomeBack')}</h2>
-        <p style={{ fontSize: '14px', color: '#7f8c8d', lineHeight: 1.5 }}>{t('auth.welcomeSubtitle')}</p>
+        <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#2c3e50', marginBottom: '8px' }}>{resetMode ? 'Reset your password' : t('auth.welcomeBack')}</h2>
+        <p style={{ fontSize: '14px', color: '#7f8c8d', lineHeight: 1.5 }}>
+          {resetMode ? 'Enter your account email and we will send a secure reset link.' : t('auth.welcomeSubtitle')}
+        </p>
       </div>
-      <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <form onSubmit={resetMode ? handlePasswordReset : handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <input
           type="email"
           placeholder={t('auth.emailPlaceholder')}
@@ -193,10 +267,15 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
           onBlur={(e) => (e.target.style.borderColor = '#e0e0e0')}
           autoComplete="email"
         />
-        <PasswordInput value={password} onChange={setPassword} placeholder={t('auth.passwordPlaceholder')} disabled={loading} />
+        {!resetMode && <PasswordInput value={password} onChange={setPassword} placeholder={t('auth.passwordPlaceholder')} disabled={loading} />}
         {error && (
           <div style={{ backgroundColor: '#fdf2f2', border: '1px solid #f5c6c6', color: '#c0392b', padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}>
             ⚠️ {error}
+          </div>
+        )}
+        {success && (
+          <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', lineHeight: 1.5 }}>
+            {success}
           </div>
         )}
         <button
@@ -211,21 +290,34 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
             transition: 'all 0.2s',
           }}
         >
-          {loading ? t('auth.signingIn') : t('auth.signIn')}
+          {loading ? (resetMode ? 'Sending...' : t('auth.signingIn')) : (resetMode ? 'Send reset link' : t('auth.signIn'))}
         </button>
       </form>
+      {!resetMode && (
+        <>
+          <div style={{ margin: '16px 0' }}><AuthDivider /></div>
+          <GoogleButton disabled={loading} onClick={handleGoogle} label="Continue with Google" />
+        </>
+      )}
       <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '14px', color: '#7f8c8d' }}>
-        {t('auth.noAccount')}{' '}
-        <button onClick={onSwitch} style={{ color: '#3498db', fontWeight: '700', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px' }}>
-          {t('auth.signUp')}
+        {resetMode ? 'Remembered your password?' : t('auth.noAccount')}{' '}
+        <button onClick={() => resetMode ? setResetMode(false) : onSwitch()} style={{ color: '#3498db', fontWeight: '700', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px' }}>
+          {resetMode ? t('auth.signIn') : t('auth.signUp')}
         </button>
       </div>
+      {!resetMode && (
+        <div style={{ textAlign: 'center', marginTop: '12px' }}>
+          <button type="button" onClick={() => { setResetMode(true); setError(''); setSuccess(''); }} style={{ color: '#64748b', fontWeight: '700', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px' }}>
+            Forgot your password?
+          </button>
+        </div>
+      )}
     </AuthCard>
   );
 }
 
 function SignupForm({ onSwitch }: { onSwitch: () => void }) {
-  const { signUp, loading } = useAuthStore();
+  const { signUp, signInWithGoogle, loading } = useAuthStore();
   const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -248,6 +340,15 @@ function SignupForm({ onSwitch }: { onSwitch: () => void }) {
       }
     } catch (err: any) {
       setError(err.message || t('auth.signupError'));
+    }
+  };
+
+  const handleGoogle = async () => {
+    setError(''); setSuccess('');
+    try {
+      await signInWithGoogle();
+    } catch (err: any) {
+      setError(err.message || 'Google sign-in failed.');
     }
   };
 
@@ -293,12 +394,74 @@ function SignupForm({ onSwitch }: { onSwitch: () => void }) {
           {loading ? t('auth.signingUp') : t('auth.signUp')}
         </button>
       </form>
+      <div style={{ margin: '16px 0' }}><AuthDivider /></div>
+      <GoogleButton disabled={loading} onClick={handleGoogle} label="Sign up with Google" />
       <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '14px', color: '#7f8c8d' }}>
         {t('auth.haveAccount')}{' '}
         <button onClick={onSwitch} style={{ color: '#3498db', fontWeight: '700', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px' }}>
           {t('auth.signIn')}
         </button>
       </div>
+    </AuthCard>
+  );
+}
+
+function ResetPasswordForm({ onComplete }: { onComplete: () => void }) {
+  const { updatePassword, loading } = useAuthStore();
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    if (password !== confirm) { setError('Passwords do not match.'); return; }
+
+    try {
+      await updatePassword(password);
+      setSuccess('Password updated. You can continue to your dashboard now.');
+      setTimeout(onComplete, 900);
+    } catch (err: any) {
+      setError(err.message || 'Could not update password.');
+    }
+  };
+
+  return (
+    <AuthCard>
+      <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#2c3e50', marginBottom: '8px' }}>Set a new password</h2>
+        <p style={{ fontSize: '14px', color: '#7f8c8d', lineHeight: 1.5 }}>Choose a new password for your Budget It account.</p>
+      </div>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <PasswordInput value={password} onChange={setPassword} placeholder="New password" disabled={loading} />
+        <PasswordInput value={confirm} onChange={setConfirm} placeholder="Confirm new password" disabled={loading} />
+        {error && (
+          <div style={{ backgroundColor: '#fdf2f2', border: '1px solid #f5c6c6', color: '#c0392b', padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}>
+            {error}
+          </div>
+        )}
+        {success && (
+          <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}>
+            {success}
+          </div>
+        )}
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            width: '100%', padding: '14px',
+            background: loading ? '#bdc3c7' : 'linear-gradient(135deg, #0f766e, #14b8a6)',
+            color: '#fff', border: 'none', borderRadius: '10px',
+            fontSize: '16px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer',
+            marginTop: '4px', boxShadow: loading ? 'none' : '0 4px 12px rgba(20,184,166,0.3)',
+          }}
+        >
+          {loading ? 'Updating...' : 'Update password'}
+        </button>
+      </form>
     </AuthCard>
   );
 }
@@ -334,7 +497,7 @@ export default function App() {
   const { mode } = useThemeStore();
   const language = useLanguageStore((state) => state.language);
   const [ready, setReady] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState<'login' | 'signup'>('login');
+  const [currentScreen, setCurrentScreen] = useState<'login' | 'signup' | 'reset-password'>('login');
   const [verificationBanner, setVerificationBanner] = useState<VerificationBanner | null>(null);
 
   useEffect(() => {
@@ -353,10 +516,11 @@ export default function App() {
     const searchParams = url.searchParams;
     const hashParams = new URLSearchParams(url.hash.startsWith('#') ? url.hash.slice(1) : url.hash);
     const hasVerificationIntent = searchParams.get('auth_action') === 'email_verified';
+    const hasPasswordRecoveryIntent = searchParams.get('auth_action') === 'password_recovery' || hashParams.get('type') === 'recovery';
     const hasAuthTokens = hashParams.has('access_token') || hashParams.has('refresh_token') || searchParams.has('code') || searchParams.has('token_hash');
     const hasAuthError = searchParams.has('error') || hashParams.has('error_description');
 
-    if (!hasVerificationIntent && !hasAuthTokens && !hasAuthError) return;
+    if (!hasVerificationIntent && !hasPasswordRecoveryIntent && !hasAuthTokens && !hasAuthError) return;
 
     let active = true;
 
@@ -381,7 +545,12 @@ export default function App() {
           throw error;
         }
 
-        if (data.session?.user?.email_confirmed_at || hasVerificationIntent) {
+        if (hasPasswordRecoveryIntent) {
+          setVerificationBanner(null);
+          setCurrentScreen('reset-password');
+        } else if (!hasVerificationIntent && data.session?.user) {
+          setVerificationBanner(null);
+        } else if (data.session?.user?.email_confirmed_at || hasVerificationIntent) {
           setVerificationBanner({
             type: 'success',
             title: 'Email verified',
@@ -434,12 +603,16 @@ export default function App() {
           justifyContent: 'center', alignItems: 'center',
           background: 'linear-gradient(135deg, #1a252f 0%, #2c3e50 50%, #3498db 100%)',
         }}>
-          <div style={{ fontSize: '48px', marginBottom: '20px', animation: 'pulse 1.5s infinite' }}>💰</div>
+          <div style={{ marginBottom: '20px', animation: 'pulse 1.5s infinite' }}><BrandMark size={56} /></div>
           <div style={{ fontSize: '22px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>Budget It</div>
           <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>Loading your finances...</div>
         </div>
       </>
     );
+  }
+
+  if (currentScreen === 'reset-password') {
+    return <ResetPasswordForm onComplete={() => setCurrentScreen('login')} />;
   }
 
   if (!user) {

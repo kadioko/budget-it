@@ -1,17 +1,16 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="120" fill="url(#bg)"/>
-  <circle cx="256" cy="256" r="168" fill="rgba(255,255,255,0.16)"/>
-  <circle cx="256" cy="256" r="132" fill="white" fill-opacity="0.14"/>
-  <path d="M183 314C183 280.863 209.863 254 243 254H307C324.121 254 338 240.121 338 223C338 205.879 324.121 192 307 192H188" stroke="white" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M183 192L217 158" stroke="white" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M183 192L217 226" stroke="white" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M329 320L295 354" stroke="white" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M329 320L295 286" stroke="white" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
-  <defs>
-    <linearGradient id="bg" x1="64" y1="40" x2="444" y2="472" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#0F172A"/>
-      <stop offset="0.55" stop-color="#1E3A8A"/>
-      <stop offset="1" stop-color="#38BDF8"/>
-    </linearGradient>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Budget It logo">
+  <rect x="70" y="70" width="884" height="884" rx="210" fill="#0a272e"/>
+  <rect x="116" y="116" width="792" height="792" rx="178" fill="#135350"/>
+  <circle cx="815" cy="178" r="180" fill="#29cc9c" opacity=".84"/>
+  <circle cx="190" cy="830" r="210" fill="#0ea5e9" opacity=".72"/>
+  <rect x="228" y="318" width="568" height="390" rx="84" fill="#fff" opacity=".96"/>
+  <rect x="270" y="250" width="390" height="130" rx="54" fill="#e0fbf4"/>
+  <rect x="276" y="375" width="470" height="250" rx="50" fill="#0b4244"/>
+  <rect x="654" y="438" width="150" height="150" rx="46" fill="#2dd4bf"/>
+  <circle cx="724" cy="514" r="26" fill="#0a272e"/>
+  <path d="M345 568l105-80 85 47 109-105" fill="none" stroke="#2dd4bf" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M610 430h40v40" fill="none" stroke="#2dd4bf" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="345" cy="568" r="25" fill="#fff"/>
+  <circle cx="450" cy="488" r="25" fill="#fff"/>
+  <circle cx="535" cy="535" r="25" fill="#fff"/>
 </svg>

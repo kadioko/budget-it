@@ -729,7 +729,7 @@ export default function DashboardWeb() {
           <div style={{ background: theme.navSurface, position: 'sticky', top: 0, zIndex: 100, boxShadow: theme.shadow, borderBottom: `1px solid ${theme.border}` }}>
             <div style={{ maxWidth: '760px', margin: '0 auto', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '22px' }}>💰</span>
+                <img src="/icon.svg" alt="" style={{ width: '28px', height: '28px', borderRadius: '8px' }} />
                 <span style={{ fontSize: '17px', fontWeight: '800', color: theme.text }}>Budget It</span>
               </div>
               <div style={{ fontSize: '12px', color: theme.textSubtle, fontWeight: 700 }}>{t('dashboard.preparingDashboard')}</div>
@@ -828,7 +828,7 @@ export default function DashboardWeb() {
       <div style={{ background: theme.navSurface, position: 'sticky', top: 0, zIndex: 100, boxShadow: theme.shadow, borderBottom: `1px solid ${theme.border}` }}>
         <div className="dashboard-shell" style={{ margin: '0 auto', padding: '12px 24px', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            <span style={{ fontSize: '22px' }}>💰</span>
+            <img src="/icon.svg" alt="" style={{ width: '28px', height: '28px', borderRadius: '8px' }} />
             <span style={{ fontSize: '17px', fontWeight: '800', color: theme.text, letterSpacing: '-0.3px' }}>{t('common.appName')}</span>
           </div>
           {isOffline && (
