@@ -1111,7 +1111,7 @@ export default function DashboardWeb() {
                         {item.status === 'over'
                           ? `${formatCurrency(item.spent - item.effectiveLimit, cur)} over`
                           : `${formatCurrency(item.remaining, cur)} remaining`}
-                        {item.carryover > 0 ? ` Â· ${formatCurrency(item.carryover, cur)} rolled in` : ''}
+                        {item.carryover > 0 ? ` - ${formatCurrency(item.carryover, cur)} rolled in` : ''}
                       </div>
                       <ProgressBar value={item.spent} max={item.effectiveLimit} color={item.status === 'over' ? theme.danger : item.status === 'warning' ? '#f59e0b' : theme.success} />
                     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
 import { isWebNotificationSupported, requestWebNotificationPermission } from '../src/lib/web-notifications';
@@ -33,6 +33,61 @@ const formatNumberInput = (value: string) => {
   const withCommas = integerPart ? integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
   return `${isNegative ? '-' : ''}${withCommas}${decimalPart !== undefined ? `.${decimalPart}` : ''}`;
 };
+
+const DEFAULT_ENVELOPE_ICON = '$';
+const NON_ASCII_PATTERN = /[^\x20-\x7E]/;
+
+const cleanEnvelopeIcon = (value?: string | null) => {
+  const trimmed = value?.trim();
+  if (!trimmed || NON_ASCII_PATTERN.test(trimmed)) return DEFAULT_ENVELOPE_ICON;
+  return trimmed.slice(0, 4);
+};
+
+const SectionBadge = ({ label, color = '#14b8a6' }: { label: string; color?: string }) => (
+  <span
+    aria-hidden="true"
+    style={{
+      width: '24px',
+      height: '24px',
+      borderRadius: '9px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: `${color}1f`,
+      border: `1px solid ${color}45`,
+      color,
+      fontSize: '10px',
+      fontWeight: 900,
+      letterSpacing: '0.3px',
+      flexShrink: 0,
+    }}
+  >
+    {label}
+  </span>
+);
+
+const CategoryBarsBadge = () => (
+  <span
+    aria-hidden="true"
+    style={{
+      width: '24px',
+      height: '24px',
+      borderRadius: '9px',
+      display: 'inline-grid',
+      gridTemplateColumns: 'repeat(3, 1fr)',
+      alignItems: 'end',
+      gap: '3px',
+      padding: '5px',
+      backgroundColor: 'rgba(20,184,166,0.12)',
+      border: '1px solid rgba(20,184,166,0.22)',
+      flexShrink: 0,
+    }}
+  >
+    <span style={{ height: '7px', borderRadius: '999px', backgroundColor: '#14b8a6' }} />
+    <span style={{ height: '12px', borderRadius: '999px', backgroundColor: '#0f766e' }} />
+    <span style={{ height: '16px', borderRadius: '999px', backgroundColor: '#38bdf8' }} />
+  </span>
+);
 
 export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => void; onOpenGuides?: () => void }) {
   const { user, signOut } = useAuthStore();
@@ -92,7 +147,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
 
   const [showEnvelopeForm, setShowEnvelopeForm] = useState(false);
   const [envName, setEnvName] = useState('');
-  const [envIcon, setEnvIcon] = useState('💰');
+  const [envIcon, setEnvIcon] = useState(DEFAULT_ENVELOPE_ICON);
   const [envBalance, setEnvBalance] = useState('');
   const [editedEnvelopeBalances, setEditedEnvelopeBalances] = useState<Record<string, string>>({});
   const [editedCategoryBudgets, setEditedCategoryBudgets] = useState<Record<string, string>>({});
@@ -196,7 +251,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
     if (isNaN(daily) || isNaN(monthly) || isNaN(startDay)) { setBudgetMsg({ text: 'Please enter valid numbers', type: 'error' }); return; }
     if (daily <= 0 || monthly <= 0) { setBudgetMsg({ text: 'Targets must be greater than 0', type: 'error' }); return; }
     if (startDay < 1 || startDay > 28) { setBudgetMsg({ text: 'Month start day must be between 1 and 28', type: 'error' }); return; }
-    if (!user) { setBudgetMsg({ text: 'Not authenticated — please sign in again', type: 'error' }); return; }
+    if (!user) { setBudgetMsg({ text: 'Not authenticated - please sign in again', type: 'error' }); return; }
     try {
       if (budget) {
         await updateBudget(budget.id, daily, monthly, currency, startDay);
@@ -334,11 +389,11 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
     if (!user) return;
 
     try {
-      await createEnvelope(user.id, envName, envIcon || '💰', bal, budget?.currency || 'USD');
+      await createEnvelope(user.id, envName, cleanEnvelopeIcon(envIcon), bal, budget?.currency || 'USD');
       setEnvMsg({ text: 'Envelope added!', type: 'success' });
       setShowEnvelopeForm(false);
       setEnvName('');
-      setEnvIcon('💰');
+      setEnvIcon(DEFAULT_ENVELOPE_ICON);
       setEnvBalance('');
     } catch (error: any) {
       setEnvMsg({ text: error.message || 'Failed to add envelope', type: 'error' });
@@ -453,18 +508,20 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
       <div style={{ background: theme.navSurface, position: 'sticky', top: 0, zIndex: 100, boxShadow: theme.shadow, borderBottom: `1px solid ${theme.border}`, backdropFilter: 'blur(14px)' }}>
         <div style={{ maxWidth: '720px', margin: '0 auto', padding: '12px 16px', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: '12px' }}>
           <button onClick={onBack} style={{ background: theme.surfaceStrong, border: `1px solid ${theme.borderStrong}`, borderRadius: '12px', color: theme.primary, fontSize: '16px', cursor: 'pointer', padding: '8px 14px', fontWeight: '700' }}>
-            ← {t('common.back')}
+            {t('common.back')}
           </button>
           <div>
             <div style={{ fontSize: '11px', fontWeight: '700', color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px' }}>{t('settings.preferences')}</div>
-            <span style={{ fontSize: '20px', fontWeight: '900', color: theme.text, letterSpacing: '-0.5px' }}>⚙️ {t('settings.settingsTitle')}</span>
+            <span style={{ fontSize: '20px', fontWeight: '900', color: theme.text, letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <SectionBadge label="SET" color={theme.primary} /> {t('settings.settingsTitle')}
+            </span>
           </div>
         </div>
       </div>
 
       <div style={{ maxWidth: '720px', margin: '0 auto', padding: '20px 16px 60px', animation: 'fadeIn 0.4s ease' }}>
         <div style={card}>
-          <div style={sectionTitle}><span>🌍</span> {t('settings.languageAndHelp')}</div>
+          <div style={sectionTitle}><SectionBadge label="Aa" color="#2563eb" /> {t('settings.languageAndHelp')}</div>
           <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.6, marginBottom: '16px' }}>{t('settings.languageSubtitle')}</div>
           <div style={{ marginBottom: '18px' }}>
             <label style={lbl}>{t('settings.appLanguage')}</label>
@@ -507,7 +564,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
         </div>
 
         <div style={card}>
-          <div style={sectionTitle}><span>🔔</span> {t('settings.alertsAndReminders')}</div>
+          <div style={sectionTitle}><SectionBadge label="!" color="#f59e0b" /> {t('settings.alertsAndReminders')}</div>
           <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.6, marginBottom: '16px' }}>
             {t('settings.alertsSubtitle')}
           </div>
@@ -593,7 +650,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
         </div>
 
         <div style={card}>
-          <div style={sectionTitle}><span>🎯</span> Savings Goals</div>
+          <div style={sectionTitle}><SectionBadge label="GO" color="#10b981" /> Savings Goals</div>
           <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.6, marginBottom: '16px' }}>
             Create personal saving targets with a due date and track how much progress you have already made.
           </div>
@@ -612,8 +669,8 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
                         <div style={{ fontSize: '16px', fontWeight: '800', color: theme.text, marginBottom: '4px' }}>{goal.name}</div>
                         <div style={{ fontSize: '12px', color: theme.textMuted, lineHeight: 1.6 }}>
                           {formatCurrency(goal.current_amount, budget?.currency || 'USD')} saved of {formatCurrency(goal.target_amount, budget?.currency || 'USD')}
-                          {' · '}Target date: {new Date(goal.target_date).toLocaleDateString()}
-                          {linkedEnvelope ? ` · Linked to ${linkedEnvelope.name}` : ''}
+                          {' - '}Target date: {new Date(goal.target_date).toLocaleDateString()}
+                          {linkedEnvelope ? ` - Linked to ${linkedEnvelope.name}` : ''}
                         </div>
                         {goal.note && <div style={{ fontSize: '12px', color: theme.textSubtle, marginTop: '6px' }}>{goal.note}</div>}
                       </div>
@@ -630,7 +687,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
                       <div style={{ width: `${progressPct}%`, height: '100%', borderRadius: '999px', background: progressPct >= 100 ? '#10b981' : theme.primary, transition: 'width 0.3s ease' }} />
                     </div>
                     <div style={{ fontSize: '12px', color: theme.textMuted }}>
-                      {progressPct}% complete · {formatCurrency(remaining, budget?.currency || 'USD')} remaining
+                      {progressPct}% complete - {formatCurrency(remaining, budget?.currency || 'USD')} remaining
                     </div>
                   </div>
                 );
@@ -638,7 +695,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
             </div>
           ) : (
             <div style={{ padding: '24px 20px', borderRadius: '18px', backgroundColor: theme.surfaceMuted, border: `1px solid ${theme.border}`, marginBottom: '18px', textAlign: 'center' }}>
-              <div style={{ fontSize: '36px', marginBottom: '10px' }}>🏁</div>
+              <SectionBadge label="NEW" color="#38bdf8" />
               <div style={{ fontSize: '18px', fontWeight: '800', color: theme.text, marginBottom: '8px' }}>No savings goals yet</div>
               <div style={{ fontSize: '13px', color: theme.textMuted, lineHeight: 1.7 }}>
                 Add a target like emergency fund, vacation, or school fees and track progress here.
@@ -659,7 +716,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
                 <h3 style={{ fontSize: '15px', fontWeight: '800', color: theme.text, margin: 0 }}>
                   {editingGoalId ? 'Edit Savings Goal' : 'New Savings Goal'}
                 </h3>
-                <button onClick={() => { setShowGoalForm(false); resetGoalForm(); }} style={{ background: 'none', border: 'none', color: theme.textSubtle, cursor: 'pointer', fontSize: '18px' }}>×</button>
+                <button onClick={() => { setShowGoalForm(false); resetGoalForm(); }} style={{ background: 'none', border: 'none', color: theme.textSubtle, cursor: 'pointer', fontSize: '13px', fontWeight: 800 }}>Close</button>
               </div>
 
               <div style={{ marginBottom: '12px' }}>
@@ -688,7 +745,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
                   <select value={goalEnvelopeId} onChange={(e) => setGoalEnvelopeId(e.target.value)} style={fieldStyle}>
                     <option value="">No linked envelope</option>
                     {envelopes.map((env) => (
-                      <option key={env.id} value={env.id}>{env.icon} {env.name}</option>
+                      <option key={env.id} value={env.id}>{cleanEnvelopeIcon(env.icon)} {env.name}</option>
                     ))}
                   </select>
                 </div>
@@ -708,7 +765,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
         </div>
 
         <div style={card}>
-          <div style={sectionTitle}><span>{mode === 'dark' ? '🌙' : '☀️'}</span> {t('settings.appearance')}</div>
+          <div style={sectionTitle}><SectionBadge label={mode === 'dark' ? 'DK' : 'LT'} color="#8b5cf6" /> {t('settings.appearance')}</div>
           <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.6, marginBottom: '16px' }}>{t('settings.appearanceSubtitle')}</div>
           <div style={{ display: 'flex', gap: '10px', flexDirection: isMobile ? 'column' : 'row', marginBottom: '12px' }}>
             <button onClick={() => setMode('light')} style={{ flex: 1, padding: '12px', borderRadius: '14px', border: `1px solid ${mode === 'light' ? theme.borderStrong : theme.border}`, background: mode === 'light' ? theme.primary : theme.surfaceMuted, color: mode === 'light' ? '#fff' : theme.text, fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>
@@ -725,7 +782,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
 
         {/* Budget Targets */}
         <div style={card}>
-          <div style={sectionTitle}><span>🎯</span> Budget Targets</div>
+          <div style={sectionTitle}><SectionBadge label="BUD" color="#0ea5e9" /> Budget Targets</div>
           <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.6, marginBottom: '18px' }}>Set the limits and cycle rules that shape your daily and monthly budget experience.</div>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div>
@@ -760,32 +817,14 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
 
           <button onClick={handleSaveBudget} disabled={loading}
             style={{ width: '100%', padding: '14px', background: loading ? '#94a3b8' : theme.primary, color: '#fff', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: loading ? 'none' : theme.shadow }}>
-            {loading ? 'Saving...' : '💾 Save Budget Settings'}
+            {loading ? 'Saving...' : 'Save Budget Settings'}
           </button>
           {budgetMsg && <div style={{ fontSize: '12px', color: budgetMsg.type === 'success' ? '#10b981' : '#ef4444', marginTop: '6px', fontWeight: '600' }}>{budgetMsg.text}</div>}
         </div>
 
         <div style={card}>
           <div style={sectionTitle}>
-            <span
-              aria-hidden="true"
-              style={{
-                width: '22px',
-                height: '22px',
-                borderRadius: '6px',
-                display: 'inline-grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                alignItems: 'end',
-                gap: '3px',
-                padding: '4px',
-                backgroundColor: 'rgba(20,184,166,0.12)',
-                border: '1px solid rgba(20,184,166,0.22)',
-              }}
-            >
-              <span style={{ height: '7px', borderRadius: '999px', backgroundColor: '#14b8a6' }} />
-              <span style={{ height: '12px', borderRadius: '999px', backgroundColor: '#0f766e' }} />
-              <span style={{ height: '16px', borderRadius: '999px', backgroundColor: '#38bdf8' }} />
-            </span>
+            <CategoryBarsBadge />
             Category Limits
           </div>
           <div style={{ fontSize: '14px', color: theme.textMuted, lineHeight: 1.6, marginBottom: '18px' }}>
@@ -841,7 +880,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
 
         {/* Envelopes Section */}
         <div style={card}>
-          <div style={sectionTitle}><span>💌</span> Envelopes & Accounts</div>
+          <div style={sectionTitle}><SectionBadge label="$" color="#14b8a6" /> Envelopes & Accounts</div>
           <div style={{ fontSize: '14px', color: theme.textMuted, marginBottom: '16px', lineHeight: '1.6' }}>
             Your main bank account plus any extra envelopes (e.g., Wallet, Cash, Vacation Fund).
           </div>
@@ -852,7 +891,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
             {budget && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: '12px', padding: '12px 14px', border: `1px solid ${theme.border}`, borderRadius: '10px', backgroundColor: theme.surfaceMuted }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, width: '100%' }}>
-                  <div style={{ fontSize: '24px' }}>🏦</div>
+                  <SectionBadge label="BK" color="#64748b" />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '14px', fontWeight: '700', color: theme.text, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
                       Bank Account
@@ -889,7 +928,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
             {envelopes.map(env => (
               <div key={env.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: '12px', padding: '14px', border: `1px solid ${theme.border}`, borderRadius: '18px', backgroundColor: theme.surfaceMuted }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
-                  <div style={{ fontSize: '24px' }}>{env.icon}</div>
+                  <SectionBadge label={cleanEnvelopeIcon(env.icon)} color="#14b8a6" />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '14px', fontWeight: 'bold', color: theme.text, display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {env.name}
@@ -934,7 +973,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
             <div style={{ backgroundColor: theme.surfaceMuted, borderRadius: '18px', padding: '16px', border: `1px solid ${theme.border}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ fontSize: '15px', fontWeight: '800', color: theme.text, margin: 0 }}>New Envelope</h3>
-                <button onClick={() => setShowEnvelopeForm(false)} style={{ background: 'none', border: 'none', color: theme.textSubtle, cursor: 'pointer', fontSize: '18px' }}>×</button>
+                <button onClick={() => setShowEnvelopeForm(false)} style={{ background: 'none', border: 'none', color: theme.textSubtle, cursor: 'pointer', fontSize: '13px', fontWeight: 800 }}>Close</button>
               </div>
 
               <div style={{ marginBottom: '12px' }}>
@@ -944,8 +983,8 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
 
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
                 <div>
-                  <label style={lbl}>Icon (Emoji)</label>
-                  <input type="text" value={envIcon} onChange={e => setEnvIcon(e.target.value)} placeholder="e.g. 💰" style={fieldStyle} />
+                  <label style={lbl}>Icon label</label>
+                  <input type="text" value={envIcon} onChange={e => setEnvIcon(e.target.value)} placeholder="e.g. $, CA, TR" maxLength={4} style={fieldStyle} />
                 </div>
                 <div>
                   <label style={lbl}>Initial Balance</label>
@@ -968,7 +1007,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
 
         {/* Recurring Transactions Section */}
         <div style={card}>
-          <div style={sectionTitle}><span>🔄</span> Recurring Transactions</div>
+          <div style={sectionTitle}><SectionBadge label="R" color="#f97316" /> Recurring Transactions</div>
           <div style={{ fontSize: '14px', color: theme.textMuted, marginBottom: '16px', lineHeight: '1.6' }}>
             Set up automatic income (like salary) or expenses (like rent) to be added on a schedule.
           </div>
@@ -982,7 +1021,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
                       <span style={{ backgroundColor: rt.type === 'income' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)', color: rt.type === 'income' ? '#10b981' : '#ef4444', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>
-                        {rt.type === 'income' ? '💰' : '💸'} {rt.category}
+                        {rt.type === 'income' ? 'Income' : 'Expense'} - {rt.category}
                       </span>
                       <span style={{ fontSize: '12px', color: theme.textSubtle, fontWeight: '600', textTransform: 'capitalize' }}>
                         Every {rt.frequency.replace('ly', '')}
@@ -1015,7 +1054,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
             <div style={{ backgroundColor: theme.surfaceMuted, borderRadius: '18px', padding: '16px', border: `1px solid ${theme.border}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ fontSize: '15px', fontWeight: '800', color: theme.text, margin: 0 }}>New Recurring</h3>
-                <button onClick={() => setShowRecurringForm(false)} style={{ background: 'none', border: 'none', color: theme.textSubtle, cursor: 'pointer', fontSize: '18px' }}>×</button>
+                <button onClick={() => setShowRecurringForm(false)} style={{ background: 'none', border: 'none', color: theme.textSubtle, cursor: 'pointer', fontSize: '13px', fontWeight: 800 }}>Close</button>
               </div>
 
               <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
@@ -1072,7 +1111,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
 
         {/* Account Info */}
         <div style={card}>
-          <div style={sectionTitle}><span>👤</span> Account</div>
+          <div style={sectionTitle}><SectionBadge label="ME" color="#ef4444" /> Account</div>
           <div style={{ backgroundColor: theme.surfaceMuted, borderRadius: '18px', padding: '14px 16px', marginBottom: '20px', border: `1px solid ${theme.border}` }}>
             <div style={{ fontSize: '11px', fontWeight: '700', color: theme.textSubtle, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Signed in as</div>
             <div style={{ fontSize: '15px', fontWeight: '600', color: theme.text }}>{user?.email}</div>
@@ -1100,3 +1139,4 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
     </>
   );
 }
+
