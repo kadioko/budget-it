@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
+import { nativeStyles, nativeTheme } from '@/ui/nativeTheme';
 
 export default function SignupScreen() {
+  const router = useRouter();
   const { signUp, loading, error } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,161 +24,140 @@ export default function SignupScreen() {
 
   const handleSignup = async () => {
     if (!email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('Missing details', 'Please fill in all fields.');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert('Passwords do not match', 'Please re-enter your password confirmation.');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      Alert.alert('Password too short', 'Password must be at least 6 characters.');
       return;
     }
 
     try {
       await signUp(email, password);
-      Alert.alert('Success', 'Account created! You can now log in.');
+      Alert.alert('Account created', 'Check your email to verify your account, then sign in.');
+      router.replace('/(auth)/login');
     } catch (err: any) {
-      Alert.alert('Signup Failed', err.message || 'An error occurred');
+      Alert.alert('Signup failed', err.message || 'Could not create your account.');
     }
   };
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={nativeStyles.screen}
     >
-      <View style={styles.content}>
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Start tracking your budget today</Text>
+      <View style={nativeStyles.orbTop} />
+      <View style={nativeStyles.orbBottom} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[nativeStyles.content, styles.content]}>
+        <View style={nativeStyles.heroCard}>
+          <Text style={nativeStyles.heroEyebrow}>Start fresh</Text>
+          <Text style={nativeStyles.heroTitle}>Create your budget hub.</Text>
+          <Text style={nativeStyles.heroText}>
+            Your targets, category limits, and transaction history sync securely across devices.
+          </Text>
+        </View>
 
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#999"
-            value={email}
-            onChangeText={setEmail}
-            editable={!loading}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+        <View style={nativeStyles.card}>
+          <Text style={nativeStyles.sectionEyebrow}>New account</Text>
+          <Text style={nativeStyles.sectionTitle}>Sign up free</Text>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#999"
-            value={password}
-            onChangeText={setPassword}
-            editable={!loading}
-            secureTextEntry
-          />
+          <Field value={email} onChangeText={setEmail} placeholder="Email address" editable={!loading} keyboardType="email-address" />
+          <Field value={password} onChangeText={setPassword} placeholder="Password" editable={!loading} secureTextEntry />
+          <Field value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Confirm password" editable={!loading} secureTextEntry />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Confirm Password"
-            placeholderTextColor="#999"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            editable={!loading}
-            secureTextEntry
-          />
+          {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          {error && <Text style={styles.error}>{error}</Text>}
-
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+          <Pressable
+            style={[nativeStyles.primaryButton, styles.submitButton, loading && styles.disabledButton]}
             onPress={handleSignup}
             disabled={loading}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Create Account</Text>
-            )}
-          </TouchableOpacity>
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={nativeStyles.primaryButtonText}>Create Account</Text>}
+          </Pressable>
         </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account? </Text>
-          <Text style={styles.link}>Sign in (use login screen)</Text>
+        <View style={styles.footerCard}>
+          <Text style={styles.footerText}>Already have an account?</Text>
+          <Pressable onPress={() => router.replace('/(auth)/login')}>
+            <Text style={styles.footerLink}>Sign in instead</Text>
+          </Pressable>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
+function Field({
+  value,
+  onChangeText,
+  placeholder,
+  editable,
+  secureTextEntry,
+  keyboardType,
+}: {
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+  editable: boolean;
+  secureTextEntry?: boolean;
+  keyboardType?: 'default' | 'email-address';
+}) {
+  return (
+    <View style={[nativeStyles.inputShell, styles.field]}>
+      <TextInput
+        style={nativeStyles.input}
+        placeholder={placeholder}
+        placeholderTextColor="#94a3b8"
+        value={value}
+        onChangeText={onChangeText}
+        editable={editable}
+        keyboardType={keyboardType || 'default'}
+        autoCapitalize="none"
+        secureTextEntry={secureTextEntry}
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
   content: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 20,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    textAlign: 'center',
-    marginBottom: 40,
-  },
-  form: {
-    marginBottom: 20,
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+  field: {
+    marginTop: 14,
   },
   error: {
-    color: '#e74c3c',
+    color: nativeTheme.danger,
     fontSize: 12,
-    marginBottom: 12,
+    fontWeight: '700',
+    marginTop: 10,
   },
-  button: {
-    backgroundColor: '#27ae60',
-    borderRadius: 8,
-    paddingVertical: 14,
+  submitButton: {
+    marginTop: 18,
+  },
+  disabledButton: {
+    opacity: 0.65,
+  },
+  footerCard: {
     alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginTop: 6,
   },
   footerText: {
-    color: '#7f8c8d',
-    fontSize: 14,
+    color: nativeTheme.muted,
+    fontSize: 13,
+    fontWeight: '700',
   },
-  link: {
-    color: '#3498db',
+  footerLink: {
+    color: nativeTheme.primary,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '900',
+    marginTop: 6,
   },
 });

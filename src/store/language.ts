@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 export type AppLanguage = 'en' | 'sw';
 
@@ -15,7 +17,7 @@ interface LanguageState {
 
 type TemplateValues = Record<string, string | number>;
 
-const webStorage = createJSONStorage(() => ({
+const localStorageAdapter = {
   getItem: (name: string) => {
     if (typeof window === 'undefined') return null;
     return window.localStorage.getItem(name);
@@ -28,7 +30,11 @@ const webStorage = createJSONStorage(() => ({
     if (typeof window === 'undefined') return;
     window.localStorage.removeItem(name);
   },
-}));
+};
+
+const languageStorage = createJSONStorage(() => (
+  Platform.OS === 'web' ? localStorageAdapter : AsyncStorage
+));
 
 export const translations = {
   en: {
@@ -146,7 +152,7 @@ export const translations = {
       manage: 'Manage',
       savingsGoalsHint: 'Add savings goals in Settings to track progress toward things like an emergency fund, travel, or school fees.',
       completePercent: '{percent}% complete',
-      goalProgressLine: '{current} of {target} · {remainingLabel} · {daysLabel}',
+      goalProgressLine: '{current} of {target} - {remainingLabel} - {daysLabel}',
       toGoAmount: '{amount} to go',
       goalReached: 'Goal reached',
       daysLeftLabel: '{count} day{suffix} left',
@@ -370,7 +376,7 @@ export const translations = {
       manage: 'Simamia',
       savingsGoalsHint: 'Ongeza malengo ya akiba kwenye Mipangilio kufuatilia vitu kama emergency fund, safari, au ada ya shule.',
       completePercent: '{percent}% imekamilika',
-      goalProgressLine: '{current} kati ya {target} · {remainingLabel} · {daysLabel}',
+      goalProgressLine: '{current} kati ya {target} - {remainingLabel} - {daysLabel}',
       toGoAmount: '{amount} imebaki',
       goalReached: 'Lengo limefikiwa',
       daysLeftLabel: 'siku {count}{suffix} zimebaki',
@@ -489,7 +495,7 @@ export const useLanguageStore = create<LanguageState>()(
     }),
     {
       name: 'budget-it-language',
-      storage: webStorage,
+      storage: languageStorage,
     }
   )
 );

@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { supabase } from '@/lib/supabase';
 import { Budget, Transaction, BudgetStats, RecurringTransaction, Envelope, CategoryBudgetMap, SavingsGoal } from '@/types/index';
-import { calculateBudgetStats, getBudgetCycleWindow } from '@/lib/budget-logic';
+import { calculateBudgetStats, getBudgetCycleWindow, toDateKey } from '@/lib/budget-logic';
 
 interface PendingAction {
   id: string;
@@ -1061,7 +1061,7 @@ export const useBudgetStore = create<BudgetState>()(
             userId,
             amount,
             rt.category,
-            nextDate.toISOString().split('T')[0],
+            toDateKey(nextDate),
             rt.note ? `${rt.note} (Auto-added)` : '(Auto-added)',
             undefined,
             {
@@ -1081,10 +1081,10 @@ export const useBudgetStore = create<BudgetState>()(
         }
 
         // 3. Update the recurring transaction with new next_date
-        if (nextDate.toISOString().split('T')[0] !== rt.next_date) {
+        if (toDateKey(nextDate) !== rt.next_date) {
           await supabase
             .from('recurring_transactions')
-            .update({ next_date: nextDate.toISOString().split('T')[0] })
+            .update({ next_date: toDateKey(nextDate) })
             .eq('id', rt.id);
         }
       }
@@ -1103,12 +1103,12 @@ export const useBudgetStore = create<BudgetState>()(
 
         const now = new Date();
         const currentCycle = getBudgetCycleWindow(now, budget.month_start_day);
-        const currentCycleStart = currentCycle.monthStart.toISOString().split('T')[0];
+        const currentCycleStart = toDateKey(currentCycle.monthStart);
         if (rolloverState.lastAppliedCycleStart === currentCycleStart) return;
 
         const previousCycle = getBudgetCycleWindow(new Date(currentCycle.monthStart.getTime() - 24 * 60 * 60 * 1000), budget.month_start_day);
-        const previousCycleStart = previousCycle.monthStart.toISOString().split('T')[0];
-        const previousCycleEnd = previousCycle.monthEnd.toISOString().split('T')[0];
+        const previousCycleStart = toDateKey(previousCycle.monthStart);
+        const previousCycleEnd = toDateKey(previousCycle.monthEnd);
         const sourceBudgets = budget.category_budgets && Object.keys(budget.category_budgets).length > 0
           ? budget.category_budgets
           : categoryBudgets;

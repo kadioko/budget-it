@@ -1,29 +1,45 @@
 import React from 'react';
 import { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import { Tabs } from 'expo-router';
+import { Text } from 'react-native';
+import { nativeTheme } from '@/ui/nativeTheme';
 
 export default function AppLayout() {
   const tabScreenOptions: BottomTabNavigationOptions = {
     headerShown: true,
+    headerShadowVisible: false,
     headerStyle: {
-      backgroundColor: '#f5f5f5',
+      backgroundColor: nativeTheme.background,
     },
     headerTitleStyle: {
       fontSize: 18,
-      fontWeight: '600',
-      color: '#2c3e50',
+      fontWeight: '900',
+      color: nativeTheme.ink,
     },
     tabBarStyle: {
-      backgroundColor: '#fff',
-      borderTopColor: '#e0e0e0',
+      position: 'absolute',
+      left: 16,
+      right: 16,
+      bottom: 14,
+      height: 72,
+      paddingTop: 8,
+      paddingBottom: 10,
+      backgroundColor: '#ffffff',
+      borderTopColor: 'transparent',
       borderTopWidth: 1,
+      borderRadius: 24,
+      shadowColor: nativeTheme.navy,
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.13,
+      shadowRadius: 22,
+      elevation: 10,
     },
     tabBarLabelStyle: {
-      fontSize: 12,
-      fontWeight: '500',
+      fontSize: 11,
+      fontWeight: '800',
     },
-    tabBarActiveTintColor: '#3498db',
-    tabBarInactiveTintColor: '#95a5a6',
+    tabBarActiveTintColor: nativeTheme.primary,
+    tabBarInactiveTintColor: nativeTheme.subtle,
   };
 
   return (
@@ -33,13 +49,15 @@ export default function AppLayout() {
         options={{
           title: 'Dashboard',
           tabBarLabel: 'Dashboard',
+          tabBarIcon: ({ color }) => <Text style={{ color, fontWeight: '900', fontSize: 16 }}>B</Text>,
         }}
       />
       <Tabs.Screen
         name="add-transaction"
         options={{
-          title: 'Add Transaction',
+          title: 'Add Money Move',
           tabBarLabel: 'Add',
+          tabBarIcon: ({ color }) => <Text style={{ color, fontWeight: '900', fontSize: 18 }}>+</Text>,
         }}
       />
       <Tabs.Screen
@@ -47,6 +65,7 @@ export default function AppLayout() {
         options={{
           title: 'Transactions',
           tabBarLabel: 'History',
+          tabBarIcon: ({ color }) => <Text style={{ color, fontWeight: '900', fontSize: 16 }}>L</Text>,
         }}
       />
       <Tabs.Screen
@@ -54,6 +73,7 @@ export default function AppLayout() {
         options={{
           title: 'Settings',
           tabBarLabel: 'Settings',
+          tabBarIcon: ({ color }) => <Text style={{ color, fontWeight: '900', fontSize: 16 }}>S</Text>,
         }}
       />
     </Tabs>

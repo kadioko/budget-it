@@ -15,5 +15,8 @@ web-build/
 .env.local
 .DS_Store
 *.log
+builds/
+android-crash-*.txt
+android-route-*.txt
 
 .vercel

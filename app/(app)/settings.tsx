@@ -1,40 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
   Alert,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 import { useAuthStore } from '@/store/auth';
 import { useBudgetStore } from '@/store/budget';
+import { useLanguageStore } from '@/store/language';
+import { nativeStyles, nativeTheme } from '@/ui/nativeTheme';
 
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'INR', 'TZS'];
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'TZS', 'KES', 'CAD', 'AUD', 'JPY'];
+const CATEGORY_LIMITS = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Other'];
 
-interface SettingsScreenProps {
-  onNavigate?: (screen: string) => void;
-  onLogout?: () => Promise<void>;
-}
-
-export default function SettingsScreen({ onNavigate, onLogout }: SettingsScreenProps) {
+export default function SettingsScreen() {
   const { user, signOut } = useAuthStore();
-  const { budget, loading, createBudget, updateBudget } = useBudgetStore();
+  const {
+    budget,
+    categoryBudgets,
+    loading,
+    createBudget,
+    updateBudget,
+    saveCategoryBudgets,
+  } = useBudgetStore();
+  const language = useLanguageStore((state) => state.language);
+  const setLanguage = useLanguageStore((state) => state.setLanguage);
 
-  const [dailyTarget, setDailyTarget] = useState(
-    budget?.daily_target.toString() || ''
-  );
-  const [monthlyTarget, setMonthlyTarget] = useState(
-    budget?.monthly_target.toString() || ''
-  );
+  const [dailyTarget, setDailyTarget] = useState(budget?.daily_target.toString() || '');
+  const [monthlyTarget, setMonthlyTarget] = useState(budget?.monthly_target.toString() || '');
   const [currency, setCurrency] = useState(budget?.currency || 'USD');
-  const [monthStartDay, setMonthStartDay] = useState(
-    budget?.month_start_day.toString() || '1'
-  );
+  const [monthStartDay, setMonthStartDay] = useState(budget?.month_start_day.toString() || '1');
+  const [limitDrafts, setLimitDrafts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (budget) {
@@ -45,50 +47,84 @@ export default function SettingsScreen({ onNavigate, onLogout }: SettingsScreenP
     }
   }, [budget]);
 
+  useEffect(() => {
+    const source = budget?.category_budgets && Object.keys(budget.category_budgets).length > 0
+      ? budget.category_budgets
+      : categoryBudgets;
+    setLimitDrafts(
+      Object.fromEntries(CATEGORY_LIMITS.map((category) => [category, source?.[category]?.toString() || '']))
+    );
+  }, [budget?.category_budgets, categoryBudgets]);
+
+  const hasBudget = Boolean(budget);
+  const userEmail = user?.email || 'Signed in';
+  const selectedLanguageLabel = language === 'sw' ? 'Swahili' : 'English';
+
   const handleSaveBudget = async () => {
     if (!dailyTarget || !monthlyTarget) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('Missing values', 'Please fill in daily and monthly targets.');
       return;
     }
 
     if (!user) {
-      Alert.alert('Error', 'User not found');
+      Alert.alert('Not signed in', 'Please sign in again.');
       return;
     }
 
     try {
       const daily = parseFloat(dailyTarget);
       const monthly = parseFloat(monthlyTarget);
-      const day = parseInt(monthStartDay);
+      const day = parseInt(monthStartDay, 10);
 
       if (daily <= 0 || monthly <= 0 || day < 1 || day > 31) {
-        Alert.alert('Error', 'Please enter valid values');
+        Alert.alert('Check values', 'Targets must be positive and cycle day must be 1 to 31.');
         return;
       }
 
       if (budget) {
         await updateBudget(budget.id, daily, monthly, currency, day);
-        Alert.alert('Success', 'Budget updated');
+        Alert.alert('Saved', 'Budget settings updated.');
       } else {
         await createBudget(user.id, daily, monthly, currency, day);
-        Alert.alert('Success', 'Budget created');
+        Alert.alert('Saved', 'Budget created.');
       }
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to save budget');
+      Alert.alert('Could not save', err.message || 'Failed to save budget.');
+    }
+  };
+
+  const parsedCategoryLimits = useMemo(() => {
+    return Object.fromEntries(
+      Object.entries(limitDrafts)
+        .map(([category, amount]) => [category, parseFloat(amount)] as const)
+        .filter(([, amount]) => Number.isFinite(amount) && amount > 0)
+    );
+  }, [limitDrafts]);
+
+  const handleSaveCategoryLimits = async () => {
+    if (!budget) {
+      Alert.alert('Budget needed', 'Create your budget before adding category limits.');
+      return;
+    }
+
+    try {
+      await saveCategoryBudgets(budget.id, parsedCategoryLimits);
+      Alert.alert('Saved', 'Category limits synced.');
+    } catch (err: any) {
+      Alert.alert('Could not save limits', err.message || 'Failed to save category limits.');
     }
   };
 
   const handleSignOut = async () => {
-    Alert.alert('Sign Out', 'Are you sure?', [
-      { text: 'Cancel', onPress: () => {} },
+    Alert.alert('Sign out', 'Are you sure you want to leave Budget It?', [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Sign Out',
+        text: 'Sign out',
         onPress: async () => {
           try {
             await signOut();
-            onLogout?.();
           } catch (err: any) {
-            Alert.alert('Error', err.message || 'Failed to sign out');
+            Alert.alert('Could not sign out', err.message || 'Failed to sign out.');
           }
         },
         style: 'destructive',
@@ -99,237 +135,276 @@ export default function SettingsScreen({ onNavigate, onLogout }: SettingsScreenP
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={nativeStyles.screen}
     >
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Budget Settings</Text>
+      <View style={nativeStyles.orbTop} />
+      <View style={nativeStyles.orbBottom} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[nativeStyles.content, styles.scrollContent]}>
+        <View style={nativeStyles.heroCard}>
+          <Text style={nativeStyles.heroEyebrow}>Control Center</Text>
+          <Text style={nativeStyles.heroTitle}>Settings</Text>
+          <Text style={nativeStyles.heroText}>
+            Tune your budget cycle, language, currency, category limits, and account access.
+          </Text>
+        </View>
 
-            <View style={styles.card}>
-              <Text style={styles.label}>Daily Spending Target</Text>
-              <View style={styles.inputGroup}>
-                <Text style={styles.currencySymbol}>{currency}</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  placeholderTextColor="#bdc3c7"
-                  value={dailyTarget}
-                  onChangeText={setDailyTarget}
-                  keyboardType="decimal-pad"
-                  editable={!loading}
-                />
-              </View>
+        <View style={nativeStyles.card}>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={nativeStyles.sectionEyebrow}>Preferences</Text>
+              <Text style={nativeStyles.sectionTitle}>Language</Text>
             </View>
+            <Text style={styles.subtlePill}>{selectedLanguageLabel}</Text>
+          </View>
+          <View style={styles.segmented}>
+            {(['en', 'sw'] as const).map((item) => {
+              const active = language === item;
+              return (
+                <Pressable
+                  key={item}
+                  style={[styles.segment, active && styles.segmentActive]}
+                  onPress={() => setLanguage(item)}
+                >
+                  <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
+                    {item === 'en' ? 'English' : 'Swahili'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={styles.helperText}>More native screen translations will continue to fill in as we polish the mobile app.</Text>
+        </View>
 
-            <View style={styles.card}>
-              <Text style={styles.label}>Monthly Spending Target</Text>
-              <View style={styles.inputGroup}>
-                <Text style={styles.currencySymbol}>{currency}</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  placeholderTextColor="#bdc3c7"
-                  value={monthlyTarget}
-                  onChangeText={setMonthlyTarget}
-                  keyboardType="decimal-pad"
-                  editable={!loading}
-                />
-              </View>
-            </View>
+        <View style={nativeStyles.card}>
+          <Text style={nativeStyles.sectionEyebrow}>Budget Targets</Text>
+          <Text style={nativeStyles.sectionTitle}>{hasBudget ? 'Update your plan' : 'Create your plan'}</Text>
 
-            <View style={styles.card}>
-              <Text style={styles.label}>Currency</Text>
-              <View style={styles.currencyGrid}>
-                {CURRENCIES.map((curr) => (
-                  <TouchableOpacity
-                    key={curr}
-                    style={[
-                      styles.currencyButton,
-                      currency === curr && styles.currencyButtonActive,
-                    ]}
-                    onPress={() => setCurrency(curr)}
-                    disabled={loading}
-                  >
-                    <Text
-                      style={[
-                        styles.currencyButtonText,
-                        currency === curr && styles.currencyButtonTextActive,
-                      ]}
-                    >
-                      {curr}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+          <FormField
+            label="Daily spending target"
+            prefix={currency}
+            value={dailyTarget}
+            onChangeText={setDailyTarget}
+            keyboardType="decimal-pad"
+            editable={!loading}
+          />
+          <FormField
+            label="Monthly spending target"
+            prefix={currency}
+            value={monthlyTarget}
+            onChangeText={setMonthlyTarget}
+            keyboardType="decimal-pad"
+            editable={!loading}
+          />
+          <FormField
+            label="Budget cycle start day"
+            value={monthStartDay}
+            onChangeText={setMonthStartDay}
+            keyboardType="number-pad"
+            editable={!loading}
+            helper="Use 1 for the 1st, 15 for mid-month cycles, and so on."
+          />
 
-            <View style={styles.card}>
-              <Text style={styles.label}>Month Start Day</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="1"
-                placeholderTextColor="#bdc3c7"
-                value={monthStartDay}
-                onChangeText={setMonthStartDay}
-                keyboardType="number-pad"
-                editable={!loading}
-              />
-              <Text style={styles.helperText}>
-                (1 = 1st of month, 15 = 15th of month, etc.)
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-              onPress={handleSaveBudget}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.saveButtonText}>Save Budget</Text>
-              )}
-            </TouchableOpacity>
+          <Text style={[nativeStyles.label, styles.currencyLabel]}>Currency</Text>
+          <View style={styles.chipGrid}>
+            {CURRENCIES.map((item) => {
+              const active = currency === item;
+              return (
+                <Pressable
+                  key={item}
+                  style={[nativeStyles.chip, styles.currencyChip, active && nativeStyles.chipActive]}
+                  onPress={() => setCurrency(item)}
+                  disabled={loading}
+                >
+                  <Text style={[nativeStyles.chipText, active && nativeStyles.chipTextActive]}>{item}</Text>
+                </Pressable>
+              );
+            })}
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Account</Text>
+          <Pressable style={[nativeStyles.primaryButton, styles.saveButton, loading && styles.disabledButton]} onPress={handleSaveBudget} disabled={loading}>
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={nativeStyles.primaryButtonText}>Save Budget</Text>}
+          </Pressable>
+        </View>
 
-            <View style={styles.card}>
-              <Text style={styles.label}>Email</Text>
-              <Text style={styles.emailText}>{user?.email}</Text>
+        <View style={nativeStyles.card}>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={nativeStyles.sectionEyebrow}>Category Limits</Text>
+              <Text style={nativeStyles.sectionTitle}>Monthly guardrails</Text>
             </View>
-
-            <TouchableOpacity
-              style={styles.signOutButton}
-              onPress={handleSignOut}
-            >
-              <Text style={styles.signOutButtonText}>Sign Out</Text>
-            </TouchableOpacity>
           </View>
+          <Text style={styles.helperText}>
+            These sync through Supabase and power dashboard warnings across devices.
+          </Text>
+
+          {CATEGORY_LIMITS.map((category) => (
+            <FormField
+              key={category}
+              label={category}
+              prefix={currency}
+              value={limitDrafts[category] || ''}
+              onChangeText={(value) => setLimitDrafts((current) => ({ ...current, [category]: value }))}
+              keyboardType="decimal-pad"
+              editable={!loading && hasBudget}
+            />
+          ))}
+
+          <Pressable
+            style={[nativeStyles.ghostButton, (!hasBudget || loading) && styles.disabledButton]}
+            onPress={handleSaveCategoryLimits}
+            disabled={!hasBudget || loading}
+          >
+            <Text style={nativeStyles.ghostButtonText}>Save Category Limits</Text>
+          </Pressable>
+        </View>
+
+        <View style={nativeStyles.card}>
+          <Text style={nativeStyles.sectionEyebrow}>Account</Text>
+          <Text style={nativeStyles.sectionTitle}>Signed in</Text>
+          <Text style={styles.accountEmail}>{userEmail}</Text>
+          <Pressable style={styles.signOutButton} onPress={handleSignOut}>
+            <Text style={styles.signOutButtonText}>Sign Out</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
+function FormField({
+  label,
+  value,
+  onChangeText,
+  editable,
+  keyboardType,
+  prefix,
+  helper,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  editable: boolean;
+  keyboardType?: 'default' | 'decimal-pad' | 'number-pad';
+  prefix?: string;
+  helper?: string;
+}) {
+  return (
+    <View style={styles.fieldBlock}>
+      <Text style={nativeStyles.label}>{label}</Text>
+      <View style={nativeStyles.inputShell}>
+        {prefix ? <Text style={styles.prefix}>{prefix}</Text> : null}
+        <TextInput
+          style={nativeStyles.input}
+          placeholder="0.00"
+          placeholderTextColor="#94a3b8"
+          value={value}
+          onChangeText={onChangeText}
+          keyboardType={keyboardType || 'default'}
+          editable={editable}
+        />
+      </View>
+      {helper ? <Text style={styles.helperText}>{helper}</Text> : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
+  scrollContent: {
+    paddingBottom: 118,
   },
-  content: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#2c3e50',
-    marginBottom: 12,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2c3e50',
-    marginBottom: 8,
-  },
-  inputGroup: {
+  sectionHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
+    marginBottom: 14,
+  },
+  subtlePill: {
+    color: nativeTheme.primary,
+    backgroundColor: '#dbeafe',
+    borderRadius: 999,
+    paddingVertical: 7,
+    paddingHorizontal: 11,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  segmented: {
+    flexDirection: 'row',
+    gap: 10,
+    padding: 5,
+    borderRadius: 18,
+    backgroundColor: nativeTheme.surfaceMuted,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    borderColor: nativeTheme.border,
   },
-  currencySymbol: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2c3e50',
-    marginRight: 8,
-  },
-  input: {
+  segment: {
     flex: 1,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#2c3e50',
+    minHeight: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentActive: {
+    backgroundColor: nativeTheme.navy,
+  },
+  segmentText: {
+    color: nativeTheme.muted,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  segmentTextActive: {
+    color: '#ffffff',
+  },
+  fieldBlock: {
+    marginTop: 15,
+  },
+  prefix: {
+    color: nativeTheme.ink,
+    fontSize: 15,
+    fontWeight: '900',
+    marginRight: 10,
   },
   helperText: {
+    color: nativeTheme.muted,
     fontSize: 12,
-    color: '#95a5a6',
+    lineHeight: 18,
     marginTop: 8,
   },
-  currencyGrid: {
+  currencyLabel: {
+    marginTop: 18,
+  },
+  chipGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 9,
   },
-  currencyButton: {
-    flex: 1,
+  currencyChip: {
     minWidth: '22%',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
     alignItems: 'center',
-  },
-  currencyButtonActive: {
-    backgroundColor: '#3498db',
-    borderColor: '#3498db',
-  },
-  currencyButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#7f8c8d',
-  },
-  currencyButtonTextActive: {
-    color: '#fff',
   },
   saveButton: {
-    backgroundColor: '#27ae60',
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 8,
+    marginTop: 18,
   },
-  saveButtonDisabled: {
+  disabledButton: {
     opacity: 0.6,
   },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  emailText: {
+  accountEmail: {
+    color: nativeTheme.muted,
     fontSize: 14,
-    color: '#2c3e50',
-    paddingVertical: 8,
+    fontWeight: '700',
+    marginTop: 8,
+    marginBottom: 16,
   },
   signOutButton: {
-    backgroundColor: '#e74c3c',
-    borderRadius: 8,
-    paddingVertical: 14,
+    minHeight: 52,
+    borderRadius: 17,
+    backgroundColor: nativeTheme.dangerSoft,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   signOutButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    color: nativeTheme.danger,
+    fontSize: 14,
+    fontWeight: '900',
   },
 });

@@ -48,6 +48,36 @@ const json = (body: unknown, status = 200) =>
     headers: { "Content-Type": "application/json", ...corsHeaders },
   });
 
+const getBearerToken = (request: Request) => {
+  const authHeader = request.headers.get("Authorization") ?? "";
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  return match?.[1] ?? "";
+};
+
+const getAuthorizedUserId = async (request: Request, targetedUserId: string | null) => {
+  const token = getBearerToken(request);
+  const isServiceRoleCall = Boolean(serviceRoleKey && token === serviceRoleKey);
+
+  if (isServiceRoleCall) {
+    return { authorized: true, isServiceRoleCall };
+  }
+
+  if (!targetedUserId) {
+    return { authorized: false, isServiceRoleCall, error: "A userId is required for user-triggered scheduling." };
+  }
+
+  const { data, error } = await admin.auth.getUser(token);
+  if (error || !data.user) {
+    return { authorized: false, isServiceRoleCall, error: "Invalid or missing user session." };
+  }
+
+  if (data.user.id !== targetedUserId) {
+    return { authorized: false, isServiceRoleCall, error: "You can only schedule notifications for your own account." };
+  }
+
+  return { authorized: true, isServiceRoleCall };
+};
+
 const getBudgetCycleWindow = (referenceDate: Date, monthStartDay = 1) => {
   const safeStartDay = Math.max(1, Math.min(28, monthStartDay));
   const year = referenceDate.getUTCFullYear();
@@ -107,6 +137,11 @@ serve(async (request) => {
 
     const body = request.method === "POST" ? await request.json().catch(() => ({})) : {};
     const targetedUserId = typeof body?.userId === "string" ? body.userId : null;
+    const auth = await getAuthorizedUserId(request, targetedUserId);
+
+    if (!auth.authorized) {
+      return json({ error: auth.error ?? "Unauthorized" }, 401);
+    }
 
     const budgetsQuery = admin.from("budgets").select("user_id, monthly_target, currency, month_start_day, category_budgets");
     const { data: budgets, error: budgetsError } = targetedUserId

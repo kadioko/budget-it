@@ -103,18 +103,20 @@ export const useNotificationSettingsStore = create<NotificationPreferenceState>(
         }
       },
       markInboxItemRead: async (notificationId) => {
-        await supabase
+        const { error } = await supabase
           .from('budget_notifications')
           .update({ read_at: new Date().toISOString() })
           .eq('id', notificationId);
+        if (error) throw error;
         set((state) => ({
           inbox: state.inbox.filter((item) => item.id !== notificationId),
         }));
       },
       triggerScheduler: async (userId) => {
-        await supabase.functions.invoke('schedule-budget-alerts', {
+        const { error } = await supabase.functions.invoke('schedule-budget-alerts', {
           body: userId ? { userId } : {},
         });
+        if (error) throw error;
       },
     }),
     {

@@ -1,282 +1,541 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
   Alert,
   Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { useBudgetStore } from '@/store/budget';
+import { getBudgetCycleWindow, toDateKey } from '@/lib/budget-logic';
+import { Transaction } from '@/types/index';
+import { categoryInitial, formatMoney, nativeStyles, nativeTheme } from '@/ui/nativeTheme';
+
+const todayLabel = new Date().toLocaleDateString('en-US', {
+  weekday: 'long',
+  month: 'short',
+  day: 'numeric',
+});
 
 export default function DashboardScreen() {
+  const router = useRouter();
   const { user } = useAuthStore();
-  const { budget, stats, loading, fetchBudget, fetchTransactions } =
-    useBudgetStore();
+  const {
+    budget,
+    categoryBudgets,
+    stats,
+    transactions,
+    envelopes,
+    loading,
+    fetchBudget,
+    fetchEnvelopes,
+    fetchTransactions,
+  } = useBudgetStore();
 
   useEffect(() => {
     if (user) {
       fetchBudget(user.id);
+      fetchEnvelopes(user.id);
       fetchTransactions(user.id);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  if (loading) {
+  const cycleDetails = useMemo(() => {
+    if (!budget) return null;
+    const { monthStart, monthEnd } = getBudgetCycleWindow(new Date(), budget.month_start_day);
+    const remainingDays = Math.max(1, Math.ceil((monthEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+    return {
+      label: `${monthStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${monthEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+      remainingDays,
+    };
+  }, [budget]);
+
+  const categoryRows = useMemo(() => {
+    if (!budget) return [];
+    const sourceBudgets = budget.category_budgets && Object.keys(budget.category_budgets).length > 0
+      ? budget.category_budgets
+      : categoryBudgets;
+    const { monthStart, monthEnd } = getBudgetCycleWindow(new Date(), budget.month_start_day);
+    const start = toDateKey(monthStart);
+    const end = toDateKey(monthEnd);
+
+    return Object.entries(sourceBudgets || {})
+      .filter(([, limit]) => Number.isFinite(limit) && limit > 0)
+      .map(([category, limit]) => {
+        const spent = transactions
+          .filter((tx) => tx.amount > 0 && tx.category === category && tx.date >= start && tx.date <= end)
+          .reduce((sum, tx) => sum + tx.amount, 0);
+        const percent = Math.min(100, Math.round((spent / limit) * 100));
+        return { category, limit, spent, percent, remaining: Math.max(0, limit - spent) };
+      })
+      .sort((a, b) => b.percent - a.percent)
+      .slice(0, 4);
+  }, [budget, categoryBudgets, transactions]);
+
+  const recentTransactions = useMemo(
+    () => [...transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5),
+    [transactions]
+  );
+
+  const currency = budget?.currency || 'USD';
+  const totalEnvelopeBalance = envelopes.reduce((sum, envelope) => sum + envelope.balance, 0);
+  const totalBalance = (budget?.bank_balance || 0) + totalEnvelopeBalance;
+  const dailyTarget = budget?.daily_target || 0;
+  const monthlyTarget = budget?.monthly_target || 0;
+  const spentToday = stats?.spentToday || 0;
+  const spentCycle = stats?.spentMonthToDate || 0;
+  const dailyPercent = dailyTarget > 0 ? Math.min(100, Math.round((spentToday / dailyTarget) * 100)) : 0;
+  const cyclePercent = monthlyTarget > 0 ? Math.min(100, Math.round((spentCycle / monthlyTarget) * 100)) : 0;
+  const safeDaily = cycleDetails ? Math.max(0, (stats?.monthlyRemaining || 0) / cycleDetails.remainingDays) : 0;
+  const projectedGap = (stats?.projectedMonthEnd || 0) - monthlyTarget;
+
+  if (loading && !budget && transactions.length === 0) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#3498db" />
-        <Text style={{ marginTop: 16 }}>Loading...</Text>
+      <View style={[nativeStyles.screen, styles.centered]}>
+        <View style={nativeStyles.orbTop} />
+        <View style={nativeStyles.orbBottom} />
+        <ActivityIndicator size="large" color={nativeTheme.primary} />
+        <Text style={styles.loadingText}>Loading your money dashboard...</Text>
       </View>
     );
   }
 
   if (!budget) {
     return (
-      <View style={styles.container}>
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>No Budget Set</Text>
-          <Text style={styles.emptyText}>
-            Let's set up your daily and monthly spending targets to get started.
+      <View style={[nativeStyles.screen, styles.centered]}>
+        <View style={nativeStyles.orbTop} />
+        <View style={nativeStyles.orbBottom} />
+        <View style={[nativeStyles.card, styles.emptyCard]}>
+          <Text style={nativeStyles.emptyTitle}>Set your first budget</Text>
+          <Text style={nativeStyles.emptyText}>
+            Add your daily and monthly targets so Budget It can show pacing, safe spend, and alerts.
           </Text>
-          <Pressable
-            style={({ pressed }) => [
-              styles.setupButton,
-              pressed && { opacity: 0.7 }
-            ]}
-            onPress={() => {
-              console.log('Set Up Budget button pressed');
-              Alert.alert('Budget Setup', 'Please go to Settings to set up your budget targets.');
-            }}
-          >
-            <Text style={styles.setupButtonText}>Set Up Budget</Text>
+          <Pressable style={[nativeStyles.primaryButton, styles.emptyButton]} onPress={() => router.push('/(app)/settings')}>
+            <Text style={nativeStyles.primaryButtonText}>Open Settings</Text>
           </Pressable>
         </View>
       </View>
     );
   }
 
-  if (!stats) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#3498db" />
-      </View>
-    );
-  }
+  return (
+    <View style={nativeStyles.screen}>
+      <View style={nativeStyles.orbTop} />
+      <View style={nativeStyles.orbBottom} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[nativeStyles.content, styles.scrollContent]}>
+        <View style={nativeStyles.heroCard}>
+          <Text style={nativeStyles.heroEyebrow}>{todayLabel}</Text>
+          <Text style={nativeStyles.heroTitle}>Your budget pulse</Text>
+          <Text style={nativeStyles.heroText}>
+            {projectedGap > 0
+              ? `At this pace, you may go over by ${formatMoney(projectedGap, currency)}.`
+              : `You are pacing ${formatMoney(Math.abs(projectedGap), currency)} under target.`}
+          </Text>
 
-  const getDailyMessage = () => {
-    if (stats.isOverDailyBudget) {
-      const overspend = stats.spentToday - budget.daily_target;
-      return {
-        text: `Over by ${overspend.toFixed(2)} ${budget.currency}`,
-        color: '#e74c3c',
-        bgColor: '#fadbd8',
-      };
-    }
-    const remaining = stats.dailyRemaining;
-    return {
-      text: `Under by ${remaining.toFixed(2)} ${budget.currency}`,
-      color: '#27ae60',
-      bgColor: '#d5f4e6',
-    };
-  };
+          <View style={styles.heroGrid}>
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatLabel}>Available</Text>
+              <Text style={styles.heroStatValue}>{formatMoney(totalBalance, currency)}</Text>
+            </View>
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatLabel}>Safe today</Text>
+              <Text style={styles.heroStatValue}>{formatMoney(safeDaily, currency)}</Text>
+            </View>
+          </View>
+        </View>
 
-  const getMonthlyMessage = () => {
-    if (stats.isOverMonthlyBudget) {
-      const overspend = stats.spentMonthToDate - budget.monthly_target;
-      return {
-        text: `Over by ${overspend.toFixed(2)} ${budget.currency}`,
-        color: '#e74c3c',
-        bgColor: '#fadbd8',
-      };
-    }
-    const remaining = stats.monthlyRemaining;
-    return {
-      text: `Under by ${remaining.toFixed(2)} ${budget.currency}`,
-      color: '#27ae60',
-      bgColor: '#d5f4e6',
-    };
-  };
+        <View style={styles.quickRow}>
+          <QuickAction label="Add food expense" onPress={() => router.push('/(app)/add-transaction')} />
+          <QuickAction label="Log income" onPress={() => router.push('/(app)/add-transaction')} />
+          <QuickAction label="Move money" onPress={() => Alert.alert('Envelope transfers', 'Use the web app for transfers while we finish the native transfer screen.')} />
+        </View>
 
-  const dailyMsg = getDailyMessage();
-  const monthlyMsg = getMonthlyMessage();
+        <View style={styles.metricRow}>
+          <MetricCard
+            title="Today"
+            value={formatMoney(spentToday, currency)}
+            subtitle={`${dailyPercent}% of daily target`}
+            tone={stats?.isOverDailyBudget ? 'danger' : 'success'}
+            progress={dailyPercent}
+          />
+          <MetricCard
+            title="Cycle"
+            value={formatMoney(spentCycle, currency)}
+            subtitle={cycleDetails?.label || 'Current cycle'}
+            tone={stats?.isOverMonthlyBudget ? 'danger' : 'primary'}
+            progress={cyclePercent}
+          />
+        </View>
+
+        <View style={nativeStyles.card}>
+          <Text style={nativeStyles.sectionEyebrow}>Insights</Text>
+          <Text style={nativeStyles.sectionTitle}>Stay on track</Text>
+          <View style={styles.insightBox}>
+            <Text style={styles.insightTitle}>
+              {projectedGap > 0 ? 'Slow the pace a little' : 'You have room to breathe'}
+            </Text>
+            <Text style={styles.insightText}>
+              Keep spending near {formatMoney(safeDaily, currency)} per day for the next {cycleDetails?.remainingDays || 1} days to finish this cycle cleanly.
+            </Text>
+          </View>
+        </View>
+
+        <View style={nativeStyles.card}>
+          <View style={styles.sectionHeaderRow}>
+            <View>
+              <Text style={nativeStyles.sectionEyebrow}>Category Watch</Text>
+              <Text style={nativeStyles.sectionTitle}>Tracked limits</Text>
+            </View>
+            <Pressable style={styles.smallLink} onPress={() => router.push('/(app)/settings')}>
+              <Text style={styles.smallLinkText}>Manage</Text>
+            </Pressable>
+          </View>
+
+          {categoryRows.length === 0 ? (
+            <Text style={styles.mutedCopy}>Add category limits in Settings to see progress and early warnings here.</Text>
+          ) : (
+            <View style={styles.listGap}>
+              {categoryRows.map((row) => (
+                <View key={row.category} style={styles.categoryItem}>
+                  <View style={styles.rowBetween}>
+                    <Text style={styles.categoryTitle}>{row.category}</Text>
+                    <Text style={[styles.categoryStatus, row.percent >= 85 && styles.categoryWarning]}>
+                      {row.percent >= 100 ? 'Over' : row.percent >= 85 ? 'Almost there' : 'On track'}
+                    </Text>
+                  </View>
+                  <Text style={styles.mutedCopy}>
+                    {formatMoney(row.spent, currency)} of {formatMoney(row.limit, currency)} - {formatMoney(row.remaining, currency)} left
+                  </Text>
+                  <ProgressBar percent={row.percent} color={row.percent >= 100 ? nativeTheme.danger : row.percent >= 85 ? nativeTheme.warning : nativeTheme.success} />
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        <View style={nativeStyles.card}>
+          <View style={styles.sectionHeaderRow}>
+            <View>
+              <Text style={nativeStyles.sectionEyebrow}>Recent Activity</Text>
+              <Text style={nativeStyles.sectionTitle}>Latest transactions</Text>
+            </View>
+            <Pressable style={styles.smallLink} onPress={() => router.push('/(app)/transactions')}>
+              <Text style={styles.smallLinkText}>View all</Text>
+            </Pressable>
+          </View>
+
+          {recentTransactions.length === 0 ? (
+            <Text style={styles.mutedCopy}>No transactions yet. Add one and the dashboard starts lighting up.</Text>
+          ) : (
+            <View style={styles.listGap}>
+              {recentTransactions.map((item) => (
+                <TransactionRow key={item.id} item={item} currency={currency} />
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+function QuickAction({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable style={({ pressed }) => [styles.quickAction, pressed && styles.pressed]} onPress={onPress}>
+      <Text style={styles.quickActionText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function MetricCard({
+  title,
+  value,
+  subtitle,
+  progress,
+  tone,
+}: {
+  title: string;
+  value: string;
+  subtitle: string;
+  progress: number;
+  tone: 'primary' | 'success' | 'danger';
+}) {
+  const color = tone === 'danger' ? nativeTheme.danger : tone === 'success' ? nativeTheme.success : nativeTheme.primary;
+  return (
+    <View style={styles.metricCard}>
+      <Text style={styles.metricTitle}>{title}</Text>
+      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={styles.metricSubtitle}>{subtitle}</Text>
+      <ProgressBar percent={progress} color={color} />
+    </View>
+  );
+}
+
+function ProgressBar({ percent, color }: { percent: number; color: string }) {
+  return (
+    <View style={styles.progressTrack}>
+      <View style={[styles.progressFill, { width: `${Math.min(100, Math.max(0, percent))}%`, backgroundColor: color }]} />
+    </View>
+  );
+}
+
+function TransactionRow({ item, currency }: { item: Transaction; currency: string }) {
+  const isIncome = item.amount < 0;
+  const isTransfer = item.kind === 'transfer';
+  const amountColor = isIncome ? nativeTheme.success : isTransfer ? nativeTheme.primary : nativeTheme.danger;
+  const sign = isIncome ? '+' : isTransfer && item.transfer_direction === 'incoming' ? '+' : '-';
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.content}>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Today's Spending</Text>
-          <Text style={styles.amount}>
-            {stats.spentToday.toFixed(2)} {budget.currency}
-          </Text>
-          <Text style={styles.target}>
-            Target: {budget.daily_target.toFixed(2)} {budget.currency}
-          </Text>
-          <View
-            style={[
-              styles.statusBadge,
-              { backgroundColor: dailyMsg.bgColor },
-            ]}
-          >
-            <Text style={[styles.statusText, { color: dailyMsg.color }]}>
-              {dailyMsg.text}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Month to Date</Text>
-          <Text style={styles.amount}>
-            {stats.spentMonthToDate.toFixed(2)} {budget.currency}
-          </Text>
-          <Text style={styles.target}>
-            Target: {budget.monthly_target.toFixed(2)} {budget.currency}
-          </Text>
-          <View
-            style={[
-              styles.statusBadge,
-              { backgroundColor: monthlyMsg.bgColor },
-            ]}
-          >
-            <Text style={[styles.statusText, { color: monthlyMsg.color }]}>
-              {monthlyMsg.text}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Projected End of Month</Text>
-          <Text style={styles.amount}>
-            {stats.projectedMonthEnd.toFixed(2)} {budget.currency}
-          </Text>
-          <Text style={styles.target}>
-            Budget: {budget.monthly_target.toFixed(2)} {budget.currency}
-          </Text>
-          {stats.projectedMonthEnd > budget.monthly_target ? (
-            <View style={[styles.statusBadge, { backgroundColor: '#fadbd8' }]}>
-              <Text style={[styles.statusText, { color: '#e74c3c' }]}>
-                Projected over budget
-              </Text>
-            </View>
-          ) : (
-            <View style={[styles.statusBadge, { backgroundColor: '#d5f4e6' }]}>
-              <Text style={[styles.statusText, { color: '#27ae60' }]}>
-                On track
-              </Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Streak</Text>
-          <Text style={styles.streakNumber}>{stats.streak}</Text>
-          <Text style={styles.streakLabel}>
-            {stats.streak === 1 ? 'day' : 'days'} under budget
-          </Text>
-          {stats.streak >= 7 && (
-            <Text style={styles.praise}>🔥 Great job keeping it up!</Text>
-          )}
-        </View>
+    <View style={styles.transactionRow}>
+      <View style={styles.transactionBadge}>
+        <Text style={styles.transactionBadgeText}>{categoryInitial(item.category)}</Text>
       </View>
-    </ScrollView>
+      <View style={styles.transactionBody}>
+        <Text style={styles.transactionTitle}>{isTransfer ? 'Transfer' : item.category}</Text>
+        <Text style={styles.transactionMeta} numberOfLines={1}>
+          {[item.merchant, item.note, item.date].filter(Boolean).join(' - ')}
+        </Text>
+      </View>
+      <Text style={[styles.transactionAmount, { color: amountColor }]}>
+        {sign}{formatMoney(Math.abs(item.amount), currency)}
+      </Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
+  scrollContent: {
+    paddingBottom: 118,
   },
-  content: {
-    padding: 16,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#7f8c8d',
-    marginBottom: 8,
-  },
-  amount: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 4,
-  },
-  target: {
-    fontSize: 12,
-    color: '#95a5a6',
-    marginBottom: 12,
-  },
-  statusBadge: {
-    borderRadius: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  streakNumber: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#3498db',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  streakLabel: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  praise: {
-    fontSize: 14,
-    color: '#f39c12',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  emptyState: {
-    flex: 1,
+  centered: {
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    padding: 22,
   },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 12,
-  },
-  emptyText: {
+  loadingText: {
+    color: nativeTheme.muted,
     fontSize: 14,
-    color: '#7f8c8d',
-    textAlign: 'center',
-    marginBottom: 24,
+    fontWeight: '700',
+    marginTop: 14,
   },
-  setupButton: {
-    backgroundColor: '#3498db',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+  emptyCard: {
+    width: '100%',
+    alignItems: 'center',
   },
-  setupButtonText: {
-    color: '#fff',
+  emptyButton: {
+    marginTop: 18,
+    alignSelf: 'stretch',
+  },
+  heroGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 20,
+  },
+  heroStat: {
+    flex: 1,
+    borderRadius: 18,
+    padding: 14,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  heroStatLabel: {
+    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  heroStatValue: {
+    color: '#ffffff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '900',
+  },
+  quickRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14,
+  },
+  quickAction: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 16,
+    backgroundColor: nativeTheme.surface,
+    borderWidth: 1,
+    borderColor: nativeTheme.border,
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  quickActionText: {
+    color: nativeTheme.ink,
+    fontSize: 11,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  pressed: {
+    opacity: 0.72,
+    transform: [{ scale: 0.99 }],
+  },
+  metricRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 14,
+  },
+  metricCard: {
+    flex: 1,
+    backgroundColor: nativeTheme.surface,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: nativeTheme.border,
+    padding: 16,
+  },
+  metricTitle: {
+    color: nativeTheme.subtle,
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  metricValue: {
+    color: nativeTheme.ink,
+    fontSize: 20,
+    fontWeight: '900',
+    marginTop: 8,
+  },
+  metricSubtitle: {
+    color: nativeTheme.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  progressTrack: {
+    height: 8,
+    borderRadius: 999,
+    overflow: 'hidden',
+    backgroundColor: '#e2e8f0',
+    marginTop: 12,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 999,
+  },
+  insightBox: {
+    marginTop: 14,
+    padding: 15,
+    borderRadius: 18,
+    backgroundColor: nativeTheme.surfaceMuted,
+    borderWidth: 1,
+    borderColor: nativeTheme.border,
+  },
+  insightTitle: {
+    color: nativeTheme.ink,
+    fontSize: 15,
+    fontWeight: '900',
+    marginBottom: 5,
+  },
+  insightText: {
+    color: nativeTheme.muted,
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 14,
+  },
+  smallLink: {
+    borderRadius: 999,
+    paddingVertical: 9,
+    paddingHorizontal: 13,
+    backgroundColor: nativeTheme.surfaceMuted,
+    borderWidth: 1,
+    borderColor: nativeTheme.border,
+  },
+  smallLinkText: {
+    color: nativeTheme.primary,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  mutedCopy: {
+    color: nativeTheme.muted,
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  listGap: {
+    gap: 10,
+  },
+  categoryItem: {
+    borderRadius: 18,
+    padding: 14,
+    backgroundColor: nativeTheme.surfaceMuted,
+    borderWidth: 1,
+    borderColor: nativeTheme.border,
+  },
+  rowBetween: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  categoryTitle: {
+    color: nativeTheme.ink,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  categoryStatus: {
+    color: nativeTheme.success,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  categoryWarning: {
+    color: nativeTheme.warning,
+  },
+  transactionRow: {
+    minHeight: 68,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 18,
+    padding: 12,
+    backgroundColor: nativeTheme.surfaceMuted,
+    borderWidth: 1,
+    borderColor: nativeTheme.border,
+  },
+  transactionBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: '#dbeafe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  transactionBadgeText: {
+    color: nativeTheme.primary,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  transactionBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  transactionTitle: {
+    color: nativeTheme.ink,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  transactionMeta: {
+    color: nativeTheme.subtle,
+    fontSize: 12,
+    marginTop: 3,
+  },
+  transactionAmount: {
+    fontSize: 13,
+    fontWeight: '900',
   },
 });

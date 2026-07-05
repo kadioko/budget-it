@@ -1,31 +1,45 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
   ActivityIndicator,
   Alert,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { useAuthStore } from '@/store/auth';
 import { useBudgetStore } from '@/store/budget';
 import { Transaction } from '@/types/index';
+import { categoryInitial, formatMoney, nativeStyles, nativeTheme } from '@/ui/nativeTheme';
+
+const FILTERS = ['All', 'Expenses', 'Income', 'Transfers'] as const;
+type Filter = typeof FILTERS[number];
 
 export default function TransactionsScreen() {
   const { user } = useAuthStore();
-  const { transactions, loading, budget, deleteTransaction, fetchTransactions } =
-    useBudgetStore();
+  const { transactions, loading, budget, deleteTransaction, fetchTransactions } = useBudgetStore();
+  const [filter, setFilter] = useState<Filter>('All');
 
   useEffect(() => {
     if (user) {
       fetchTransactions(user.id);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((item) => {
+      if (filter === 'All') return true;
+      if (filter === 'Transfers') return item.kind === 'transfer';
+      if (filter === 'Income') return item.amount < 0 && item.kind !== 'transfer';
+      return item.amount > 0 && item.kind !== 'transfer';
+    });
+  }, [filter, transactions]);
+
   const handleDelete = (id: string) => {
-    Alert.alert('Delete Transaction', 'Are you sure?', [
-      { text: 'Cancel', onPress: () => {} },
+    Alert.alert('Delete transaction', 'This will remove the transaction and update balances.', [
+      { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         onPress: () => deleteTransaction(id),
@@ -35,163 +49,246 @@ export default function TransactionsScreen() {
   };
 
   const renderTransaction = ({ item }: { item: Transaction }) => (
-    <View style={styles.transactionItem}>
-      <View style={styles.transactionLeft}>
-        <View style={styles.categoryBadge}>
-          <Text style={styles.categoryBadgeText}>{item.category[0]}</Text>
-        </View>
-        <View style={styles.transactionInfo}>
-          <Text style={styles.transactionCategory}>{item.category}</Text>
-          <Text style={styles.transactionDate}>{item.date}</Text>
-          {item.note && <Text style={styles.transactionNote}>{item.note}</Text>}
-        </View>
-      </View>
-      <View style={styles.transactionRight}>
-        <Text style={styles.transactionAmount}>
-          -{item.amount.toFixed(2)} {budget?.currency}
-        </Text>
-        <TouchableOpacity
-          onPress={() => handleDelete(item.id)}
-          style={styles.deleteButton}
-        >
-          <Text style={styles.deleteButtonText}>×</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    <TransactionCard
+      item={item}
+      currency={budget?.currency || 'USD'}
+      onDelete={() => handleDelete(item.id)}
+    />
   );
 
   if (loading && transactions.length === 0) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#3498db" />
-      </View>
-    );
-  }
-
-  if (transactions.length === 0) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>No Transactions</Text>
-          <Text style={styles.emptyText}>
-            Start adding transactions to track your spending.
-          </Text>
-        </View>
+      <View style={[nativeStyles.screen, styles.centered]}>
+        <View style={nativeStyles.orbTop} />
+        <View style={nativeStyles.orbBottom} />
+        <ActivityIndicator size="large" color={nativeTheme.primary} />
+        <Text style={styles.loadingText}>Loading transactions...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={nativeStyles.screen}>
+      <View style={nativeStyles.orbTop} />
+      <View style={nativeStyles.orbBottom} />
       <FlatList
-        data={transactions}
+        data={filteredTransactions}
         renderItem={renderTransaction}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={[nativeStyles.content, styles.listContent]}
+        ListHeaderComponent={
+          <>
+            <View style={nativeStyles.heroCard}>
+              <Text style={nativeStyles.heroEyebrow}>Money Trail</Text>
+              <Text style={nativeStyles.heroTitle}>Transactions</Text>
+              <Text style={nativeStyles.heroText}>
+                Review spending, income, transfers, merchants, and notes in one clean feed.
+              </Text>
+            </View>
+
+            <View style={styles.filterRow}>
+              {FILTERS.map((item) => {
+                const active = filter === item;
+                return (
+                  <Pressable
+                    key={item}
+                    style={[nativeStyles.chip, styles.filterChip, active && nativeStyles.chipActive]}
+                    onPress={() => setFilter(item)}
+                  >
+                    <Text style={[nativeStyles.chipText, active && nativeStyles.chipTextActive]}>{item}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </>
+        }
+        ListEmptyComponent={
+          <View style={[nativeStyles.card, styles.emptyCard]}>
+            <Text style={nativeStyles.emptyTitle}>No transactions yet</Text>
+            <Text style={nativeStyles.emptyText}>
+              Add your first expense or income entry and it will appear here with merchant and tag details.
+            </Text>
+          </View>
+        }
       />
     </View>
   );
 }
 
+function TransactionCard({
+  item,
+  currency,
+  onDelete,
+}: {
+  item: Transaction;
+  currency: string;
+  onDelete: () => void;
+}) {
+  const isIncome = item.amount < 0;
+  const isTransfer = item.kind === 'transfer';
+  const color = isIncome ? nativeTheme.success : isTransfer ? nativeTheme.primary : nativeTheme.danger;
+  const sign = isIncome ? '+' : isTransfer && item.transfer_direction === 'incoming' ? '+' : '-';
+  const subtitle = [
+    item.merchant,
+    item.note,
+    item.tags?.length ? item.tags.map((tag) => `#${tag}`).join(' ') : null,
+  ].filter(Boolean).join(' - ');
+
+  return (
+    <View style={styles.transactionItem}>
+      <View style={styles.transactionTop}>
+        <View style={styles.categoryBadge}>
+          <Text style={styles.categoryBadgeText}>{categoryInitial(item.category)}</Text>
+        </View>
+
+        <View style={styles.transactionInfo}>
+          <View style={styles.titleRow}>
+            <Text style={styles.transactionCategory}>{isTransfer ? 'Transfer' : item.category}</Text>
+            {item.is_recurring ? (
+              <View style={styles.recurringPill}>
+                <Text style={styles.recurringText}>Recurring</Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={styles.transactionDate}>{new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
+          {subtitle ? <Text style={styles.transactionNote} numberOfLines={2}>{subtitle}</Text> : null}
+        </View>
+
+        <Text style={[styles.transactionAmount, { color }]}>
+          {sign}{formatMoney(Math.abs(item.amount), currency)}
+        </Text>
+      </View>
+
+      {!isTransfer ? (
+        <Pressable onPress={onDelete} style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}>
+          <Text style={styles.deleteButtonText}>Delete</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
   listContent: {
-    padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 118,
   },
-  transactionItem: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  transactionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  centered: {
     flex: 1,
-  },
-  categoryBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#ecf0f1',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    padding: 22,
+  },
+  loadingText: {
+    color: nativeTheme.muted,
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 14,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 14,
+  },
+  filterChip: {
+    paddingHorizontal: 13,
+  },
+  transactionItem: {
+    backgroundColor: nativeTheme.surface,
+    borderRadius: 22,
+    padding: 15,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: nativeTheme.border,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.07,
+    shadowRadius: 18,
+    elevation: 3,
+  },
+  transactionTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  categoryBadge: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    backgroundColor: '#dbeafe',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   categoryBadgeText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#3498db',
+    fontSize: 17,
+    fontWeight: '900',
+    color: nativeTheme.primary,
   },
   transactionInfo: {
     flex: 1,
+    minWidth: 0,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 7,
   },
   transactionCategory: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2c3e50',
-    marginBottom: 2,
+    fontSize: 15,
+    fontWeight: '900',
+    color: nativeTheme.ink,
   },
   transactionDate: {
     fontSize: 12,
-    color: '#95a5a6',
+    color: nativeTheme.subtle,
+    marginTop: 3,
+    fontWeight: '700',
   },
   transactionNote: {
-    fontSize: 11,
-    color: '#bdc3c7',
-    marginTop: 2,
-    fontStyle: 'italic',
-  },
-  transactionRight: {
-    alignItems: 'flex-end',
+    fontSize: 12,
+    color: nativeTheme.muted,
+    marginTop: 6,
+    lineHeight: 18,
   },
   transactionAmount: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#e74c3c',
-    marginBottom: 4,
+    fontWeight: '900',
+    maxWidth: 112,
+    textAlign: 'right',
+  },
+  recurringPill: {
+    borderRadius: 999,
+    backgroundColor: '#eef2ff',
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+  },
+  recurringText: {
+    color: '#4338ca',
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
   },
   deleteButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#fadbd8',
-    justifyContent: 'center',
-    alignItems: 'center',
+    alignSelf: 'flex-end',
+    marginTop: 12,
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 13,
+    backgroundColor: nativeTheme.dangerSoft,
   },
   deleteButtonText: {
-    fontSize: 18,
-    color: '#e74c3c',
-    fontWeight: 'bold',
+    color: nativeTheme.danger,
+    fontSize: 12,
+    fontWeight: '900',
   },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
+  pressed: {
+    opacity: 0.7,
+  },
+  emptyCard: {
     alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    textAlign: 'center',
   },
 });

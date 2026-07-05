@@ -1,0 +1,13 @@
+builds/
+dist/
+store-assets/
+android-crash-*.txt
+android-route-*.txt
+PLAY_STORE_LISTING.md
+public/privacy.html
+.git/
+.github/
+node_modules/.cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

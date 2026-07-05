@@ -1,5 +1,7 @@
-import { startOfMonth, endOfMonth, differenceInDays, parseISO } from 'date-fns';
+import { startOfMonth, endOfMonth, differenceInDays, format } from 'date-fns';
 import { Transaction, Budget } from '@/types/index';
+
+export const toDateKey = (date: Date) => format(date, 'yyyy-MM-dd');
 
 export function isTransferTransaction(transaction: Transaction) {
   return transaction.kind === 'transfer' || transaction.category === 'Transfer';
@@ -42,7 +44,7 @@ export function calculateSpentToday(
   transactions: Transaction[],
   today: Date
 ): number {
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = toDateKey(today);
   return transactions
     .filter((t) => !isTransferTransaction(t))
     .filter((t) => t.date === todayStr)
@@ -55,8 +57,8 @@ export function calculateSpentMonthToDate(
   monthStartDay: number
 ): number {
   const { monthStart } = getMonthBoundary(today, monthStartDay);
-  const monthStartStr = monthStart.toISOString().split('T')[0];
-  const todayStr = today.toISOString().split('T')[0];
+  const monthStartStr = toDateKey(monthStart);
+  const todayStr = toDateKey(today);
 
   return transactions
     .filter((t) => !isTransferTransaction(t))
@@ -83,7 +85,7 @@ export function calculateStreak(
   currentDate.setHours(0, 0, 0, 0);
 
   while (true) {
-    const dateStr = currentDate.toISOString().split('T')[0];
+    const dateStr = toDateKey(currentDate);
 
     // Stop if we've gone before the first transaction
     if (dateStr < earliestDate) break;
@@ -134,7 +136,8 @@ export function isOnTrackMonthly(
   elapsedDays: number,
   totalDaysInMonth: number
 ): boolean {
-  const expectedSpend = monthlyTarget * (elapsedDays / totalDaysInMonth);
+  const elapsedWithGraceDay = Math.min(totalDaysInMonth, elapsedDays + 1);
+  const expectedSpend = monthlyTarget * (elapsedWithGraceDay / totalDaysInMonth);
   return spentMonthToDate <= expectedSpend;
 }
 
