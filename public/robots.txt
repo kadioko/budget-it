@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /transactions
+Disallow: /settings
+Disallow: /add-transaction
+Disallow: /edit-transaction
+Disallow: /analytics
+Disallow: /transfer-funds
+
+Sitemap: https://budgetit.xyz/sitemap.xml
