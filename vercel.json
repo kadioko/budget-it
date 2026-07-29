@@ -34,6 +34,10 @@
       "handle": "filesystem"
     },
     {
+      "src": "/privacy-policy",
+      "dest": "/privacy.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }

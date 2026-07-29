@@ -11,7 +11,7 @@ com.kadioko.budgetit
 ## Privacy Policy URL
 
 ```text
-https://budgetit.xyz/privacy.html
+https://budgetit.xyz/privacy-policy
 ```
 
 ## Short Description
