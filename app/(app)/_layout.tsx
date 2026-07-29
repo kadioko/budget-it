@@ -60,6 +60,14 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="insights"
+        options={{
+          title: 'Insights',
+          tabBarLabel: 'Insights',
+          tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'pulse' : 'pulse-outline'} size={21} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
@@ -68,6 +76,7 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen name="transfer-funds" options={{ href: null }} />
+      <Tabs.Screen name="help-guides" options={{ href: null }} />
     </Tabs>
   );
 }

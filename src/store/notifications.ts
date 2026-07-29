@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { BudgetNotificationRecord } from '@/types/index';
 
@@ -21,7 +23,7 @@ type NotificationPreferenceState = {
   triggerScheduler: (userId?: string) => Promise<void>;
 };
 
-const webStorage = createJSONStorage(() => ({
+const localStorageAdapter = {
   getItem: (name: string) => {
     if (typeof window === 'undefined') return null;
     return window.localStorage.getItem(name);
@@ -34,7 +36,11 @@ const webStorage = createJSONStorage(() => ({
     if (typeof window === 'undefined') return;
     window.localStorage.removeItem(name);
   },
-}));
+};
+
+const notificationStorage = createJSONStorage(() => (
+  Platform.OS === 'web' ? localStorageAdapter : AsyncStorage
+));
 
 export const useNotificationSettingsStore = create<NotificationPreferenceState>()(
   persist(
@@ -121,7 +127,7 @@ export const useNotificationSettingsStore = create<NotificationPreferenceState>(
     }),
     {
       name: 'budget-it-notification-settings',
-      storage: webStorage,
+      storage: notificationStorage,
       partialize: (state) => ({
         browserAlertsEnabled: state.browserAlertsEnabled,
         overspendAlertsEnabled: state.overspendAlertsEnabled,

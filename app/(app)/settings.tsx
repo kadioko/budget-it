@@ -14,12 +14,14 @@ import {
 import { useAuthStore } from '@/store/auth';
 import { useBudgetStore } from '@/store/budget';
 import { useLanguageStore } from '@/store/language';
+import { useRouter } from 'expo-router';
 import { nativeStyles, nativeTheme } from '@/ui/nativeTheme';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'TZS', 'KES', 'CAD', 'AUD', 'JPY'];
 const CATEGORY_LIMITS = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Other'];
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const { user, signOut } = useAuthStore();
   const {
     budget,
@@ -174,6 +176,15 @@ export default function SettingsScreen() {
           </View>
           <Text style={styles.helperText}>More native screen translations will continue to fill in as we polish the mobile app.</Text>
         </View>
+
+        <Pressable style={styles.guidesCard} onPress={() => router.push('/(app)/help-guides')}>
+          <View style={styles.guidesIcon}><Text style={styles.guidesIconText}>?</Text></View>
+          <View style={styles.guidesCopy}>
+            <Text style={styles.guidesTitle}>Quick guides</Text>
+            <Text style={styles.guidesBody}>Short answers for budgets, transfers, insights, and keeping a clean money routine.</Text>
+          </View>
+          <Text style={styles.guidesArrow}>›</Text>
+        </Pressable>
 
         <View style={nativeStyles.card}>
           <Text style={nativeStyles.sectionEyebrow}>Budget Targets</Text>
@@ -407,4 +418,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
   },
+  guidesCard: {
+    minHeight: 104,
+    borderRadius: 22,
+    backgroundColor: nativeTheme.navy,
+    padding: 17,
+    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  guidesIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 15,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guidesIconText: {
+    color: nativeTheme.navy,
+    fontSize: 23,
+    fontWeight: '900',
+  },
+  guidesCopy: { flex: 1 },
+  guidesTitle: { color: '#ffffff', fontSize: 16, fontWeight: '900' },
+  guidesBody: { color: '#b9d5ce', fontSize: 12, lineHeight: 18, marginTop: 4 },
+  guidesArrow: { color: '#ffffff', fontSize: 28, fontWeight: '700' },
 });
