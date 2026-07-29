@@ -183,7 +183,7 @@ export default function SettingsScreen() {
             <Text style={styles.guidesTitle}>Quick guides</Text>
             <Text style={styles.guidesBody}>Short answers for budgets, transfers, insights, and keeping a clean money routine.</Text>
           </View>
-          <Text style={styles.guidesArrow}>›</Text>
+          <Text style={styles.guidesArrow}>{'>'}</Text>
         </Pressable>
 
         <Pressable style={styles.spacesCard} onPress={() => router.push('/(app)/money-spaces')}>
@@ -192,7 +192,16 @@ export default function SettingsScreen() {
             <Text style={styles.spacesTitle}>Money spaces</Text>
             <Text style={styles.spacesBody}>Create envelopes, track savings goals, and move money where it needs to go.</Text>
           </View>
-          <Text style={styles.spacesArrow}>›</Text>
+          <Text style={styles.spacesArrow}>{'>'}</Text>
+        </Pressable>
+
+        <Pressable style={styles.routinesCard} onPress={() => router.push('/(app)/routines')}>
+          <View style={styles.routinesIcon}><Text style={styles.routinesIconText}>R</Text></View>
+          <View style={styles.guidesCopy}>
+            <Text style={styles.routinesTitle}>Recurring routines</Text>
+            <Text style={styles.routinesBody}>Schedule regular bills and income so your forecast can stay one step ahead.</Text>
+          </View>
+          <Text style={styles.routinesArrow}>{'>'}</Text>
         </Pressable>
 
         <View style={nativeStyles.card}>
@@ -460,4 +469,10 @@ const styles = StyleSheet.create({
   spacesTitle: { color: nativeTheme.ink, fontSize: 16, fontWeight: '900' },
   spacesBody: { color: nativeTheme.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
   spacesArrow: { color: nativeTheme.primary, fontSize: 28, fontWeight: '700' },
+  routinesCard: { minHeight: 96, borderRadius: 22, backgroundColor: '#eff7f4', borderWidth: 1, borderColor: nativeTheme.border, padding: 17, marginBottom: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  routinesIcon: { width: 44, height: 44, borderRadius: 15, backgroundColor: nativeTheme.primary, alignItems: 'center', justifyContent: 'center' },
+  routinesIconText: { color: '#ffffff', fontSize: 17, fontWeight: '900' },
+  routinesTitle: { color: nativeTheme.ink, fontSize: 16, fontWeight: '900' },
+  routinesBody: { color: nativeTheme.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
+  routinesArrow: { color: nativeTheme.primary, fontSize: 20, fontWeight: '900' },
 });

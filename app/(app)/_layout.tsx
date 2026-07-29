@@ -80,6 +80,7 @@ export default function AppLayout() {
       <Tabs.Screen name="money-spaces" options={{ href: null }} />
       <Tabs.Screen name="edit-transaction" options={{ href: null }} />
       <Tabs.Screen name="alerts" options={{ href: null }} />
+      <Tabs.Screen name="routines" options={{ href: null }} />
     </Tabs>
   );
 }
