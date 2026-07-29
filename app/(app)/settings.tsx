@@ -186,6 +186,15 @@ export default function SettingsScreen() {
           <Text style={styles.guidesArrow}>›</Text>
         </Pressable>
 
+        <Pressable style={styles.spacesCard} onPress={() => router.push('/(app)/money-spaces')}>
+          <View style={styles.spacesIcon}><Text style={styles.spacesIconText}>$</Text></View>
+          <View style={styles.guidesCopy}>
+            <Text style={styles.spacesTitle}>Money spaces</Text>
+            <Text style={styles.spacesBody}>Create envelopes, track savings goals, and move money where it needs to go.</Text>
+          </View>
+          <Text style={styles.spacesArrow}>›</Text>
+        </Pressable>
+
         <View style={nativeStyles.card}>
           <Text style={nativeStyles.sectionEyebrow}>Budget Targets</Text>
           <Text style={nativeStyles.sectionTitle}>{hasBudget ? 'Update your plan' : 'Create your plan'}</Text>
@@ -445,4 +454,10 @@ const styles = StyleSheet.create({
   guidesTitle: { color: '#ffffff', fontSize: 16, fontWeight: '900' },
   guidesBody: { color: '#b9d5ce', fontSize: 12, lineHeight: 18, marginTop: 4 },
   guidesArrow: { color: '#ffffff', fontSize: 28, fontWeight: '700' },
+  spacesCard: { minHeight: 96, borderRadius: 22, backgroundColor: '#ffffff', borderWidth: 1, borderColor: nativeTheme.border, padding: 17, marginBottom: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  spacesIcon: { width: 44, height: 44, borderRadius: 15, backgroundColor: nativeTheme.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  spacesIconText: { color: '#9a6510', fontSize: 21, fontWeight: '900' },
+  spacesTitle: { color: nativeTheme.ink, fontSize: 16, fontWeight: '900' },
+  spacesBody: { color: nativeTheme.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
+  spacesArrow: { color: nativeTheme.primary, fontSize: 28, fontWeight: '700' },
 });

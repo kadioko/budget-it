@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { useBudgetStore } from '@/store/budget';
 import { Transaction } from '@/types/index';
@@ -17,6 +18,7 @@ const FILTERS = ['All', 'Expenses', 'Income', 'Transfers'] as const;
 type Filter = typeof FILTERS[number];
 
 export default function TransactionsScreen() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const { transactions, loading, budget, deleteTransaction, fetchTransactions } = useBudgetStore();
   const [filter, setFilter] = useState<Filter>('All');
@@ -53,6 +55,7 @@ export default function TransactionsScreen() {
       item={item}
       currency={budget?.currency || 'USD'}
       onDelete={() => handleDelete(item.id)}
+      onEdit={() => router.push({ pathname: '/(app)/edit-transaction', params: { id: item.id } })}
     />
   );
 
@@ -120,10 +123,12 @@ function TransactionCard({
   item,
   currency,
   onDelete,
+  onEdit,
 }: {
   item: Transaction;
   currency: string;
   onDelete: () => void;
+  onEdit: () => void;
 }) {
   const isIncome = item.amount < 0;
   const isTransfer = item.kind === 'transfer';
@@ -161,9 +166,14 @@ function TransactionCard({
       </View>
 
       {!isTransfer ? (
-        <Pressable onPress={onDelete} style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}>
-          <Text style={styles.deleteButtonText}>Delete</Text>
-        </Pressable>
+        <View style={styles.actionRow}>
+          <Pressable onPress={onEdit} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}>
+            <Text style={styles.editButtonText}>Edit</Text>
+          </Pressable>
+          <Pressable onPress={onDelete} style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}>
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          </Pressable>
+        </View>
       ) : null}
     </View>
   );
@@ -273,12 +283,30 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   deleteButton: {
-    alignSelf: 'flex-end',
     marginTop: 12,
     borderRadius: 999,
     paddingVertical: 8,
     paddingHorizontal: 13,
     backgroundColor: nativeTheme.dangerSoft,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  editButton: {
+    marginTop: 12,
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 13,
+    backgroundColor: nativeTheme.surfaceMuted,
+    borderWidth: 1,
+    borderColor: nativeTheme.border,
+  },
+  editButtonText: {
+    color: nativeTheme.primary,
+    fontSize: 12,
+    fontWeight: '900',
   },
   deleteButtonText: {
     color: nativeTheme.danger,
