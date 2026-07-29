@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { useBudgetStore } from '@/store/budget';
@@ -150,9 +150,9 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.quickRow}>
-          <QuickAction label="Add food expense" onPress={() => router.push('/(app)/add-transaction')} />
-          <QuickAction label="Log income" onPress={() => router.push('/(app)/add-transaction')} />
-          <QuickAction label="Move money" onPress={() => Alert.alert('Envelope transfers', 'Use the web app for transfers while we finish the native transfer screen.')} />
+          <QuickAction label="Add expense" icon="add" tone="primary" onPress={() => router.push('/(app)/add-transaction')} />
+          <QuickAction label="Log income" icon="trending-up" tone="success" onPress={() => router.push('/(app)/add-transaction')} />
+          <QuickAction label="Move money" icon="swap-horizontal" tone="accent" onPress={() => router.push('/(app)/transfer-funds')} />
         </View>
 
         <View style={styles.metricRow}>
@@ -244,9 +244,12 @@ export default function DashboardScreen() {
   );
 }
 
-function QuickAction({ label, onPress }: { label: string; onPress: () => void }) {
+function QuickAction({ label, icon, tone, onPress }: { label: string; icon: keyof typeof Ionicons.glyphMap; tone: 'primary' | 'success' | 'accent'; onPress: () => void }) {
+  const iconColor = tone === 'success' ? nativeTheme.success : tone === 'accent' ? '#9a6510' : nativeTheme.primary;
+  const backgroundColor = tone === 'success' ? nativeTheme.successSoft : tone === 'accent' ? nativeTheme.accentSoft : '#dff1eb';
   return (
     <Pressable style={({ pressed }) => [styles.quickAction, pressed && styles.pressed]} onPress={onPress}>
+      <View style={[styles.quickActionIcon, { backgroundColor }]}><Ionicons name={icon} size={17} color={iconColor} /></View>
       <Text style={styles.quickActionText}>{label}</Text>
     </Pressable>
   );
@@ -363,17 +366,26 @@ const styles = StyleSheet.create({
   },
   quickAction: {
     flex: 1,
-    minHeight: 48,
-    borderRadius: 16,
+    minHeight: 76,
+    borderRadius: 18,
     backgroundColor: nativeTheme.surface,
     borderWidth: 1,
     borderColor: nativeTheme.border,
     justifyContent: 'center',
-    paddingHorizontal: 10,
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    gap: 5,
+  },
+  quickActionIcon: {
+    width: 29,
+    height: 29,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   quickActionText: {
     color: nativeTheme.ink,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '900',
     textAlign: 'center',
   },
@@ -511,7 +523,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: '#dbeafe',
+    backgroundColor: '#dff1eb',
     alignItems: 'center',
     justifyContent: 'center',
   },

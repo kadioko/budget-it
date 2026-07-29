@@ -1,20 +1,28 @@
 import { create } from 'zustand';
+import { Platform } from 'react-native';
+import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
 import { Profile } from '@/types/index';
 
-const getEmailRedirectTo = () => {
-  if (typeof window === 'undefined') return undefined;
-  return `${window.location.origin}/?auth_action=email_verified`;
+const getRedirectTo = (authAction?: string) => {
+  const queryParams = authAction ? { auth_action: authAction } : undefined;
+
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin) {
+    const search = authAction ? `?auth_action=${authAction}` : '';
+    return `${window.location.origin}/${search}`;
+  }
+
+  return Linking.createURL('/', { queryParams });
 };
 
+const getEmailRedirectTo = () => getRedirectTo('email_verified');
+
 const getPasswordResetRedirectTo = () => {
-  if (typeof window === 'undefined') return undefined;
-  return `${window.location.origin}/?auth_action=password_recovery`;
+  return getRedirectTo('password_recovery');
 };
 
 const getOAuthRedirectTo = () => {
-  if (typeof window === 'undefined') return undefined;
-  return `${window.location.origin}/`;
+  return getRedirectTo();
 };
 
 interface AuthState {

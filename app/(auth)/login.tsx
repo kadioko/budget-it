@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -11,13 +12,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { nativeStyles, nativeTheme } from '@/ui/nativeTheme';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { signIn, resetPasswordForEmail, loading, error } = useAuthStore();
+  const { signIn, signInWithGoogle, resetPasswordForEmail, loading, error } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -48,6 +50,14 @@ export default function LoginScreen() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (err: any) {
+      Alert.alert('Google sign-in failed', err.message || 'Please try again.');
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -57,7 +67,10 @@ export default function LoginScreen() {
       <View style={nativeStyles.orbBottom} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[nativeStyles.content, styles.content]}>
         <View style={nativeStyles.heroCard}>
-          <Text style={nativeStyles.heroEyebrow}>Budget It</Text>
+          <View style={styles.brandRow}>
+            <Image source={require('../../assets/icon.png')} style={styles.brandLogo} />
+            <Text style={nativeStyles.heroEyebrow}>BUDGET IT</Text>
+          </View>
           <Text style={nativeStyles.heroTitle}>Budget with clarity.</Text>
           <Text style={nativeStyles.heroText}>
             Sign in to track balances, category limits, safe daily spend, and your latest money moves.
@@ -92,6 +105,18 @@ export default function LoginScreen() {
             disabled={loading}
           >
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={nativeStyles.primaryButtonText}>Sign In</Text>}
+          </Pressable>
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or continue with</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <Pressable style={styles.googleButton} onPress={handleGoogleSignIn} disabled={loading}>
+            <View style={styles.googleMark}><Text style={styles.googleMarkText}>G</Text></View>
+            <Text style={styles.googleButtonText}>Continue with Google</Text>
+            <Ionicons name="arrow-forward" size={18} color={nativeTheme.primary} />
           </Pressable>
 
           <Pressable style={styles.textButton} onPress={handleResetPassword} disabled={loading}>
@@ -150,6 +175,17 @@ const styles = StyleSheet.create({
   field: {
     marginTop: 14,
   },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    marginBottom: 3,
+  },
+  brandLogo: {
+    width: 27,
+    height: 27,
+    borderRadius: 8,
+  },
   error: {
     color: nativeTheme.danger,
     fontSize: 12,
@@ -158,6 +194,55 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: 18,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 18,
+    marginBottom: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: nativeTheme.border,
+  },
+  dividerText: {
+    color: nativeTheme.subtle,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  googleButton: {
+    minHeight: 52,
+    borderRadius: 17,
+    backgroundColor: nativeTheme.surfaceMuted,
+    borderWidth: 1,
+    borderColor: nativeTheme.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+  },
+  googleMark: {
+    width: 27,
+    height: 27,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: nativeTheme.border,
+  },
+  googleMarkText: {
+    color: '#4285f4',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  googleButtonText: {
+    flex: 1,
+    color: nativeTheme.ink,
+    fontSize: 13,
+    fontWeight: '900',
   },
   disabledButton: {
     opacity: 0.65,

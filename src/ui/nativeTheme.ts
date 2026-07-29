@@ -1,25 +1,27 @@
 import { StyleSheet } from 'react-native';
 
 export const nativeTheme = {
-  background: '#f4f7fb',
-  backgroundAccent: '#e8f0ff',
+  background: '#f6faf8',
+  backgroundAccent: '#e2f1ec',
   surface: '#ffffff',
-  surfaceMuted: '#f8fbff',
-  ink: '#0f172a',
-  muted: '#475569',
-  subtle: '#64748b',
-  border: '#dbe4f0',
-  borderStrong: '#bfdbfe',
-  primary: '#1d4ed8',
-  primaryStrong: '#1e40af',
-  navy: '#0f172a',
-  navySoft: '#1e293b',
-  success: '#059669',
-  successSoft: '#dcfce7',
+  surfaceMuted: '#eff7f4',
+  ink: '#102a2f',
+  muted: '#4d6669',
+  subtle: '#6a8081',
+  border: '#d5e7e1',
+  borderStrong: '#9ac9bc',
+  primary: '#135350',
+  primaryStrong: '#0a3d3b',
+  navy: '#0a272e',
+  navySoft: '#164149',
+  success: '#11865b',
+  successSoft: '#dff5e9',
   danger: '#ef4444',
   dangerSoft: '#fee2e2',
-  warning: '#f59e0b',
-  warningSoft: '#fef3c7',
+  warning: '#c87914',
+  warningSoft: '#fff0d5',
+  accent: '#e5b65b',
+  accentSoft: '#fff6df',
 };
 
 export const nativeStyles = StyleSheet.create({
@@ -34,7 +36,7 @@ export const nativeStyles = StyleSheet.create({
     width: 220,
     height: 220,
     borderRadius: 110,
-    backgroundColor: '#dbeafe',
+    backgroundColor: '#c9eee3',
     opacity: 0.95,
   },
   orbBottom: {
@@ -44,7 +46,7 @@ export const nativeStyles = StyleSheet.create({
     width: 240,
     height: 240,
     borderRadius: 120,
-    backgroundColor: '#ccfbf1',
+    backgroundColor: '#f8e6bc',
     opacity: 0.6,
   },
   content: {
@@ -63,7 +65,7 @@ export const nativeStyles = StyleSheet.create({
     elevation: 8,
   },
   heroEyebrow: {
-    color: '#93c5fd',
+    color: '#8dd4c2',
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 1,
@@ -173,7 +175,7 @@ export const nativeStyles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   chipActive: {
-    borderColor: nativeTheme.primary,
+    borderColor: nativeTheme.primaryStrong,
     backgroundColor: nativeTheme.primary,
   },
   chipText: {

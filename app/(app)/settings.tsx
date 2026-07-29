@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
   },
   subtlePill: {
     color: nativeTheme.primary,
-    backgroundColor: '#dbeafe',
+    backgroundColor: '#dff1eb',
     borderRadius: 999,
     paddingVertical: 7,
     paddingHorizontal: 11,
