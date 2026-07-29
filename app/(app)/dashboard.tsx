@@ -14,6 +14,7 @@ import { useBudgetStore } from '@/store/budget';
 import { getBudgetCycleWindow, toDateKey } from '@/lib/budget-logic';
 import { Transaction } from '@/types/index';
 import { categoryInitial, formatMoney, nativeStyles, nativeTheme } from '@/ui/nativeTheme';
+import { useNotificationSettingsStore } from '@/store/notifications';
 
 const todayLabel = new Date().toLocaleDateString('en-US', {
   weekday: 'long',
@@ -35,12 +36,14 @@ export default function DashboardScreen() {
     fetchEnvelopes,
     fetchTransactions,
   } = useBudgetStore();
+  const { inbox, fetchInbox } = useNotificationSettingsStore();
 
   useEffect(() => {
     if (user) {
       fetchBudget(user.id);
       fetchEnvelopes(user.id);
       fetchTransactions(user.id);
+      fetchInbox(user.id).catch(() => undefined);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -129,7 +132,7 @@ export default function DashboardScreen() {
       <View style={nativeStyles.orbBottom} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[nativeStyles.content, styles.scrollContent]}>
         <View style={nativeStyles.heroCard}>
-          <Text style={nativeStyles.heroEyebrow}>{todayLabel}</Text>
+          <View style={styles.heroTopRow}><Text style={nativeStyles.heroEyebrow}>{todayLabel}</Text><Pressable style={styles.alertButton} onPress={() => router.push('/(app)/alerts')}><Ionicons name={inbox.length ? 'notifications' : 'notifications-outline'} size={18} color="#ffffff" />{inbox.length ? <View style={styles.alertCount}><Text style={styles.alertCountText}>{inbox.length > 9 ? '9+' : inbox.length}</Text></View> : null}</Pressable></View>
           <Text style={nativeStyles.heroTitle}>Your budget pulse</Text>
           <Text style={nativeStyles.heroText}>
             {projectedGap > 0
@@ -339,6 +342,10 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 20,
   },
+  heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  alertButton: { width: 38, height: 38, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.10)', alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  alertCount: { position: 'absolute', right: -5, top: -5, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: nativeTheme.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
+  alertCountText: { color: nativeTheme.navy, fontSize: 9, fontWeight: '900' },
   heroStat: {
     flex: 1,
     borderRadius: 18,
