@@ -1,322 +1,94 @@
-# Budget It - Architecture & Design Decisions
-
-**Live App (Web):** [https://budgetit.xyz](https://budgetit.xyz)
+# Budget It Architecture
 
 ## Overview
 
-Budget It is a cross-platform personal finance tracker built with a single Expo codebase, Supabase backend services, and Zustand state management. The current architecture is centered around a web-first deployment while keeping the project compatible with Expo-based mobile builds.
+Budget It is a single Expo and TypeScript project that serves a web app through Vercel and a native Android app through EAS Build. Supabase provides authentication, PostgreSQL storage, Row Level Security, and scheduled backend notifications.
 
-## Technology Choices & Rationale
-
-### Frontend: Expo + React Native
-- **Why**: Single codebase for web, iOS, and Android
-- **React Native Web**: Reuses React Native primitives in the browser
-- **Custom web views**: The main product UX is implemented in `web/*.tsx`
-- **Alternative considered**: Flutter (less mature ecosystem for web)
-
-### Backend: Supabase
-- **Why**: PostgreSQL + Auth + RLS in one platform
-- **Auth**: Email/password auth with redirect-based email verification
-- **Edge Functions**: Used for server-side notification scheduling
-- **RLS**: Built-in row-level security (no custom auth middleware needed)
-- **Alternative considered**: Firebase (less control, more expensive at scale)
-
-### State Management: Zustand
-- **Why**: Minimal boilerplate, TypeScript-first, no provider hell
-- **Stores**: Auth, budget, theme, language, and notification settings are separated by responsibility
-- **Alternative considered**: Redux (overkill), Context API (prop drilling)
-
-### Testing: Jest + ts-jest
-- **Why**: Zero-config with TypeScript support
-- **Focus**: Pure functions (budget calculations) over UI tests
-- **Alternative considered**: Vitest (newer, but Jest is more stable)
-
-## Runtime Data Flow
-
-```
-User Action (web/*.tsx or App.tsx)
-    ↓
-Zustand Store
-    ↓
-Supabase Client (@supabase/supabase-js)
-    ↓
-Supabase (Auth + PostgreSQL + RLS + Edge Functions)
-    ↓
-Response → Update Store → Re-render UI
+```text
+Web (Vercel) or native app (Android)
+  -> Expo Router screen
+  -> Zustand store
+  -> Supabase client
+  -> Supabase Auth, PostgreSQL, and Edge Functions
+  -> updated store state
+  -> responsive user interface
 ```
 
-For notification scheduling, there is an additional backend path:
+## Interface Layers
 
-```
-Dashboard / notification settings store
-    ↓
-Supabase Edge Function invoke (`schedule-budget-alerts`)
-    ↓
-Supabase Edge Function
-    ↓
-`budget_notifications` rows inserted/upserted
-    ↓
-Client inbox fetch → dashboard notification cards
-```
+### Native
 
-## Security Model
+`app/` contains Expo Router screens for Android and iOS.
 
-### Authentication
-- Supabase Auth handles email/password
-- Session stored in browser/app local storage
-- `useAuthStore.checkAuth()` verifies session on app load
-- `detectSessionInUrl` is enabled so email verification callbacks can be completed inside the app
+- `(auth)` contains sign-in, account creation, Google sign-in, and password reset.
+- `(app)` contains Dashboard, Transactions, Settings, Insights, Alerts, Money Spaces, Transfers, Routines, and Help Guides.
+- `src/ui/nativeTheme.ts` provides the shared native color system, spacing, cards, controls, and money formatting.
 
-### Authorization (RLS)
-- All tables have RLS enabled
-- Policies enforce `auth.uid() = user_id`
-- Users cannot read/write other users' data at database level
-- No need for server-side authorization checks
+Native screens show a loading state for first load, preserve available data when an update fails, offer pull-to-refresh for the primary data feeds, and communicate when data is offline/stale.
 
-### Secrets
-- Supabase Anon Key is public (safe to expose in client)
-- Never store sensitive data in client code
-- Environment variables prefixed with `EXPO_PUBLIC_` are exposed to client
-- Service role credentials are only used inside the Supabase Edge Function configuration
+### Web
 
-## Folder Structure Rationale
+`web/` contains the web-first desktop and mobile-browser experience. It uses the same stores, types, business logic, and Supabase client as the native app, while providing its own responsive layouts and Chart.js analytics.
 
-```
-app/                    # Expo Router (file-based routing)
-  (auth)/              # Auth group (login, signup)
-  (app)/               # App group (main screens)
-  _layout.tsx          # Root layout with auth check
+## State And Data Flow
 
-web/                    # Main web UI surfaces
-  dashboard-web.tsx     # Dashboard, notifications, inline edits
-  settings-web.tsx      # Budget settings, envelopes, recurring items
-  transactions-web.tsx  # History and filters
-  analytics-web.tsx     # Charts and CSV export
-  transfer-funds-web.tsx # Account-to-account transfers
+Zustand stores are the client-side source of truth:
 
-src/
-  lib/                 # Pure functions & utilities
-    supabase.ts       # Client initialization
-    budget-logic.ts   # Calculations + cycle window helpers
-    web-notifications.ts # Browser notification helpers
-  
-  store/              # Zustand stores
-    auth.ts           # Auth state
-    budget.ts         # Budgets, envelopes, transfers, savings, alerts
-    notifications.ts  # Notification preferences + inbox
-    theme.ts          # Theme mode + tokens
-    language.ts       # i18n translations and language selection
-  
-  types/              # TypeScript types
-    index.ts          # Centralized type definitions
+| Store | Responsibility |
+| --- | --- |
+| `auth.ts` | Supabase session, email/password auth, Google auth, password recovery. |
+| `budget.ts` | Budgets, transactions, envelopes, transfers, recurring schedules, goals, offline queue, and computed stats. |
+| `notifications.ts` | User alert preferences and the notification inbox. |
+| `language.ts` | English/Swahili selection and translations. |
+| `theme.ts` | Visual theme preference for the web app. |
 
-supabase/
-  functions/
-    schedule-budget-alerts/
-      index.ts        # Server-generated budget alert scheduler
-```
+`src/lib/budget-logic.ts` contains pure calculations for daily spend, custom budget cycles, month-end projections, pacing, and streaks. Pure functions are kept separate from UI and data fetching so they can be unit-tested without device or network dependencies.
 
-**Why this structure?**
-- Expo config remains available for native builds, but most of the active product UX lives in `web/`
-- `src/lib` contains reusable logic and integration helpers
-- `src/store` is the single source of truth for client state
-- Supabase Edge Functions are used only where server-side privileges are required
+## Supabase Model
 
-## State Management Pattern
+The database uses these main resources:
 
-### Auth Store
-```typescript
-useAuthStore.user          // Current user or null
-useAuthStore.loading       // Loading state
-useAuthStore.error         // Error messages
-useAuthStore.signUp()      // Action
-useAuthStore.signIn()      // Action
-useAuthStore.signOut()     // Action
-useAuthStore.checkAuth()   // Check session on app load
+- `budgets`: daily/monthly targets, currency, bank balance, custom cycle start day, and synced category limits.
+- `envelopes`: separate account or envelope balances.
+- `transactions`: income, expenses, transfers, merchant metadata, tags, and recurring metadata.
+- `recurring_transactions`: schedules used for bills, regular income, and reminders.
+- `savings_goals`: target amounts, progress, target dates, and optional linked envelopes.
+- `notification_preferences`: user choices for budget warnings, summaries, and reminders.
+- `budget_notifications`: deduplicated alert records shown in the app inbox.
+
+All user-owned tables rely on Supabase Row Level Security. A user can only read or change records where `user_id` is their authenticated ID. The service-role key is restricted to server-side Edge Function configuration.
+
+## Money Model
+
+- A standard expense is a positive transaction amount and reduces its linked envelope or the bank balance.
+- Income is a negative transaction amount and increases its linked envelope or the bank balance.
+- Transfers are represented by linked incoming and outgoing transaction rows, so account balances and history remain auditable.
+- A budget cycle is calculated from `month_start_day`; it is not assumed to begin on the first day of the calendar month.
+- Category limits are stored with the budget and sync through Supabase, allowing the same limits on every signed-in device.
+
+## Offline Behavior
+
+The budget store persists selected data through AsyncStorage. When network status is offline, new standard transactions are queued locally and the last saved budget data remains visible. When connectivity returns, the store attempts to sync the pending actions and refetches the latest remote state.
+
+Transfers require an online connection because they update two balances and create linked records together. The app communicates offline status on the dashboard and transaction feed so users understand when data may be stale.
+
+## Notifications
+
+The `schedule-budget-alerts` Supabase Edge Function generates weekly summaries, overspend warnings, and upcoming recurring-expense alerts. It uses dedupe keys to avoid duplicate alert records. Clients fetch the inbox through `notifications.ts`; users can also trigger a refresh from the Alerts screen.
+
+See [SUPABASE_NOTIFICATIONS_SETUP.md](SUPABASE_NOTIFICATIONS_SETUP.md) for required secrets and scheduling.
+
+## Deployment
+
+```text
+GitHub source
+  -> Vercel: static web export and SPA routing
+  -> EAS Build: Android APKs for testing and AABs for Google Play
+  -> Supabase: auth, data, RLS, and Edge Functions
 ```
 
-### Budget Store
-```typescript
-useBudgetStore.budget           // Current budget or null
-useBudgetStore.categoryBudgets  // Per-category limits
-useBudgetStore.envelopes        // Envelope / account list
-useBudgetStore.transactions     // Array of transactions
-useBudgetStore.recurringTransactions // Recurring templates
-useBudgetStore.savingsGoals     // Savings goal list
-useBudgetStore.rolloverState    // Monthly carryover state
-useBudgetStore.stats            // Calculated stats
-useBudgetStore.fetchBudget()    // Load budget
-useBudgetStore.fetchEnvelopes() // Load envelopes
-useBudgetStore.fetchTransactions() // Load transactions
-useBudgetStore.fetchRecurringTransactions() // Load recurring items
-useBudgetStore.fetchSavingsGoals() // Load savings goals
-useBudgetStore.createBudget()   // Create
-useBudgetStore.updateBudget()   // Update
-useBudgetStore.saveCategoryBudgets() // Save category limits
-useBudgetStore.addTransaction() // Add standard transaction
-useBudgetStore.createTransfer() // Create transfer pair entries
-useBudgetStore.addRecurringTransaction() // Add recurring item
-useBudgetStore.addSavingsGoal() // Add savings goal
-useBudgetStore.applyMonthlyRollover() // Carry unused category budgets forward
-useBudgetStore.calculateStats() // Recalculate stats
-```
+The web build uses `build-web.js` and Vercel SPA rewrites. Android builds use the Expo configuration in `app.json` and build profiles in `eas.json`. The package identifier is `com.kadioko.budgetit` and must stay stable for Play Store updates.
 
-### Additional Stores
+## Quality Gate
 
-```typescript
-useNotificationSettingsStore.loadPreferences()
-useNotificationSettingsStore.fetchInbox()
-useNotificationSettingsStore.triggerScheduler()
-
-useThemeStore.mode
-useThemeStore.toggleMode()
-
-useI18n().t()
-useI18n().tr()
-```
-
-## Budget Calculation Logic
-
-All calculations are **pure functions** in `src/lib/budget-logic.ts`:
-
-- `calculateSpentToday()`: Sum transactions for today
-- `calculateSpentMonthToDate()`: Sum transactions from month start to today
-- `calculateStreak()`: Count consecutive days under budget
-- `calculateProjectedMonthEnd()`: Linear pace-based projection
-- `getBudgetCycleWindow()`: Calculate the active budget cycle from `month_start_day`
-- `isOnTrackMonthly()`: Check if on pace for monthly budget
-- `calculateBudgetStats()`: Aggregate all calculations
-
-**Why pure functions?**
-- Testable without mocking
-- Reusable across platforms
-- Easy to debug
-- No side effects
-
-## Database Schema
-
-### Profiles
-- Stores user metadata (display name, etc.)
-- Linked to `auth.users` via UUID
-
-### Budgets
-- Stores daily/monthly targets, currency, bank balance, and `category_budgets`
-- `month_start_day` supports custom billing/budget cycles
-- `category_budgets` is stored as a JSON-like object for flexible per-category limits
-
-### Envelopes
-- Custom accounts/envelopes separate from the main bank balance
-- `is_default` identifies the permanent primary bank account behavior
-
-### Transactions
-- Standard transactions and transfer entries share the same table
-- Additional metadata includes `merchant`, `tags`, `is_recurring`, `kind`, and transfer fields
-- Transfers are modeled as linked incoming/outgoing rows
-
-### Recurring Transactions
-- Stores templates for scheduled income/expense items
-- Used both by the client and notification scheduler
-
-### Savings Goals
-- Tracks target amount, current amount, target date, optional note, and linked envelope
-
-### Notification Preferences
-- Stores per-user toggles for browser alerts, overspend alerts, recurring alerts, and weekly summaries
-
-### Budget Notifications
-- Server-generated inbox rows created by the edge function
-- Uses `dedupe_key` to avoid duplicate alerts per user
-
-## RLS Policies
-
-All policies follow the same pattern:
-```sql
-CREATE POLICY "Users can [ACTION] own [TABLE]" ON [TABLE]
-  FOR [SELECT|INSERT|UPDATE|DELETE]
-  USING (auth.uid() = user_id);
-```
-
-This ensures:
-- Users can only see their own data
-- No cross-user data leakage
-- No need for server-side auth checks
-
-## Error Handling
-
-### Client-side
-- Try-catch blocks in async actions
-- Error stored in Zustand store
-- Inline feedback and toast-style UI messages in the web app
-- Empty states for missing data
-
-### Server-side (Supabase)
-- RLS policies prevent unauthorized access
-- Constraints prevent invalid data
-- Edge Function failures return structured JSON responses
-
-## Performance Considerations
-
-### Current
-- Dashboard batches initial fetches with `Promise.all`
-- Stats are recalculated from store state instead of duplicating logic in views
-- Notification scheduling is offloaded to an Edge Function
-- Web build is exported statically and served via Vercel CDN
-
-### Future optimizations
-- Lazy load transactions (pagination)
-- Cache calculations in store
-- Use Supabase real-time subscriptions
-- Add more selective refetching by view
-
-## Testing Strategy
-
-### Unit Tests (Jest)
-- Budget calculation functions
-- Date utilities
-- No UI tests (Expo testing is complex)
-
-### Manual Testing
-- Test on web (Expo Web)
-- Test on mobile (Expo Go)
-- Test on Android APK (EAS Build)
-
-### Integration Testing (Future)
-- E2E tests with Playwright
-- Test full user flows
-
-## Deployment Architecture
-
-```
-GitHub Repo
-    ↓
-Vercel (Web)                EAS Build (Native)
-    ↓                            ↓
-`node build-web.js`         Android / iOS artifacts
-    ↓
-Expo static web export (`dist/`)
-    ↓
-Vercel CDN + SPA rewrites
-    ↓
-Supabase Auth / Database / Edge Functions
-```
-
-## Current Operational Notes
-
-- Vercel requires `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-- Supabase notification scheduling requires the `schedule-budget-alerts` Edge Function plus:
-  - `SUPABASE_URL`
-  - `SUPABASE_SERVICE_ROLE_KEY`
-- SQL migrations in the repo root are incremental and need to be run in Supabase when enabling new features
-
-## Future Enhancements
-
-### Product
-- Social features (shared budgets)
-- Advanced analytics
-- Multi-currency
-- Better offline sync and conflict handling
-
-### Platform
-- Real push/web-push delivery beyond the current in-app/browser model
-- More complete mobile-first navigation and native packaging polish
-- Optional real-time subscriptions for collaborative or multi-device refreshes
+Run `npm run verify` before production work. It checks TypeScript, unit tests, Expo compatibility, and a clean Android export. The release-specific process, including version codes and Google Play submission, is documented in [ANDROID_RELEASE_BUILD.md](ANDROID_RELEASE_BUILD.md).

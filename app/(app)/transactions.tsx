@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
@@ -20,12 +21,20 @@ type Filter = typeof FILTERS[number];
 export default function TransactionsScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { transactions, loading, budget, deleteTransaction, fetchTransactions } = useBudgetStore();
+  const { transactions, loading, budget, error, isOffline, deleteTransaction, fetchTransactions } = useBudgetStore();
   const [filter, setFilter] = useState<Filter>('All');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refreshTransactions = async () => {
+    if (!user) return;
+    setRefreshing(true);
+    await fetchTransactions(user.id);
+    setRefreshing(false);
+  };
 
   useEffect(() => {
     if (user) {
-      fetchTransactions(user.id);
+      refreshTransactions();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -80,8 +89,14 @@ export default function TransactionsScreen() {
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[nativeStyles.content, styles.listContent]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshTransactions} tintColor={nativeTheme.primary} colors={[nativeTheme.primary]} />}
         ListHeaderComponent={
           <>
+            {isOffline ? (
+              <View style={styles.connectionBanner}>
+                <Text style={styles.connectionBannerText}>Offline mode: showing your last saved transactions.</Text>
+              </View>
+            ) : null}
             <View style={nativeStyles.heroCard}>
               <Text style={nativeStyles.heroEyebrow}>Money Trail</Text>
               <Text style={nativeStyles.heroTitle}>Transactions</Text>
@@ -108,10 +123,17 @@ export default function TransactionsScreen() {
         }
         ListEmptyComponent={
           <View style={[nativeStyles.card, styles.emptyCard]}>
-            <Text style={nativeStyles.emptyTitle}>No transactions yet</Text>
+            <Text style={nativeStyles.emptyTitle}>{error ? 'Could not load transactions' : 'No transactions yet'}</Text>
             <Text style={nativeStyles.emptyText}>
-              Add your first expense or income entry and it will appear here with merchant and tag details.
+              {error
+                ? 'Check your connection and pull down to try again.'
+                : 'Add your first expense or income entry and it will appear here with merchant and tag details.'}
             </Text>
+            {error ? (
+              <Pressable style={[nativeStyles.primaryButton, styles.retryButton]} onPress={refreshTransactions}>
+                <Text style={nativeStyles.primaryButtonText}>Try Again</Text>
+              </Pressable>
+            ) : null}
           </View>
         }
       />
@@ -200,6 +222,24 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     marginBottom: 14,
+  },
+  connectionBanner: {
+    borderRadius: 14,
+    backgroundColor: nativeTheme.warningSoft,
+    borderWidth: 1,
+    borderColor: '#f4d79b',
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  connectionBannerText: {
+    color: '#7d4c0a',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  retryButton: {
+    alignSelf: 'stretch',
+    marginTop: 18,
   },
   filterChip: {
     paddingHorizontal: 13,

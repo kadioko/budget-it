@@ -78,6 +78,6 @@ Recommendation: before final public launch, replace these with real screenshots 
 ## Notes
 
 - The Play Store AAB must use package name `com.kadioko.budgetit`.
-- The latest AAB created for that package is:
-  https://expo.dev/artifacts/eas/iwk5wHbz1drEbdxs5zxxPM.aab
-- If you change package name, versionCode, app config, or native dependencies, build a new AAB before uploading.
+- The latest known production AAB is version `1.0.8` (`versionCode` `9`):
+  https://expo.dev/artifacts/eas/KQnsvbqubjAHWmGz5hWVX5pRLlfu1DR8eWEymrtd0wg.aab
+- Every Google Play upload must use a higher `versionCode`. Follow `ANDROID_RELEASE_BUILD.md` before creating a new AAB.

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -32,18 +33,30 @@ export default function DashboardScreen() {
     transactions,
     envelopes,
     loading,
+    error,
+    isOffline,
     fetchBudget,
     fetchEnvelopes,
     fetchTransactions,
   } = useBudgetStore();
   const { inbox, fetchInbox } = useNotificationSettingsStore();
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const refreshDashboard = async () => {
+    if (!user) return;
+    setRefreshing(true);
+    await Promise.all([
+      fetchBudget(user.id),
+      fetchEnvelopes(user.id),
+      fetchTransactions(user.id),
+      fetchInbox(user.id).catch(() => undefined),
+    ]);
+    setRefreshing(false);
+  };
 
   useEffect(() => {
     if (user) {
-      fetchBudget(user.id);
-      fetchEnvelopes(user.id);
-      fetchTransactions(user.id);
-      fetchInbox(user.id).catch(() => undefined);
+      refreshDashboard();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -114,12 +127,17 @@ export default function DashboardScreen() {
         <View style={nativeStyles.orbTop} />
         <View style={nativeStyles.orbBottom} />
         <View style={[nativeStyles.card, styles.emptyCard]}>
-          <Text style={nativeStyles.emptyTitle}>Set your first budget</Text>
+          <Text style={nativeStyles.emptyTitle}>{error ? 'Could not load your budget' : 'Set your first budget'}</Text>
           <Text style={nativeStyles.emptyText}>
-            Add your daily and monthly targets so Budget It can show pacing, safe spend, and alerts.
+            {error
+              ? 'Check your connection, then try again. Your saved data will remain safe.'
+              : 'Add your daily and monthly targets so Budget It can show pacing, safe spend, and alerts.'}
           </Text>
-          <Pressable style={[nativeStyles.primaryButton, styles.emptyButton]} onPress={() => router.push('/(app)/settings')}>
-            <Text style={nativeStyles.primaryButtonText}>Open Settings</Text>
+          <Pressable
+            style={[nativeStyles.primaryButton, styles.emptyButton]}
+            onPress={error ? refreshDashboard : () => router.push('/(app)/settings')}
+          >
+            <Text style={nativeStyles.primaryButtonText}>{error ? 'Try Again' : 'Open Settings'}</Text>
           </Pressable>
         </View>
       </View>
@@ -130,7 +148,17 @@ export default function DashboardScreen() {
     <View style={nativeStyles.screen}>
       <View style={nativeStyles.orbTop} />
       <View style={nativeStyles.orbBottom} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[nativeStyles.content, styles.scrollContent]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[nativeStyles.content, styles.scrollContent]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshDashboard} tintColor={nativeTheme.primary} colors={[nativeTheme.primary]} />}
+      >
+        {isOffline ? (
+          <View style={styles.connectionBanner}>
+            <Ionicons name="cloud-offline-outline" size={16} color={nativeTheme.warning} />
+            <Text style={styles.connectionBannerText}>You are offline. Showing your last saved budget.</Text>
+          </View>
+        ) : null}
         <View style={nativeStyles.heroCard}>
           <View style={styles.heroTopRow}><Text style={nativeStyles.heroEyebrow}>{todayLabel}</Text><Pressable style={styles.alertButton} onPress={() => router.push('/(app)/alerts')}><Ionicons name={inbox.length ? 'notifications' : 'notifications-outline'} size={18} color="#ffffff" />{inbox.length ? <View style={styles.alertCount}><Text style={styles.alertCountText}>{inbox.length > 9 ? '9+' : inbox.length}</Text></View> : null}</Pressable></View>
           <Text style={nativeStyles.heroTitle}>Your budget pulse</Text>
@@ -317,6 +345,24 @@ function TransactionRow({ item, currency }: { item: Transaction; currency: strin
 const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 118,
+  },
+  connectionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 14,
+    backgroundColor: nativeTheme.warningSoft,
+    borderWidth: 1,
+    borderColor: '#f4d79b',
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  connectionBannerText: {
+    flex: 1,
+    color: '#7d4c0a',
+    fontSize: 12,
+    fontWeight: '800',
   },
   centered: {
     justifyContent: 'center',
