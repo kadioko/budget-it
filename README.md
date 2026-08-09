@@ -16,7 +16,7 @@
 
 ## Stack
 
-- Expo SDK 54, React Native, Expo Router, and React Native Web
+- Expo SDK 57, React Native, Expo Router, and React Native Web
 - TypeScript and Zustand
 - Supabase Auth, PostgreSQL, Row Level Security, and Edge Functions
 - Chart.js for web analytics

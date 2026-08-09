@@ -1,5 +1,5 @@
 import React from 'react';
-import { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
+import { BottomTabNavigationOptions } from 'expo-router/js-tabs';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { nativeTheme } from '@/ui/nativeTheme';

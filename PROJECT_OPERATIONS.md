@@ -78,7 +78,7 @@ The full build and Play Console workflow is in [ANDROID_RELEASE_BUILD.md](ANDROI
 
 ## Dependency Policy
 
-This project is on Expo SDK 54. Native dependencies must follow the versions Expo supports for that SDK.
+This project is on Expo SDK 57. Native dependencies must follow the versions Expo supports for that SDK.
 
 1. Check compatibility first: `npx expo install --check`.
 2. Add or repair native libraries with `npx expo install <package>`, not a generic `npm install`.
