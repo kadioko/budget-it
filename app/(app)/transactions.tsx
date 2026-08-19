@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { useBudgetStore } from '@/store/budget';
@@ -47,6 +48,11 @@ export default function TransactionsScreen() {
       return item.amount > 0 && item.kind !== 'transfer';
     });
   }, [filter, transactions]);
+
+  const transactionSummary = useMemo(() => ({
+    expenses: transactions.filter((item) => item.amount > 0 && item.kind !== 'transfer').length,
+    income: transactions.filter((item) => item.amount < 0 && item.kind !== 'transfer').length,
+  }), [transactions]);
 
   const handleDelete = (id: string) => {
     Alert.alert('Delete transaction', 'This will remove the transaction and update balances.', [
@@ -103,6 +109,13 @@ export default function TransactionsScreen() {
               <Text style={nativeStyles.heroText}>
                 Review spending, income, transfers, merchants, and notes in one clean feed.
               </Text>
+              <View style={styles.summaryRow}>
+                <View style={styles.summaryItem}><Text style={styles.summaryValue}>{transactionSummary.expenses}</Text><Text style={styles.summaryLabel}>Expenses</Text></View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryItem}><Text style={styles.summaryValue}>{transactionSummary.income}</Text><Text style={styles.summaryLabel}>Income entries</Text></View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryItem}><Text style={styles.summaryValue}>{transactions.filter((item) => item.kind === 'transfer').length}</Text><Text style={styles.summaryLabel}>Transfers</Text></View>
+              </View>
             </View>
 
             <View style={styles.filterRow}>
@@ -189,10 +202,12 @@ function TransactionCard({
 
       {!isTransfer ? (
         <View style={styles.actionRow}>
-          <Pressable onPress={onEdit} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}>
+          <Pressable onPress={onEdit} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={`Edit ${item.category} transaction`}>
+            <Ionicons name="create-outline" size={14} color={nativeTheme.primary} />
             <Text style={styles.editButtonText}>Edit</Text>
           </Pressable>
-          <Pressable onPress={onDelete} style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}>
+          <Pressable onPress={onDelete} style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={`Delete ${item.category} transaction`}>
+            <Ionicons name="trash-outline" size={14} color={nativeTheme.danger} />
             <Text style={styles.deleteButtonText}>Delete</Text>
           </Pressable>
         </View>
@@ -223,6 +238,17 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 14,
   },
+  summaryRow: {
+    flexDirection: 'row',
+    marginTop: 20,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+  },
+  summaryItem: { flex: 1, alignItems: 'center' },
+  summaryValue: { color: '#ffffff', fontSize: 17, fontWeight: '900' },
+  summaryLabel: { color: '#a6c4be', fontSize: 10, fontWeight: '800', marginTop: 3, textAlign: 'center' },
+  summaryDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.16)' },
   connectionBanner: {
     borderRadius: 14,
     backgroundColor: nativeTheme.warningSoft,
@@ -323,11 +349,15 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   deleteButton: {
+    minHeight: 42,
     marginTop: 12,
     borderRadius: 999,
     paddingVertical: 8,
     paddingHorizontal: 13,
     backgroundColor: nativeTheme.dangerSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   actionRow: {
     flexDirection: 'row',
@@ -335,6 +365,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   editButton: {
+    minHeight: 42,
     marginTop: 12,
     borderRadius: 999,
     paddingVertical: 8,
@@ -342,6 +373,9 @@ const styles = StyleSheet.create({
     backgroundColor: nativeTheme.surfaceMuted,
     borderWidth: 1,
     borderColor: nativeTheme.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   editButtonText: {
     color: nativeTheme.primary,

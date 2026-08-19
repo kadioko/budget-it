@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet, View } from 'react-native';
 import { BottomTabNavigationOptions } from 'expo-router/js-tabs';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,9 +13,9 @@ export default function AppLayout() {
       left: 16,
       right: 16,
       bottom: 14,
-      height: 70,
-      paddingTop: 8,
-      paddingBottom: 10,
+      height: 76,
+      paddingTop: 10,
+      paddingBottom: 11,
       backgroundColor: nativeTheme.navy,
       borderTopColor: 'transparent',
       borderTopWidth: 1,
@@ -48,7 +49,7 @@ export default function AppLayout() {
         options={{
           title: 'Add Money Move',
           tabBarLabel: 'Add',
-          tabBarIcon: ({ color }) => <Ionicons name="add-circle" size={25} color={color} />,
+          tabBarIcon: ({ focused }) => <AddTabIcon focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -84,3 +85,33 @@ export default function AppLayout() {
     </Tabs>
   );
 }
+
+function AddTabIcon({ focused }: { focused: boolean }) {
+  return (
+    <View style={[styles.addTabIcon, focused && styles.addTabIconActive]}>
+      <Ionicons name="add" size={25} color={nativeTheme.navy} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  addTabIcon: {
+    width: 48,
+    height: 48,
+    marginTop: -26,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: nativeTheme.accent,
+    borderWidth: 4,
+    borderColor: nativeTheme.background,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  addTabIconActive: {
+    backgroundColor: '#ffffff',
+  },
+});

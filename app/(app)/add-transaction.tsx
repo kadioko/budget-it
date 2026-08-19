@@ -14,12 +14,14 @@ import {
 import { useAuthStore } from '@/store/auth';
 import { useBudgetStore } from '@/store/budget';
 import { toDateKey } from '@/lib/budget-logic';
+import { useLocalSearchParams } from 'expo-router';
 import { formatMoney, nativeStyles, nativeTheme } from '@/ui/nativeTheme';
 
 const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Other'];
 const INCOME_CATEGORIES = ['Salary', 'Business', 'Investment', 'Gift', 'Other'];
 
 export default function AddTransactionScreen() {
+  const { type: requestedType } = useLocalSearchParams<{ type?: 'expense' | 'income' }>();
   const { user } = useAuthStore();
   const { budget, envelopes, transactions, addTransaction, fetchEnvelopes, loading } = useBudgetStore();
   const [type, setType] = useState<'expense' | 'income'>('expense');
@@ -43,6 +45,14 @@ export default function AddTransactionScreen() {
     setType(nextType);
     setCategory(nextType === 'expense' ? 'Food' : 'Salary');
   };
+
+  useEffect(() => {
+    if (requestedType === 'expense' || requestedType === 'income') {
+      setTransactionType(requestedType);
+    }
+  // A dashboard quick action intentionally resets the entry type.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedType]);
 
   const selectMerchant = (value: string) => {
     setMerchant(value);
@@ -116,7 +126,7 @@ export default function AddTransactionScreen() {
     >
       <View style={nativeStyles.orbTop} />
       <View style={nativeStyles.orbBottom} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[nativeStyles.content, styles.scrollContent]}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={[nativeStyles.content, styles.scrollContent]} keyboardShouldPersistTaps="handled">
         <View style={nativeStyles.heroCard}>
           <Text style={nativeStyles.heroEyebrow}>Quick Capture</Text>
           <Text style={nativeStyles.heroTitle}>Add a money move</Text>
@@ -206,14 +216,16 @@ export default function AddTransactionScreen() {
           />
         </View>
 
+      </ScrollView>
+      <View style={styles.stickyAction}>
         <Pressable
-          style={[nativeStyles.primaryButton, loading && styles.disabledButton]}
+          style={[nativeStyles.primaryButton, styles.saveButton, loading && styles.disabledButton]}
           onPress={handleAddTransaction}
           disabled={loading}
         >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={nativeStyles.primaryButtonText}>Save Transaction</Text>}
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={nativeStyles.primaryButtonText}>Save {type === 'income' ? 'Income' : 'Expense'}</Text>}
         </Pressable>
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -249,8 +261,21 @@ function Field({
 
 const styles = StyleSheet.create({
   scrollContent: {
-    paddingBottom: 118,
+    paddingBottom: 190,
   },
+  scrollView: { flex: 1 },
+  stickyAction: {
+    position: 'absolute',
+    left: 18,
+    right: 18,
+    bottom: 94,
+    padding: 8,
+    borderRadius: 24,
+    backgroundColor: 'rgba(246,250,248,0.96)',
+    borderWidth: 1,
+    borderColor: nativeTheme.border,
+  },
+  saveButton: { minHeight: 58 },
   centered: {
     flex: 1,
     justifyContent: 'center',

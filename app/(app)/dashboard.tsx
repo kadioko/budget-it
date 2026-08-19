@@ -160,7 +160,18 @@ export default function DashboardScreen() {
           </View>
         ) : null}
         <View style={nativeStyles.heroCard}>
-          <View style={styles.heroTopRow}><Text style={nativeStyles.heroEyebrow}>{todayLabel}</Text><Pressable style={styles.alertButton} onPress={() => router.push('/(app)/alerts')}><Ionicons name={inbox.length ? 'notifications' : 'notifications-outline'} size={18} color="#ffffff" />{inbox.length ? <View style={styles.alertCount}><Text style={styles.alertCountText}>{inbox.length > 9 ? '9+' : inbox.length}</Text></View> : null}</Pressable></View>
+          <View style={styles.heroTopRow}>
+            <Text style={nativeStyles.heroEyebrow}>{todayLabel}</Text>
+            <View style={styles.heroActions}>
+              <Pressable style={styles.heroIconButton} onPress={() => router.push('/(app)/help-guides')} accessibilityRole="button" accessibilityLabel="Open quick guides">
+                <Ionicons name="help" size={18} color="#ffffff" />
+              </Pressable>
+              <Pressable style={styles.heroIconButton} onPress={() => router.push('/(app)/alerts')} accessibilityRole="button" accessibilityLabel="Open alerts">
+                <Ionicons name={inbox.length ? 'notifications' : 'notifications-outline'} size={18} color="#ffffff" />
+                {inbox.length ? <View style={styles.alertCount}><Text style={styles.alertCountText}>{inbox.length > 9 ? '9+' : inbox.length}</Text></View> : null}
+              </Pressable>
+            </View>
+          </View>
           <Text style={nativeStyles.heroTitle}>Your budget pulse</Text>
           <Text style={nativeStyles.heroText}>
             {projectedGap > 0
@@ -181,8 +192,8 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.quickRow}>
-          <QuickAction label="Add expense" icon="add" tone="primary" onPress={() => router.push('/(app)/add-transaction')} />
-          <QuickAction label="Log income" icon="trending-up" tone="success" onPress={() => router.push('/(app)/add-transaction')} />
+          <QuickAction label="Add expense" icon="add" tone="primary" onPress={() => router.push({ pathname: '/(app)/add-transaction', params: { type: 'expense' } })} />
+          <QuickAction label="Log income" icon="trending-up" tone="success" onPress={() => router.push({ pathname: '/(app)/add-transaction', params: { type: 'income' } })} />
           <QuickAction label="Move money" icon="swap-horizontal" tone="accent" onPress={() => router.push('/(app)/transfer-funds')} />
         </View>
 
@@ -389,7 +400,8 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  alertButton: { width: 38, height: 38, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.10)', alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  heroActions: { flexDirection: 'row', gap: 8 },
+  heroIconButton: { width: 40, height: 40, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.10)', alignItems: 'center', justifyContent: 'center', position: 'relative' },
   alertCount: { position: 'absolute', right: -5, top: -5, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: nativeTheme.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
   alertCountText: { color: nativeTheme.navy, fontSize: 9, fontWeight: '900' },
   heroStat: {
