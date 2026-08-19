@@ -1,11 +1,22 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { BottomTabNavigationOptions } from 'expo-router/js-tabs';
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { nativeTheme } from '@/ui/nativeTheme';
+import { useAuthStore } from '@/store/auth';
+import { useBudgetStore } from '@/store/budget';
 
 export default function AppLayout() {
+  const { user } = useAuthStore();
+  const { processRecurringTransactions } = useBudgetStore();
+
+  React.useEffect(() => {
+    if (user) void processRecurringTransactions(user.id);
+  }, [processRecurringTransactions, user]);
+
+  if (!user) return <Redirect href="/(auth)/login" />;
+
   const tabScreenOptions: BottomTabNavigationOptions = {
     headerShown: false,
     tabBarStyle: {

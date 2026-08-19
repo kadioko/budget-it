@@ -48,11 +48,14 @@ add_transaction_details_and_transfer_fields.sql
 add_savings_goals_table.sql
 add_backend_notifications.sql
 add_atomic_money_operations.sql
+add_atomic_envelope_operations.sql
 ```
 
 After applying them, verify each table has Row Level Security enabled and that requests only return rows owned by the authenticated user. The app expects budgets, envelopes, transactions, recurring transactions, savings goals, and notification tables to be available.
 
 `add_atomic_money_operations.sql` is required for current transaction handling. It creates the Supabase functions that atomically write transaction history and account balances, protect against duplicate offline retries, and keep transfers balanced.
+
+`add_atomic_envelope_operations.sql` is required for envelope creation. It moves any opening allocation from the bank balance and records the matching transfer pair, so creating an envelope never creates money.
 
 For authentication redirects, Google sign-in, and password reset setup, use [SUPABASE_AUTH_SETUP.md](SUPABASE_AUTH_SETUP.md). For server-generated budget alerts, use [SUPABASE_NOTIFICATIONS_SETUP.md](SUPABASE_NOTIFICATIONS_SETUP.md).
 

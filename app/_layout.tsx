@@ -2,14 +2,30 @@ import React, { useEffect } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { Stack } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
+import { useBudgetStore } from '@/store/budget';
+import { useNotificationSettingsStore } from '@/store/notifications';
+import { supabase } from '@/lib/supabase';
 import { nativeStyles } from '@/ui/nativeTheme';
 
 export default function RootLayout() {
-  const { loading, checkAuth } = useAuthStore();
+  const { loading, checkAuth, setUser } = useAuthStore();
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    void checkAuth();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const nextUser = session?.user ?? null;
+      const cachedUserId = useBudgetStore.getState().budget?.user_id;
+
+      if (!nextUser || (cachedUserId && cachedUserId !== nextUser.id)) {
+        useBudgetStore.getState().clearData();
+        useNotificationSettingsStore.getState().clearData();
+      }
+
+      setUser(nextUser);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [checkAuth, setUser]);
 
   if (loading) {
     return (

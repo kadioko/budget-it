@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
 import { Budget, Transaction, BudgetStats, RecurringTransaction, Envelope, CategoryBudgetMap, SavingsGoal } from '@/types/index';
-import { calculateBudgetStats, getBudgetCycleWindow, toDateKey } from '@/lib/budget-logic';
+import { calculateBudgetStats, fromDateKey, getBudgetCycleWindow, getNextRecurringDate, toDateKey } from '@/lib/budget-logic';
 
 interface PendingAction {
   id: string;
@@ -240,6 +240,7 @@ export const useBudgetStore = create<BudgetState>()(
         set({
           budget: null,
           categoryBudgets: {},
+          envelopes: [],
           transactions: [],
           recurringTransactions: [],
           savingsGoals: [],
@@ -309,24 +310,27 @@ export const useBudgetStore = create<BudgetState>()(
   ) => {
     set({ loading: true, error: null });
     try {
-      const existing = get().envelopes;
-      const isFirst = existing.length === 0;
-      
-      const { data, error } = await supabase
-        .from('envelopes')
-        .insert([{
-          user_id: userId,
-          name,
-          icon,
-          balance,
-          currency,
-          is_default: isFirst || is_default,
-        }])
-        .select()
-        .single();
+      if (!Number.isFinite(balance) || balance < 0) {
+        throw new Error('Envelope opening balance must be zero or greater.');
+      }
+
+      const isFirst = get().envelopes.length === 0;
+      const { data, error } = await supabase.rpc('budget_it_create_envelope', {
+        p_user_id: userId,
+        p_name: name.trim(),
+        p_icon: icon,
+        p_opening_balance: balance,
+        p_currency: currency,
+        p_is_default: isFirst || is_default,
+      });
 
       if (error) throw error;
-      set({ envelopes: [...existing, data] });
+      set({ envelopes: [...get().envelopes, data] });
+      await Promise.all([
+        get().fetchBudget(userId),
+        get().fetchEnvelopes(userId),
+        get().fetchTransactions(userId),
+      ]);
     } catch (err: any) {
       set({ error: err.message });
       throw err;
@@ -961,7 +965,9 @@ export const useBudgetStore = create<BudgetState>()(
 
       // 2. Find ones that are due (next_date <= today)
       for (const rt of recurring) {
-        let nextDate = new Date(rt.next_date);
+        const scheduledDate = fromDateKey(rt.next_date);
+        if (!scheduledDate) throw new Error(`Recurring transaction ${rt.id} has an invalid next date.`);
+        let nextDate = scheduledDate;
         
         while (nextDate <= today) {
           // Add the transaction
@@ -979,14 +985,7 @@ export const useBudgetStore = create<BudgetState>()(
             }
           );
 
-          // Calculate next date
-          if (rt.frequency === 'monthly') {
-            nextDate.setMonth(nextDate.getMonth() + 1);
-          } else if (rt.frequency === 'weekly') {
-            nextDate.setDate(nextDate.getDate() + 7);
-          } else if (rt.frequency === 'daily') {
-            nextDate.setDate(nextDate.getDate() + 1);
-          }
+          nextDate = getNextRecurringDate(nextDate, rt.frequency);
         }
 
         // 3. Update the recurring transaction with new next_date

@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { useBudgetStore } from '@/store/budget';
 import { Transaction } from '@/types/index';
+import { fromDateKey } from '@/lib/budget-logic';
 import { categoryInitial, formatMoney, nativeStyles, nativeTheme } from '@/ui/nativeTheme';
 
 const FILTERS = ['All', 'Expenses', 'Income', 'Transfers'] as const;
@@ -191,7 +192,7 @@ function TransactionCard({
               </View>
             ) : null}
           </View>
-          <Text style={styles.transactionDate}>{new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
+          <Text style={styles.transactionDate}>{(fromDateKey(item.date) ?? new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
           {subtitle ? <Text style={styles.transactionNote} numberOfLines={2}>{subtitle}</Text> : null}
         </View>
 

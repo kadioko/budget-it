@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
+import { toDateKey } from '../src/lib/budget-logic';
 import { Transaction } from '../src/types';
 
 const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Other'];
@@ -91,7 +92,7 @@ export default function EditTransactionWeb({ transactionId, onBack, onSave }: Ed
   const [amount, setAmount] = useState('');
   const [displayAmount, setDisplayAmount] = useState('');
   const [category, setCategory] = useState('Food');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(toDateKey(new Date()));
   const [merchant, setMerchant] = useState('');
   const [tags, setTags] = useState('');
   const [note, setNote] = useState('');

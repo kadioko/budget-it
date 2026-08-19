@@ -164,6 +164,7 @@ serve(async (request) => {
       const weeklyStart = new Date(now);
       weeklyStart.setUTCDate(now.getUTCDate() - 6);
       const weeklyStartKey = weeklyStart.toISOString().split("T")[0];
+      const transactionQueryStart = weeklyStartKey < cycleStart ? weeklyStartKey : cycleStart;
 
       const { data: preferenceRow } = await admin
         .from("notification_preferences")
@@ -182,13 +183,14 @@ serve(async (request) => {
         .from("transactions")
         .select("amount, category, date, kind")
         .eq("user_id", budget.user_id)
-        .gte("date", cycleStart)
+        .gte("date", transactionQueryStart)
         .lte("date", cycleEnd);
 
       if (txError) throw txError;
 
       const txRows = (transactions ?? []) as TransactionRow[];
-      const spentMonthToDate = txRows
+      const cycleTxRows = txRows.filter((tx) => tx.date >= cycleStart);
+      const spentMonthToDate = cycleTxRows
         .filter((tx) => tx.kind !== "transfer" && tx.amount > 0)
         .reduce((sum, tx) => sum + tx.amount, 0);
       const projectedMonthEnd = (spentMonthToDate / elapsedDays) * cycleLength;
@@ -210,7 +212,7 @@ serve(async (request) => {
       if (preferences.overspend_alerts_enabled && Object.keys(categoryBudgets).length > 0) {
         const risk = Object.entries(categoryBudgets)
           .map(([category, limit]) => {
-            const spent = txRows
+            const spent = cycleTxRows
               .filter((tx) => tx.kind !== "transfer" && tx.amount > 0 && tx.category === category)
               .reduce((sum, tx) => sum + tx.amount, 0);
             const ratio = limit > 0 ? spent / limit : 0;

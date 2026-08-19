@@ -4,6 +4,8 @@ import {
   calculateStreak,
   calculateProjectedMonthEnd,
   calculateElapsedDaysInMonth,
+  fromDateKey,
+  getNextRecurringDate,
   isOnTrackMonthly,
   getMonthBoundary,
 } from '@/lib/budget-logic';
@@ -252,4 +254,22 @@ describe('Budget Logic', () => {
       expect(monthEnd.getDate()).toBe(27);
     });
   });
+
+  describe('date-only recurring schedules', () => {
+    it('preserves a date-only value on its local calendar day', () => {
+      const date = fromDateKey('2025-02-04');
+      expect(date).not.toBeNull();
+      expect(date && toDateParts(date)).toEqual([2025, 1, 4]);
+      expect(fromDateKey('2025-02-30')).toBeNull();
+    });
+
+    it('clamps monthly schedules instead of skipping short months', () => {
+      const next = getNextRecurringDate(new Date(2025, 0, 31), 'monthly');
+      expect(toDateParts(next)).toEqual([2025, 1, 28]);
+    });
+  });
 });
+
+function toDateParts(date: Date) {
+  return [date.getFullYear(), date.getMonth(), date.getDate()];
+}

@@ -13,7 +13,7 @@ import { Doughnut } from 'react-chartjs-2';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
 import { themeTokens, useThemeStore } from '../src/store/theme';
-import { getBudgetCycleWindow } from '../src/lib/budget-logic';
+import { fromDateKey, getBudgetCycleWindow, toDateKey } from '../src/lib/budget-logic';
 
 ChartJS.register(
   ArcElement,
@@ -46,7 +46,7 @@ const formatCurrency = (amount: number, currency: string) => {
   }).format(amount);
 };
 
-const toDateString = (date: Date) => date.toISOString().split('T')[0];
+const toDateString = (date: Date) => toDateKey(date);
 
 const parseCsvLine = (line: string) => {
   const result: string[] = [];
@@ -140,7 +140,8 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
   const filteredTransactions = useMemo(
     () =>
       transactions.filter((transaction) => {
-        const transactionDate = new Date(transaction.date);
+        const transactionDate = fromDateKey(transaction.date);
+        if (!transactionDate) return false;
         const matchesPeriod = transactionDate >= analyticsRange.startDate && transactionDate <= analyticsRange.endDate;
         const matchesAccount = selectedAccountId === 'all'
           ? true
@@ -842,7 +843,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `budget-it-transactions-${new Date().toISOString().split('T')[0]}.csv`;
+                a.download = `budget-it-transactions-${toDateKey(new Date())}.csv`;
                 a.click();
                 window.URL.revokeObjectURL(url);
               }}

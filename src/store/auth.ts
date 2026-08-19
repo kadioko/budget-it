@@ -37,6 +37,7 @@ interface AuthState {
   updatePassword: (password: string) => Promise<void>;
   signOut: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  setUser: (user: any | null) => void;
   setProfile: (profile: Profile) => void;
 }
 
@@ -59,8 +60,10 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       if (error) throw error;
 
-      if (data.user) {
-        set({ user: data.user });
+      // With email confirmation enabled Supabase returns a user but no session.
+      // Do not treat that account as signed in until the confirmation flow completes.
+      if (data.session?.user) {
+        set({ user: data.session.user });
       }
     } catch (err: any) {
       set({ error: err.message });
@@ -184,5 +187,9 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setProfile: (profile: Profile) => {
     set({ profile });
+  },
+
+  setUser: (user) => {
+    set({ user, profile: null });
   },
 }));

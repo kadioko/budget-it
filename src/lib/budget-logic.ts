@@ -3,6 +3,42 @@ import { Transaction, Budget } from '@/types/index';
 
 export const toDateKey = (date: Date) => format(date, 'yyyy-MM-dd');
 
+// Date-only database values must stay on their intended local calendar day.
+// `new Date('YYYY-MM-DD')` parses as UTC and shifts a day west of Greenwich.
+export function fromDateKey(dateKey: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) return null;
+
+  const [, yearValue, monthValue, dayValue] = match;
+  const year = Number(yearValue);
+  const month = Number(monthValue);
+  const day = Number(dayValue);
+  const date = new Date(year, month - 1, day);
+
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return null;
+  }
+
+  return date;
+}
+
+export function getNextRecurringDate(
+  date: Date,
+  frequency: 'monthly' | 'weekly' | 'daily'
+) {
+  const next = new Date(date);
+
+  if (frequency === 'monthly') {
+    const year = next.getFullYear();
+    const month = next.getMonth() + 1;
+    const lastDayOfTargetMonth = new Date(year, month + 1, 0).getDate();
+    return new Date(year, month, Math.min(next.getDate(), lastDayOfTargetMonth));
+  }
+
+  next.setDate(next.getDate() + (frequency === 'weekly' ? 7 : 1));
+  return next;
+}
+
 export function isTransferTransaction(transaction: Transaction) {
   return transaction.kind === 'transfer' || transaction.category === 'Transfer';
 }

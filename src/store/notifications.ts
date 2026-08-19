@@ -21,6 +21,7 @@ type NotificationPreferenceState = {
   fetchInbox: (userId: string) => Promise<void>;
   markInboxItemRead: (notificationId: string) => Promise<void>;
   triggerScheduler: (userId?: string) => Promise<void>;
+  clearData: () => void;
 };
 
 const localStorageAdapter = {
@@ -82,7 +83,7 @@ export const useNotificationSettingsStore = create<NotificationPreferenceState>(
       },
       syncPreferences: async (userId) => {
         const state = get();
-        await supabase.from('notification_preferences').upsert({
+        const { error } = await supabase.from('notification_preferences').upsert({
           user_id: userId,
           browser_alerts_enabled: state.browserAlertsEnabled,
           overspend_alerts_enabled: state.overspendAlertsEnabled,
@@ -90,6 +91,7 @@ export const useNotificationSettingsStore = create<NotificationPreferenceState>(
           weekly_summary_alerts_enabled: state.weeklySummaryAlertsEnabled,
           updated_at: new Date().toISOString(),
         });
+        if (error) throw error;
       },
       fetchInbox: async (userId) => {
         set({ loading: true });
@@ -118,6 +120,7 @@ export const useNotificationSettingsStore = create<NotificationPreferenceState>(
           inbox: state.inbox.filter((item) => item.id !== notificationId),
         }));
       },
+      clearData: () => set({ inbox: [], loading: false }),
       triggerScheduler: async (userId) => {
         const { error } = await supabase.functions.invoke('schedule-budget-alerts', {
           body: userId ? { userId } : {},

@@ -6,6 +6,7 @@ import { useI18n, useLanguageStore } from '../src/store/language';
 import { useNotificationSettingsStore } from '../src/store/notifications';
 import { themeTokens, useThemeStore } from '../src/store/theme';
 import { CategoryBudgetMap } from '../src/types';
+import { fromDateKey, toDateKey } from '../src/lib/budget-logic';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'INR', 'TZS'];
 const CATEGORY_LIMIT_OPTIONS = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Rent', 'Other'];
@@ -142,7 +143,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
   const [recCategory, setRecCategory] = useState('Salary');
   const [recType, setRecType] = useState<'income' | 'expense'>('income');
   const [recFrequency, setRecFrequency] = useState<'monthly' | 'weekly' | 'daily'>('monthly');
-  const [recNextDate, setRecNextDate] = useState(new Date().toISOString().split('T')[0]);
+  const [recNextDate, setRecNextDate] = useState(toDateKey(new Date()));
   const [recNote, setRecNote] = useState('');
 
   const [showEnvelopeForm, setShowEnvelopeForm] = useState(false);
@@ -987,13 +988,13 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
                   <input type="text" value={envIcon} onChange={e => setEnvIcon(e.target.value)} placeholder="e.g. $, CA, TR" maxLength={4} style={fieldStyle} />
                 </div>
                 <div>
-                  <label style={lbl}>Initial Balance</label>
+                  <label style={lbl}>Move From Bank</label>
                   <input type="text" inputMode="decimal" value={envBalance} onChange={e => setEnvBalance(formatNumberInput(e.target.value))} placeholder="0.00" style={fieldStyle} />
                 </div>
               </div>
 
               <div style={{ fontSize: '12px', color: theme.textMuted, marginBottom: '12px' }}>
-                Starting balance preview: <span style={{ color: theme.text, fontWeight: '700' }}>{formatCurrency(parseAmountInput(envBalance), budget?.currency || 'USD')}</span>
+                This amount is moved from your bank balance and recorded as a transfer: <span style={{ color: theme.text, fontWeight: '700' }}>{formatCurrency(parseAmountInput(envBalance), budget?.currency || 'USD')}</span>
               </div>
 
               <button onClick={handleAddEnvelope} disabled={loading}
@@ -1028,7 +1029,7 @@ export default function SettingsWeb({ onBack, onOpenGuides }: { onBack: () => vo
                       </span>
                     </div>
                     <div style={{ fontSize: '12px', color: theme.textMuted }}>
-                      Next: {new Date(rt.next_date).toLocaleDateString()}
+                      Next: {(fromDateKey(rt.next_date) ?? new Date()).toLocaleDateString()}
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-start' }}>
