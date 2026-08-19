@@ -8,22 +8,23 @@ export function isTransferTransaction(transaction: Transaction) {
 }
 
 export function getMonthBoundary(date: Date, monthStartDay: number) {
+  const safeStartDay = Math.max(1, Math.min(28, Math.trunc(monthStartDay) || 1));
   const year = date.getFullYear();
   const month = date.getMonth();
 
   let monthStart: Date;
   let monthEnd: Date;
 
-  if (monthStartDay === 1) {
+  if (safeStartDay === 1) {
     monthStart = startOfMonth(date);
     monthEnd = endOfMonth(date);
   } else {
-    if (date.getDate() >= monthStartDay) {
-      monthStart = new Date(year, month, monthStartDay);
-      monthEnd = new Date(year, month + 1, monthStartDay - 1);
+    if (date.getDate() >= safeStartDay) {
+      monthStart = new Date(year, month, safeStartDay);
+      monthEnd = new Date(year, month + 1, safeStartDay - 1);
     } else {
-      monthStart = new Date(year, month - 1, monthStartDay);
-      monthEnd = new Date(year, month, monthStartDay - 1);
+      monthStart = new Date(year, month - 1, safeStartDay);
+      monthEnd = new Date(year, month, safeStartDay - 1);
     }
   }
 
@@ -46,7 +47,7 @@ export function calculateSpentToday(
 ): number {
   const todayStr = toDateKey(today);
   return transactions
-    .filter((t) => !isTransferTransaction(t))
+    .filter((t) => !isTransferTransaction(t) && t.amount > 0)
     .filter((t) => t.date === todayStr)
     .reduce((sum, t) => sum + t.amount, 0);
 }
@@ -61,7 +62,7 @@ export function calculateSpentMonthToDate(
   const todayStr = toDateKey(today);
 
   return transactions
-    .filter((t) => !isTransferTransaction(t))
+    .filter((t) => !isTransferTransaction(t) && t.amount > 0)
     .filter((t) => t.date >= monthStartStr && t.date <= todayStr)
     .reduce((sum, t) => sum + t.amount, 0);
 }
@@ -90,7 +91,7 @@ export function calculateStreak(
     // Stop if we've gone before the first transaction
     if (dateStr < earliestDate) break;
 
-    const dayTransactions = sortedTxns.filter((t) => t.date === dateStr && !isTransferTransaction(t));
+    const dayTransactions = sortedTxns.filter((t) => t.date === dateStr && !isTransferTransaction(t) && t.amount > 0);
 
     // Only count days that have at least one transaction
     if (dayTransactions.length === 0) {

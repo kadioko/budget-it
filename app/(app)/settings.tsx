@@ -78,8 +78,8 @@ export default function SettingsScreen() {
       const monthly = parseFloat(monthlyTarget);
       const day = parseInt(monthStartDay, 10);
 
-      if (daily <= 0 || monthly <= 0 || day < 1 || day > 31) {
-        Alert.alert('Check values', 'Targets must be positive and cycle day must be 1 to 31.');
+      if (daily <= 0 || monthly <= 0 || day < 1 || day > 28) {
+        Alert.alert('Check values', 'Targets must be positive and cycle day must be 1 to 28.');
         return;
       }
 

@@ -154,13 +154,14 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
   );
 
   const analytics = useMemo(() => {
-    if (!filteredTransactions.length) return null;
+    const financialTransactions = filteredTransactions.filter((transaction) => transaction.kind !== 'transfer');
+    if (!financialTransactions.length) return null;
 
     const categoryBreakdown: { [key: string]: { total: number; count: number; type: 'income' | 'expense' } } = {};
     let totalIncome = 0;
     let totalExpenses = 0;
 
-    filteredTransactions.forEach((transaction) => {
+    financialTransactions.forEach((transaction) => {
       const isIncome = transaction.amount < 0;
       const amount = Math.abs(transaction.amount);
 
@@ -191,7 +192,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
       monthlyIncomeProjection: avgDailyIncome * 30,
       monthlyExpensesProjection: avgDailyExpenses * 30,
       categoryBreakdown,
-      transactionCount: filteredTransactions.length,
+      transactionCount: financialTransactions.length,
       daysDiff,
     };
   }, [analyticsRange.endDate, analyticsRange.startDate, filteredTransactions]);
@@ -218,7 +219,7 @@ export default function AnalyticsWeb({ onBack }: { onBack: () => void }) {
     const categoryTotals = new Map<string, { current: number; previous: number }>();
 
     scopedTransactions.forEach((transaction) => {
-      if (transaction.amount <= 0) return;
+      if (transaction.kind === 'transfer' || transaction.amount <= 0) return;
       const existing = categoryTotals.get(transaction.category) || { current: 0, previous: 0 };
       if (transaction.date >= toDateString(currentCycle.monthStart) && transaction.date <= toDateString(currentCycle.monthEnd)) {
         existing.current += transaction.amount;

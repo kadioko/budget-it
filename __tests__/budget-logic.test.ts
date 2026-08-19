@@ -61,6 +61,17 @@ describe('Budget Logic', () => {
       const spent = calculateSpentToday(mockTransactions, today);
       expect(spent).toBe(0);
     });
+
+    it('should not offset expenses with income or count transfers as spending', () => {
+      const today = new Date('2025-02-04');
+      const transactions: Transaction[] = [
+        ...mockTransactions,
+        { id: 'income', user_id: 'user1', amount: -500, category: 'Salary', date: '2025-02-04', note: null, created_at: '2025-02-04T08:00:00Z' },
+        { id: 'transfer', user_id: 'user1', amount: 100, category: 'Transfer', kind: 'transfer', date: '2025-02-04', note: null, created_at: '2025-02-04T09:00:00Z' },
+      ];
+
+      expect(calculateSpentToday(transactions, today)).toBe(40.5);
+    });
   });
 
   describe('calculateSpentMonthToDate', () => {
@@ -94,6 +105,17 @@ describe('Budget Logic', () => {
       ];
       const spent = calculateSpentMonthToDate(txns, today, 10);
       expect(spent).toBe(30);
+    });
+
+    it('should only count positive non-transfer transactions toward the cycle budget', () => {
+      const today = new Date('2025-02-15');
+      const txns: Transaction[] = [
+        { id: 'expense', user_id: 'user1', amount: 75, category: 'Food', date: '2025-02-12', note: null, created_at: '2025-02-12T10:00:00Z' },
+        { id: 'income', user_id: 'user1', amount: -700, category: 'Salary', date: '2025-02-13', note: null, created_at: '2025-02-13T10:00:00Z' },
+        { id: 'transfer', user_id: 'user1', amount: 200, category: 'Transfer', kind: 'transfer', date: '2025-02-14', note: null, created_at: '2025-02-14T10:00:00Z' },
+      ];
+
+      expect(calculateSpentMonthToDate(txns, today, 10)).toBe(75);
     });
   });
 
@@ -219,6 +241,15 @@ describe('Budget Logic', () => {
       const { monthStart, monthEnd } = getMonthBoundary(date, 15);
       expect(monthStart.getDate()).toBe(15);
       expect(monthEnd.getDate()).toBe(14);
+    });
+
+    it('should clamp unsupported cycle days to the 28th instead of rolling into another month', () => {
+      const date = new Date('2025-02-15');
+      const { monthStart, monthEnd } = getMonthBoundary(date, 31);
+      expect(monthStart.getMonth()).toBe(0);
+      expect(monthStart.getDate()).toBe(28);
+      expect(monthEnd.getMonth()).toBe(1);
+      expect(monthEnd.getDate()).toBe(27);
     });
   });
 });

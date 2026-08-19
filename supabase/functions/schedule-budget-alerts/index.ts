@@ -13,6 +13,7 @@ type TransactionRow = {
   amount: number;
   category: string;
   date: string;
+  kind: "standard" | "transfer" | null;
 };
 
 type RecurringRow = {
@@ -179,7 +180,7 @@ serve(async (request) => {
 
       const { data: transactions, error: txError } = await admin
         .from("transactions")
-        .select("amount, category, date")
+        .select("amount, category, date, kind")
         .eq("user_id", budget.user_id)
         .gte("date", cycleStart)
         .lte("date", cycleEnd);
@@ -188,7 +189,7 @@ serve(async (request) => {
 
       const txRows = (transactions ?? []) as TransactionRow[];
       const spentMonthToDate = txRows
-        .filter((tx) => tx.amount > 0)
+        .filter((tx) => tx.kind !== "transfer" && tx.amount > 0)
         .reduce((sum, tx) => sum + tx.amount, 0);
       const projectedMonthEnd = (spentMonthToDate / elapsedDays) * cycleLength;
 
@@ -210,7 +211,7 @@ serve(async (request) => {
         const risk = Object.entries(categoryBudgets)
           .map(([category, limit]) => {
             const spent = txRows
-              .filter((tx) => tx.amount > 0 && tx.category === category)
+              .filter((tx) => tx.kind !== "transfer" && tx.amount > 0 && tx.category === category)
               .reduce((sum, tx) => sum + tx.amount, 0);
             const ratio = limit > 0 ? spent / limit : 0;
             return { category, limit, spent, ratio };
@@ -262,7 +263,7 @@ serve(async (request) => {
 
       if (preferences.weekly_summary_alerts_enabled) {
         const weekSpent = txRows
-          .filter((tx) => tx.amount > 0 && tx.date >= weeklyStartKey)
+          .filter((tx) => tx.kind !== "transfer" && tx.amount > 0 && tx.date >= weeklyStartKey)
           .reduce((sum, tx) => sum + tx.amount, 0);
         const remainingDays = Math.max(1, Math.ceil((monthEnd.getTime() - now.getTime()) / 86400000));
         const monthlyRemaining = Math.max(0, budget.monthly_target - spentMonthToDate);

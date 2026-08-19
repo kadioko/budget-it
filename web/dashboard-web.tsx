@@ -302,7 +302,7 @@ export default function DashboardWeb() {
     weeklyStart.setDate(today.getDate() - 6);
     const weeklyStartStr = weeklyStart.toISOString().split('T')[0];
     const weekSpent = transactions
-      .filter((transaction) => transaction.amount > 0 && transaction.date >= weeklyStartStr && transaction.date <= todayStr)
+      .filter((transaction) => transaction.kind !== 'transfer' && transaction.amount > 0 && transaction.date >= weeklyStartStr && transaction.date <= todayStr)
       .reduce((sum, transaction) => sum + transaction.amount, 0);
 
     const trackedCategoryBudgets = budget.category_budgets && Object.keys(budget.category_budgets).length > 0

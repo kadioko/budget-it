@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import NetInfo from '@react-native-community/netinfo';
 import { supabase } from '@/lib/supabase';
 import { Budget, Transaction, BudgetStats, RecurringTransaction, Envelope, CategoryBudgetMap, SavingsGoal } from '@/types/index';
 import { calculateBudgetStats, getBudgetCycleWindow, toDateKey } from '@/lib/budget-logic';
@@ -12,6 +11,30 @@ interface PendingAction {
   payload: any;
   timestamp: string;
 }
+
+const createRequestId = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = character === 'x' ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
+};
+
+const applyCachedBalanceDelta = <T extends Pick<BudgetState, 'budget' | 'envelopes'>>(
+  state: T,
+  envelopeId: string | null | undefined,
+  delta: number
+) => ({
+  budget: envelopeId || !state.budget
+    ? state.budget
+    : { ...state.budget, bank_balance: state.budget.bank_balance + delta },
+  envelopes: envelopeId
+    ? state.envelopes.map((envelope) => envelope.id === envelopeId
+      ? { ...envelope, balance: envelope.balance + delta }
+      : envelope)
+    : state.envelopes,
+});
 
 interface TransactionDetailsInput {
   merchant?: string;
@@ -171,38 +194,43 @@ export const useBudgetStore = create<BudgetState>()(
 
           for (const action of sortedActions) {
             if (action.type === 'ADD_TRANSACTION') {
-              const { userId, amount, category, date, note, envelopeId, details } = action.payload;
-              await supabase.from('transactions').insert([{
-                user_id: userId,
-                amount,
-                category,
-                date,
-                note,
-                envelope_id: envelopeId || null,
-                merchant: details?.merchant || null,
-                tags: details?.tags || [],
-                is_recurring: Boolean(details?.isRecurring),
-                recurring_source_id: details?.recurringSourceId || null,
-                kind: details?.kind || 'standard',
-                transfer_group_id: details?.transferGroupId || null,
-                transfer_peer_envelope_id: details?.transferPeerEnvelopeId || null,
-                transfer_direction: details?.transferDirection || null,
-              }]);
+              const { userId, amount, category, date, note, envelopeId, details, clientRequestId } = action.payload;
+              const { error } = await supabase.rpc('budget_it_apply_transaction', {
+                p_user_id: userId,
+                p_amount: amount,
+                p_category: category,
+                p_date: date,
+                p_note: note || null,
+                p_envelope_id: envelopeId || null,
+                p_merchant: details?.merchant || null,
+                p_tags: details?.tags || [],
+                p_is_recurring: Boolean(details?.isRecurring),
+                p_recurring_source_id: details?.recurringSourceId || null,
+                p_client_request_id: clientRequestId,
+              });
+              if (error) throw error;
             } else if (action.type === 'DELETE_TRANSACTION') {
-              await supabase.from('transactions').delete().eq('id', action.payload.transactionId);
+              const { error } = await supabase.rpc('budget_it_delete_transaction', {
+                p_user_id: action.payload.userId,
+                p_transaction_id: action.payload.transactionId,
+              });
+              if (error) throw error;
             }
+
+            set((state) => ({ pendingActions: state.pendingActions.filter((pending) => pending.id !== action.id) }));
           }
-          
-          set({ pendingActions: [], lastSync: new Date().toISOString() });
-          
-          // Refresh data after sync
-          const userId = get().budget?.user_id;
+
+          set({ lastSync: new Date().toISOString() });
+
+          const userId = sortedActions[0]?.payload?.userId || get().budget?.user_id;
           if (userId) {
             await get().fetchTransactions(userId);
             await get().fetchBudget(userId);
+            await get().fetchEnvelopes(userId);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('Sync failed:', error);
+          set({ error: error?.message || 'Could not sync offline changes. We will retry when your connection is stable.' });
         } finally {
           set({ loading: false });
         }
@@ -340,6 +368,12 @@ export const useBudgetStore = create<BudgetState>()(
       const envelopeToDelete = get().envelopes.find(e => e.id === envelopeId);
       if (envelopeToDelete?.is_default) {
         throw new Error("Cannot delete default envelope");
+      }
+      if ((envelopeToDelete?.balance || 0) !== 0) {
+        throw new Error('Move this envelope balance before deleting it.');
+      }
+      if (get().transactions.some((transaction) => transaction.envelope_id === envelopeId)) {
+        throw new Error('This envelope has transaction history and cannot be deleted.');
       }
 
       const { error } = await supabase
@@ -483,9 +517,10 @@ export const useBudgetStore = create<BudgetState>()(
   ) => {
     set({ loading: true, error: null });
     try {
+      const clientRequestId = createRequestId();
       if (get().isOffline) {
         const newTx = {
-          id: `temp-${Date.now()}`,
+          id: `temp-${clientRequestId}`,
           user_id: userId,
           amount,
           category,
@@ -500,14 +535,16 @@ export const useBudgetStore = create<BudgetState>()(
           transfer_peer_envelope_id: details?.transferPeerEnvelopeId || null,
           transfer_direction: details?.transferDirection || null,
           envelope_id: envelopeId || null,
+          client_request_id: clientRequestId,
           created_at: new Date().toISOString()
         };
         set(state => ({
+          ...applyCachedBalanceDelta(state, envelopeId, -amount),
           transactions: [newTx, ...state.transactions],
           pendingActions: [...state.pendingActions, {
-            id: `act-${Date.now()}`,
+            id: clientRequestId,
             type: 'ADD_TRANSACTION',
-            payload: { userId, amount, category, date, note, envelopeId, details },
+            payload: { userId, amount, category, date, note, envelopeId, details, clientRequestId },
             timestamp: new Date().toISOString()
           }]
         }));
@@ -515,48 +552,24 @@ export const useBudgetStore = create<BudgetState>()(
         return;
       }
 
-      const { data, error } = await supabase
-        .from('transactions')
-        .insert([{
-          user_id: userId,
-          amount,
-          category,
-          date,
-          note: note || null,
-          merchant: details?.merchant || null,
-          tags: details?.tags || [],
-          is_recurring: Boolean(details?.isRecurring),
-          recurring_source_id: details?.recurringSourceId || null,
-          kind: details?.kind || 'standard',
-          transfer_group_id: details?.transferGroupId || null,
-          transfer_peer_envelope_id: details?.transferPeerEnvelopeId || null,
-          transfer_direction: details?.transferDirection || null,
-          envelope_id: envelopeId || null,
-        }])
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc('budget_it_apply_transaction', {
+        p_user_id: userId,
+        p_amount: amount,
+        p_category: category,
+        p_date: date,
+        p_note: note || null,
+        p_envelope_id: envelopeId || null,
+        p_merchant: details?.merchant || null,
+        p_tags: details?.tags || [],
+        p_is_recurring: Boolean(details?.isRecurring),
+        p_recurring_source_id: details?.recurringSourceId || null,
+        p_client_request_id: clientRequestId,
+      });
 
       if (error) throw error;
       const newTransactions = [data, ...get().transactions];
-      
-      // Update envelope balance if applicable
-      // Convention: expense = +amount (positive), income = -amount (negative)
-      // So balance -= amount  means: expense reduces balance, income increases it
-      if (envelopeId) {
-        const envelope = get().envelopes.find(e => e.id === envelopeId);
-        if (envelope) {
-          const newBalance = envelope.balance - amount;
-          await get().updateEnvelope(envelope.id, envelope.name, envelope.icon, newBalance, envelope.currency);
-        }
-      } else {
-        // Fallback to bank_balance
-        const budget = get().budget;
-        if (budget) {
-          await get().updateBankBalance(budget.id, budget.bank_balance - amount);
-        }
-      }
-
       set({ transactions: newTransactions });
+      await Promise.all([get().fetchBudget(userId), get().fetchEnvelopes(userId)]);
       get().calculateStats();
     } catch (err: any) {
       set({ error: err.message });
@@ -580,65 +593,27 @@ export const useBudgetStore = create<BudgetState>()(
       const existingTx = get().transactions.find(t => t.id === transactionId);
       if (!existingTx) throw new Error("Transaction not found");
 
-      const { data, error } = await supabase
-        .from('transactions')
-        .update({
-          amount,
-          category,
-          date,
-          note: note || null,
-          merchant: details?.merchant || null,
-          tags: details?.tags || [],
-          is_recurring: Boolean(details?.isRecurring),
-          recurring_source_id: details?.recurringSourceId || null,
-          kind: details?.kind || existingTx.kind || 'standard',
-          transfer_group_id: details?.transferGroupId || existingTx.transfer_group_id || null,
-          transfer_peer_envelope_id: details?.transferPeerEnvelopeId || null,
-          transfer_direction: details?.transferDirection || null,
-          envelope_id: envelopeId || null,
-        })
-        .eq('id', transactionId)
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc('budget_it_update_transaction', {
+        p_user_id: existingTx.user_id,
+        p_transaction_id: transactionId,
+        p_amount: amount,
+        p_category: category,
+        p_date: date,
+        p_note: note || null,
+        p_envelope_id: envelopeId || null,
+        p_merchant: details?.merchant || null,
+        p_tags: details?.tags || [],
+        p_is_recurring: Boolean(details?.isRecurring),
+        p_recurring_source_id: details?.recurringSourceId || null,
+      });
 
       if (error) throw error;
-
-      // Handle balance updates
-      // Convention: expense = +amount, income = -amount → balance -= amount
-      // diff = newAmount - oldAmount; applying diff: balance -= diff (reverses old, applies new)
-      const diff = amount - existingTx.amount;
-      
-      if (existingTx.envelope_id === envelopeId) {
-        if (envelopeId) {
-          const env = get().envelopes.find(e => e.id === envelopeId);
-          if (env) await get().updateEnvelope(env.id, env.name, env.icon, env.balance - diff, env.currency);
-        } else {
-          const budget = get().budget;
-          if (budget) await get().updateBankBalance(budget.id, budget.bank_balance - diff);
-        }
-      } else {
-        // Changed destination! Refund old, apply to new.
-        if (existingTx.envelope_id) {
-           const oldEnv = get().envelopes.find(e => e.id === existingTx.envelope_id);
-           if (oldEnv) await get().updateEnvelope(oldEnv.id, oldEnv.name, oldEnv.icon, oldEnv.balance + existingTx.amount, oldEnv.currency);
-        } else {
-           const budget = get().budget;
-           if (budget) await get().updateBankBalance(budget.id, budget.bank_balance + existingTx.amount);
-        }
-
-        if (envelopeId) {
-           const newEnv = get().envelopes.find(e => e.id === envelopeId);
-           if (newEnv) await get().updateEnvelope(newEnv.id, newEnv.name, newEnv.icon, newEnv.balance - amount, newEnv.currency);
-        } else {
-           const budget = get().budget;
-           if (budget) await get().updateBankBalance(budget.id, budget.bank_balance - amount);
-        }
-      }
 
       const updated = get().transactions.map((t) =>
         t.id === transactionId ? data : t
       );
       set({ transactions: updated });
+      await Promise.all([get().fetchBudget(existingTx.user_id), get().fetchEnvelopes(existingTx.user_id)]);
       get().calculateStats();
     } catch (err: any) {
       set({ error: err.message });
@@ -743,84 +718,21 @@ export const useBudgetStore = create<BudgetState>()(
       if (fromAccountId === toAccountId) throw new Error('Choose different source and destination accounts.');
       if (get().isOffline) throw new Error('Transfers require an online connection right now.');
 
-      const transferGroupId = typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `transfer-${Date.now()}`;
-
       const fromEnvelopeId = fromAccountId === 'bank' ? null : fromAccountId;
       const toEnvelopeId = toAccountId === 'bank' ? null : toAccountId;
 
-      const payload = [
-        {
-          user_id: userId,
-          amount,
-          category: 'Transfer',
-          date,
-          note: note || 'Transfer out',
-          kind: 'transfer',
-          transfer_group_id: transferGroupId,
-          transfer_peer_envelope_id: toEnvelopeId,
-          transfer_direction: 'outgoing',
-          envelope_id: fromEnvelopeId,
-          tags: ['transfer'],
-          is_recurring: false,
-        },
-        {
-          user_id: userId,
-          amount: -amount,
-          category: 'Transfer',
-          date,
-          note: note || 'Transfer in',
-          kind: 'transfer',
-          transfer_group_id: transferGroupId,
-          transfer_peer_envelope_id: fromEnvelopeId,
-          transfer_direction: 'incoming',
-          envelope_id: toEnvelopeId,
-          tags: ['transfer'],
-          is_recurring: false,
-        },
-      ];
-
-      const { data, error } = await supabase
-        .from('transactions')
-        .insert(payload)
-        .select();
+      const { data, error } = await supabase.rpc('budget_it_create_transfer', {
+        p_user_id: userId,
+        p_amount: amount,
+        p_from_envelope_id: fromEnvelopeId,
+        p_to_envelope_id: toEnvelopeId,
+        p_date: date,
+        p_note: note || null,
+      });
 
       if (error) throw error;
-
-      if (fromEnvelopeId) {
-        const sourceEnvelope = get().envelopes.find((envelope) => envelope.id === fromEnvelopeId);
-        if (sourceEnvelope) {
-          await get().updateEnvelope(
-            sourceEnvelope.id,
-            sourceEnvelope.name,
-            sourceEnvelope.icon,
-            sourceEnvelope.balance - amount,
-            sourceEnvelope.currency
-          );
-        }
-      } else {
-        const currentBudget = get().budget;
-        if (currentBudget) await get().updateBankBalance(currentBudget.id, currentBudget.bank_balance - amount);
-      }
-
-      if (toEnvelopeId) {
-        const targetEnvelope = get().envelopes.find((envelope) => envelope.id === toEnvelopeId);
-        if (targetEnvelope) {
-          await get().updateEnvelope(
-            targetEnvelope.id,
-            targetEnvelope.name,
-            targetEnvelope.icon,
-            targetEnvelope.balance + amount,
-            targetEnvelope.currency
-          );
-        }
-      } else {
-        const currentBudget = get().budget;
-        if (currentBudget) await get().updateBankBalance(currentBudget.id, currentBudget.bank_balance + amount);
-      }
-
       set({ transactions: [...(data || []), ...get().transactions] });
+      await Promise.all([get().fetchBudget(userId), get().fetchEnvelopes(userId)]);
       get().calculateStats();
     } catch (err: any) {
       set({ error: err.message });
@@ -834,21 +746,26 @@ export const useBudgetStore = create<BudgetState>()(
     set({ loading: true, error: null });
     try {
       if (get().isOffline) {
+        const transaction = get().transactions.find((item) => item.id === transactionId);
+        if (!transaction) throw new Error('Transaction not found');
+        if (transaction.kind === 'transfer') throw new Error('Transfers require an online connection and must be managed as a pair.');
+
         // If it's a temporary offline transaction, just remove it
         if (transactionId.startsWith('temp-')) {
           set(state => ({
+            ...applyCachedBalanceDelta(state, transaction.envelope_id, transaction.amount),
             transactions: state.transactions.filter(t => t.id !== transactionId),
-            // Optionally remove the pending action that created it if we want to be clean, 
-            // but just filtering is fine for now
+            pendingActions: state.pendingActions.filter((action) => action.id !== transaction.client_request_id),
           }));
         } else {
           // If it's a real transaction from DB, add a delete pending action
           set(state => ({
+            ...applyCachedBalanceDelta(state, transaction.envelope_id, transaction.amount),
             transactions: state.transactions.filter(t => t.id !== transactionId),
             pendingActions: [...state.pendingActions, {
-              id: `act-${Date.now()}`,
+              id: createRequestId(),
               type: 'DELETE_TRANSACTION',
-              payload: { transactionId },
+              payload: { transactionId, userId: transaction.user_id },
               timestamp: new Date().toISOString()
             }]
           }));
@@ -859,26 +776,17 @@ export const useBudgetStore = create<BudgetState>()(
 
       const txToDelete = get().transactions.find(t => t.id === transactionId);
 
-      const { error } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('id', transactionId);
+      if (!txToDelete) throw new Error('Transaction not found');
+      const { error } = await supabase.rpc('budget_it_delete_transaction', {
+        p_user_id: txToDelete.user_id,
+        p_transaction_id: transactionId,
+      });
 
       if (error) throw error;
 
-      // Reverse the balance effect of the deleted transaction
-      if (txToDelete) {
-        if (txToDelete.envelope_id) {
-          const env = get().envelopes.find(e => e.id === txToDelete.envelope_id);
-          if (env) await get().updateEnvelope(env.id, env.name, env.icon, env.balance + txToDelete.amount, env.currency);
-        } else {
-          const budget = get().budget;
-          if (budget) await get().updateBankBalance(budget.id, budget.bank_balance + txToDelete.amount);
-        }
-      }
-
       const filtered = get().transactions.filter((t) => t.id !== transactionId);
       set({ transactions: filtered });
+      await Promise.all([get().fetchBudget(txToDelete.user_id), get().fetchEnvelopes(txToDelete.user_id)]);
       get().calculateStats();
     } catch (err: any) {
       set({ error: err.message });
@@ -1038,6 +946,7 @@ export const useBudgetStore = create<BudgetState>()(
 
     processRecurringTransactions: async (userId: string) => {
     try {
+      if (get().isOffline) return;
       // 1. Fetch recurring transactions for user
       const { data: recurring, error: fetchErr } = await supabase
         .from('recurring_transactions')
@@ -1082,10 +991,11 @@ export const useBudgetStore = create<BudgetState>()(
 
         // 3. Update the recurring transaction with new next_date
         if (toDateKey(nextDate) !== rt.next_date) {
-          await supabase
+          const { error: updateError } = await supabase
             .from('recurring_transactions')
             .update({ next_date: toDateKey(nextDate) })
             .eq('id', rt.id);
+          if (updateError) throw updateError;
         }
       }
       
