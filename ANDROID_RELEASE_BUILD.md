@@ -7,7 +7,7 @@ Use this guide whenever Budget It is being released through Google Play.
 - App: Budget It
 - Android package name: `com.kadioko.budgetit`
 - Google Play privacy policy: `https://budgetit.xyz/privacy-policy`
-- Current configured version: `1.0.8` (`versionCode` `9`)
+- Current configured version: `1.0.9` (`versionCode` `10`)
 
 The package name is the permanent identity of the app in Google Play. Do not change it for an update.
 
@@ -96,6 +96,28 @@ For example: `builds\budget-it-1.0.9-versionCode10.aab`. Build artifacts stay lo
 7. Review the generated bundle version code, save, and send the release for review/publish.
 
 Use the current store copy and graphics in [PLAY_STORE_LISTING.md](PLAY_STORE_LISTING.md).
+
+## 1.0.9 Release Record
+
+- Version: `1.0.9` (`versionCode` `10`)
+- EAS build: `b66a25bb-1f57-4d40-a4da-07920b6b58b2`
+- Download: `https://expo.dev/artifacts/eas/c-foHH3ym_EVNF76hWJ_ysRcO54Ds07f1jTjSvhUQqc.aab`
+- Local artifact: `builds\\budget-it-1.0.9-versionCode10.aab`
+
+Paste this into the Google Play release-notes field:
+
+```text
+<en-US>
+Budget It 1.0.9 brings a smoother, more reliable mobile budgeting experience.
+
+- Faster money entry with clearer quick actions and easier transaction editing.
+- Improved dashboard, transaction history, alerts, and recurring routine handling.
+- More reliable sign-in, account switching, date handling, and budget balance tracking.
+- General Android stability and performance improvements.
+</en-US>
+```
+
+Before releasing this build, apply `add_atomic_envelope_operations.sql` in Supabase SQL Editor and deploy the updated `schedule-budget-alerts` function. These steps keep envelope allocations and weekly alerts accurate.
 
 ## Release Notes Template
 
