@@ -49,11 +49,14 @@ add_savings_goals_table.sql
 add_backend_notifications.sql
 add_atomic_money_operations.sql
 add_atomic_envelope_operations.sql
+add_legacy_transaction_rpc_compatibility.sql
 ```
 
 After applying them, verify each table has Row Level Security enabled and that requests only return rows owned by the authenticated user. The app expects budgets, envelopes, transactions, recurring transactions, savings goals, and notification tables to be available.
 
 `add_atomic_money_operations.sql` is required for current transaction handling. It creates the Supabase functions that atomically write transaction history and account balances, protect against duplicate offline retries, and keep transfers balanced.
+
+`add_legacy_transaction_rpc_compatibility.sql` keeps older Android builds working while users receive the current release. If Supabase reports that it cannot find `public.budget_it_apply_transactions` in the schema cache, run `add_atomic_money_operations.sql` first, then this compatibility SQL file in the Supabase SQL Editor. It reloads the REST schema cache automatically; no Android rebuild is needed.
 
 `add_atomic_envelope_operations.sql` is required for envelope creation. It moves any opening allocation from the bank balance and records the matching transfer pair, so creating an envelope never creates money.
 
