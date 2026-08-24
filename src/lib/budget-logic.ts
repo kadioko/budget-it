@@ -1,27 +1,66 @@
-import { startOfMonth, endOfMonth, differenceInDays, parseISO } from 'date-fns';
+import { startOfMonth, endOfMonth, differenceInDays, format } from 'date-fns';
 import { Transaction, Budget } from '@/types/index';
+
+export const toDateKey = (date: Date) => format(date, 'yyyy-MM-dd');
+
+// Date-only database values must stay on their intended local calendar day.
+// `new Date('YYYY-MM-DD')` parses as UTC and shifts a day west of Greenwich.
+export function fromDateKey(dateKey: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) return null;
+
+  const [, yearValue, monthValue, dayValue] = match;
+  const year = Number(yearValue);
+  const month = Number(monthValue);
+  const day = Number(dayValue);
+  const date = new Date(year, month - 1, day);
+
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return null;
+  }
+
+  return date;
+}
+
+export function getNextRecurringDate(
+  date: Date,
+  frequency: 'monthly' | 'weekly' | 'daily'
+) {
+  const next = new Date(date);
+
+  if (frequency === 'monthly') {
+    const year = next.getFullYear();
+    const month = next.getMonth() + 1;
+    const lastDayOfTargetMonth = new Date(year, month + 1, 0).getDate();
+    return new Date(year, month, Math.min(next.getDate(), lastDayOfTargetMonth));
+  }
+
+  next.setDate(next.getDate() + (frequency === 'weekly' ? 7 : 1));
+  return next;
+}
 
 export function isTransferTransaction(transaction: Transaction) {
   return transaction.kind === 'transfer' || transaction.category === 'Transfer';
 }
 
 export function getMonthBoundary(date: Date, monthStartDay: number) {
+  const safeStartDay = Math.max(1, Math.min(28, Math.trunc(monthStartDay) || 1));
   const year = date.getFullYear();
   const month = date.getMonth();
 
   let monthStart: Date;
   let monthEnd: Date;
 
-  if (monthStartDay === 1) {
+  if (safeStartDay === 1) {
     monthStart = startOfMonth(date);
     monthEnd = endOfMonth(date);
   } else {
-    if (date.getDate() >= monthStartDay) {
-      monthStart = new Date(year, month, monthStartDay);
-      monthEnd = new Date(year, month + 1, monthStartDay - 1);
+    if (date.getDate() >= safeStartDay) {
+      monthStart = new Date(year, month, safeStartDay);
+      monthEnd = new Date(year, month + 1, safeStartDay - 1);
     } else {
-      monthStart = new Date(year, month - 1, monthStartDay);
-      monthEnd = new Date(year, month, monthStartDay - 1);
+      monthStart = new Date(year, month - 1, safeStartDay);
+      monthEnd = new Date(year, month, safeStartDay - 1);
     }
   }
 
@@ -42,9 +81,9 @@ export function calculateSpentToday(
   transactions: Transaction[],
   today: Date
 ): number {
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = toDateKey(today);
   return transactions
-    .filter((t) => !isTransferTransaction(t))
+    .filter((t) => !isTransferTransaction(t) && t.amount > 0)
     .filter((t) => t.date === todayStr)
     .reduce((sum, t) => sum + t.amount, 0);
 }
@@ -55,11 +94,11 @@ export function calculateSpentMonthToDate(
   monthStartDay: number
 ): number {
   const { monthStart } = getMonthBoundary(today, monthStartDay);
-  const monthStartStr = monthStart.toISOString().split('T')[0];
-  const todayStr = today.toISOString().split('T')[0];
+  const monthStartStr = toDateKey(monthStart);
+  const todayStr = toDateKey(today);
 
   return transactions
-    .filter((t) => !isTransferTransaction(t))
+    .filter((t) => !isTransferTransaction(t) && t.amount > 0)
     .filter((t) => t.date >= monthStartStr && t.date <= todayStr)
     .reduce((sum, t) => sum + t.amount, 0);
 }
@@ -83,12 +122,12 @@ export function calculateStreak(
   currentDate.setHours(0, 0, 0, 0);
 
   while (true) {
-    const dateStr = currentDate.toISOString().split('T')[0];
+    const dateStr = toDateKey(currentDate);
 
     // Stop if we've gone before the first transaction
     if (dateStr < earliestDate) break;
 
-    const dayTransactions = sortedTxns.filter((t) => t.date === dateStr && !isTransferTransaction(t));
+    const dayTransactions = sortedTxns.filter((t) => t.date === dateStr && !isTransferTransaction(t) && t.amount > 0);
 
     // Only count days that have at least one transaction
     if (dayTransactions.length === 0) {
@@ -134,7 +173,8 @@ export function isOnTrackMonthly(
   elapsedDays: number,
   totalDaysInMonth: number
 ): boolean {
-  const expectedSpend = monthlyTarget * (elapsedDays / totalDaysInMonth);
+  const elapsedWithGraceDay = Math.min(totalDaysInMonth, elapsedDays + 1);
+  const expectedSpend = monthlyTarget * (elapsedWithGraceDay / totalDaysInMonth);
   return spentMonthToDate <= expectedSpend;
 }
 

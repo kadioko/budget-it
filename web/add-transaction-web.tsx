@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
 import { Transaction } from '../src/types';
+import { fromDateKey, toDateKey } from '../src/lib/budget-logic';
 
 const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Other'];
 const INCOME_CATEGORIES = ['Salary', 'Business', 'Investment', 'Gift', 'Other'];
@@ -122,7 +123,7 @@ export default function AddTransactionWeb({
   const [displayAmount, setDisplayAmount] = useState('');
   const [category, setCategory] = useState(initialCategory || 'Food');
   const [transactionType, setTransactionType] = useState<'expense' | 'income'>(initialType);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(toDateKey(new Date()));
   const [merchant, setMerchant] = useState('');
   const [tags, setTags] = useState('');
   const [note, setNote] = useState(initialNote);
@@ -227,7 +228,10 @@ export default function AddTransactionWeb({
           .sort((a, b) => b.date.localeCompare(a.date));
         if (relevantTransactions.length < 2) return null;
         const [latest, previous] = relevantTransactions;
-        const dayGap = Math.abs(Math.round((new Date(latest.date).getTime() - new Date(previous.date).getTime()) / (1000 * 60 * 60 * 24)));
+        const latestDate = fromDateKey(latest.date);
+        const previousDate = fromDateKey(previous.date);
+        if (!latestDate || !previousDate) return null;
+        const dayGap = Math.abs(Math.round((latestDate.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24)));
         const isRecurring = (dayGap >= 27 && dayGap <= 35) || (dayGap >= 6 && dayGap <= 8);
         return isRecurring ? { isRecurring: true, intervalLabel: dayGap >= 27 ? 'monthly-ish' : 'weekly-ish' } : null;
       })()

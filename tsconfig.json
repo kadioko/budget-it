@@ -14,6 +14,8 @@
     "jsx": "react-jsx",
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
+    "ignoreDeprecations": "6.0",
+    "types": ["jest"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]

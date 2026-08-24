@@ -174,6 +174,91 @@ const drawBrandLogo = () => {
   return canvas;
 };
 
+const blit = (target, source, offsetX, offsetY) => {
+  for (let y = 0; y < source.height; y += 1) {
+    for (let x = 0; x < source.width; x += 1) {
+      const index = (y * source.width + x) * 4;
+      setPixel(target, x + offsetX, y + offsetY, [
+        source.data[index],
+        source.data[index + 1],
+        source.data[index + 2],
+        source.data[index + 3],
+      ]);
+    }
+  }
+};
+
+const drawStoreFeatureGraphic = () => {
+  const canvas = createCanvas(1024, 500, [246, 250, 248, 255]);
+  fillRect(canvas, 0, 0, 1024, 500, [246, 250, 248, 255]);
+  fillCircle(canvas, 900, 40, 280, [45, 212, 191, 90]);
+  fillCircle(canvas, 120, 460, 260, [14, 165, 233, 65]);
+  fillRoundedRect(canvas, 56, 72, 390, 356, 42, [255, 255, 255, 238]);
+  fillRoundedRect(canvas, 84, 104, 210, 34, 12, [10, 39, 46, 255]);
+  fillRoundedRect(canvas, 84, 164, 310, 42, 16, [19, 83, 80, 230]);
+  fillRoundedRect(canvas, 84, 226, 260, 26, 10, [45, 212, 191, 170]);
+  fillRoundedRect(canvas, 84, 276, 300, 26, 10, [14, 165, 233, 140]);
+  fillRoundedRect(canvas, 84, 326, 230, 26, 10, [15, 23, 42, 95]);
+
+  const mark = drawLogoMark(250, true);
+  blit(canvas, mark, 644, 125);
+  fillRoundedRect(canvas, 520, 112, 96, 18, 9, [19, 83, 80, 180]);
+  fillRoundedRect(canvas, 520, 154, 64, 18, 9, [45, 212, 191, 180]);
+  fillRoundedRect(canvas, 520, 196, 84, 18, 9, [14, 165, 233, 145]);
+  fillRoundedRect(canvas, 520, 238, 56, 18, 9, [10, 39, 46, 120]);
+  return canvas;
+};
+
+const drawPhoneScreenshot = (variant = 0) => {
+  const canvas = createCanvas(1080, 1920, [246, 250, 248, 255]);
+  fillRect(canvas, 0, 0, 1080, 1920, [246, 250, 248, 255]);
+  fillCircle(canvas, 930, 180, 380, [45, 212, 191, 85]);
+  fillCircle(canvas, 120, 1740, 360, [14, 165, 233, 65]);
+  fillRoundedRect(canvas, 68, 72, 944, 1776, 58, [255, 255, 255, 242]);
+  fillRoundedRect(canvas, 118, 128, 250, 38, 16, [10, 39, 46, 255]);
+  fillRoundedRect(canvas, 118, 206, 540, 46, 18, [19, 83, 80, 210]);
+  fillRoundedRect(canvas, 118, 288, 844, 280, 42, [10, 39, 46, 255]);
+  fillCircle(canvas, 850, 360, 132, [45, 212, 191, 120]);
+  fillRoundedRect(canvas, 168, 354, 290, 36, 14, [255, 255, 255, 220]);
+  fillRoundedRect(canvas, 168, 430, 460, 62, 22, [45, 212, 191, 210]);
+
+  const colors = [
+    [45, 212, 191, 220],
+    [14, 165, 233, 190],
+    [249, 115, 22, 180],
+    [16, 185, 129, 190],
+  ];
+
+  for (let i = 0; i < 4; i += 1) {
+    const x = 118 + (i % 2) * 432;
+    const y = 620 + Math.floor(i / 2) * 220;
+    fillRoundedRect(canvas, x, y, 394, 172, 32, [255, 255, 255, 245]);
+    fillRoundedRect(canvas, x + 34, y + 36, 120, 26, 10, [15, 23, 42, 90]);
+    fillRoundedRect(canvas, x + 34, y + 92, 220, 34, 14, colors[(i + variant) % colors.length]);
+  }
+
+  fillRoundedRect(canvas, 118, 1100, 844, 404, 42, [255, 255, 255, 245]);
+  for (let i = 0; i < 5; i += 1) {
+    const y = 1160 + i * 64;
+    fillCircle(canvas, 168, y + 18, 22, colors[(i + variant) % colors.length]);
+    fillRoundedRect(canvas, 214, y, 340, 22, 9, [15, 23, 42, 100]);
+    fillRoundedRect(canvas, 214, y + 34, 220, 18, 8, [100, 116, 139, 90]);
+    fillRoundedRect(canvas, 724, y + 10, 150, 28, 12, i % 2 === 0 ? [16, 185, 129, 170] : [239, 68, 68, 150]);
+  }
+
+  if (variant === 1) {
+    fillRoundedRect(canvas, 118, 1560, 844, 186, 42, [10, 39, 46, 245]);
+    fillRoundedRect(canvas, 168, 1618, 300, 32, 14, [255, 255, 255, 220]);
+    fillRoundedRect(canvas, 168, 1684, 520, 36, 16, [45, 212, 191, 200]);
+  } else {
+    fillRoundedRect(canvas, 118, 1560, 844, 186, 42, [240, 253, 250, 255]);
+    fillRoundedRect(canvas, 168, 1618, 240, 32, 14, [19, 83, 80, 190]);
+    fillRoundedRect(canvas, 168, 1684, 620, 36, 16, [14, 165, 233, 145]);
+  }
+
+  return canvas;
+};
+
 const svgLogo = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Budget It logo">
   <rect x="70" y="70" width="884" height="884" rx="210" fill="#0a272e"/>
   <rect x="116" y="116" width="792" height="792" rx="178" fill="#135350"/>
@@ -194,6 +279,7 @@ const svgLogo = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"
 
 ensureDir(path.join(ROOT, 'assets'));
 ensureDir(path.join(ROOT, 'public'));
+ensureDir(path.join(ROOT, 'store-assets'));
 
 writePNG('assets/icon.png', drawLogoMark(1024));
 writePNG('assets/adaptive-icon.png', drawLogoMark(1024, true));
@@ -207,5 +293,9 @@ writePNG('public/favicon-32.png', drawLogoMark(32));
 writePNG('public/favicon.ico', drawLogoMark(48));
 writePNG('public/brand-logo.png', drawBrandLogo());
 fs.writeFileSync(path.join(ROOT, 'public/icon.svg'), svgLogo);
+writePNG('store-assets/app-icon-512.png', drawLogoMark(512));
+writePNG('store-assets/feature-graphic-1024x500.png', drawStoreFeatureGraphic());
+writePNG('store-assets/phone-screenshot-1-1080x1920.png', drawPhoneScreenshot(0));
+writePNG('store-assets/phone-screenshot-2-1080x1920.png', drawPhoneScreenshot(1));
 
 console.log('Created Budget It logo assets.');

@@ -48,6 +48,7 @@ export type Transaction = {
   transfer_peer_envelope_id?: string | null;
   transfer_direction?: TransferDirection | null;
   envelope_id?: string | null;
+  client_request_id?: string | null;
   created_at: string;
 };
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
 import { themeTokens, useThemeStore } from '../src/store/theme';
+import { fromDateKey } from '../src/lib/budget-logic';
 import EditTransactionWeb from './edit-transaction-web';
 
 // Format currency with commas
@@ -58,12 +59,12 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
                           (filterType === 'expense' && t.amount > 0);
       return matchesSearch && matchesCategory && matchesType;
     })
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    .sort((a, b) => b.date.localeCompare(a.date));
 
   // Calculate running balance
   useEffect(() => {
     let balance = 0;
-    const sortedTransactions = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const sortedTransactions = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     sortedTransactions.forEach(t => {
       balance -= t.amount; // Subtract because expenses are positive, income is negative
     });
@@ -347,7 +348,7 @@ export default function TransactionsWeb({ onBack }: { onBack: () => void }) {
                             {t.is_recurring && <span style={{ fontSize: '11px', fontWeight: '700', color: '#2563eb', backgroundColor: 'rgba(37,99,235,0.08)', borderRadius: '999px', padding: '4px 8px', letterSpacing: '0.4px' }}>Recurring</span>}
                           </div>
                           <div style={{ fontSize: '13px', color: theme.textSubtle, fontWeight: '500', overflowWrap: 'anywhere', lineHeight: 1.5 }}>
-                            {new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {(fromDateKey(t.date) ?? new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                             {t.merchant && <span style={{ color: theme.textMuted }}> • {t.merchant}</span>}
                             {t.note && <span style={{ color: theme.textMuted }}> • {t.note}</span>}
                             {t.tags && t.tags.length > 0 && <span style={{ color: theme.textMuted }}> • {t.tags.join(', ')}</span>}

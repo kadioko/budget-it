@@ -5,7 +5,7 @@ import { useBudgetStore } from '../src/store/budget';
 import { useI18n } from '../src/store/language';
 import { useNotificationSettingsStore } from '../src/store/notifications';
 import { themeTokens, useThemeStore } from '../src/store/theme';
-import { getBudgetCycleWindow } from '../src/lib/budget-logic';
+import { fromDateKey, getBudgetCycleWindow, toDateKey } from '../src/lib/budget-logic';
 import { isWebNotificationSupported, requestWebNotificationPermission, sendWebBudgetNotification } from '../src/lib/web-notifications';
 import SettingsWeb from './settings-web';
 import AddTransactionWeb from './add-transaction-web';
@@ -268,7 +268,6 @@ export default function DashboardWeb() {
 
     return [...transactions]
       .filter((transaction) => {
-        const transactionDate = new Date(transaction.date);
         const matchesAccount = selectedAccountId === 'all'
           ? true
           : selectedAccountId === 'bank'
@@ -278,8 +277,8 @@ export default function DashboardWeb() {
         const matchesTime = dashboardTimeFilter === 'all'
           ? true
           : dashboardTimeFilter === '7d'
-            ? transactionDate >= sevenDaysAgo
-            : transactionDate >= cycleWindow.monthStart && transactionDate <= cycleWindow.monthEnd;
+            ? transaction.date >= toDateKey(sevenDaysAgo)
+            : transaction.date >= toDateKey(cycleWindow.monthStart) && transaction.date <= toDateKey(cycleWindow.monthEnd);
         return matchesAccount && matchesCategory && matchesTime;
       })
       .sort((a, b) => b.date.localeCompare(a.date))
@@ -291,18 +290,18 @@ export default function DashboardWeb() {
 
     const today = new Date();
     const { monthStart, monthEnd } = getBudgetCycleWindow(today, budget.month_start_day);
-    const monthStartStr = monthStart.toISOString().split('T')[0];
-    const monthEndStr = monthEnd.toISOString().split('T')[0];
-    const todayStr = today.toISOString().split('T')[0];
+    const monthStartStr = toDateKey(monthStart);
+    const monthEndStr = toDateKey(monthEnd);
+    const todayStr = toDateKey(today);
     const elapsedDays = Math.max(1, Math.ceil((today.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)) + 1);
     const remainingDays = Math.max(1, Math.ceil((monthEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
     const burnRate = stats.spentMonthToDate / elapsedDays;
     const safeDailySpend = stats.monthlyRemaining / remainingDays;
     const weeklyStart = new Date(today);
     weeklyStart.setDate(today.getDate() - 6);
-    const weeklyStartStr = weeklyStart.toISOString().split('T')[0];
+    const weeklyStartStr = toDateKey(weeklyStart);
     const weekSpent = transactions
-      .filter((transaction) => transaction.amount > 0 && transaction.date >= weeklyStartStr && transaction.date <= todayStr)
+      .filter((transaction) => transaction.kind !== 'transfer' && transaction.amount > 0 && transaction.date >= weeklyStartStr && transaction.date <= todayStr)
       .reduce((sum, transaction) => sum + transaction.amount, 0);
 
     const trackedCategoryBudgets = budget.category_budgets && Object.keys(budget.category_budgets).length > 0
@@ -387,7 +386,7 @@ export default function DashboardWeb() {
     const upcomingRecurring = (recurringTransactions || [])
       .map((transaction) => ({
         ...transaction,
-        daysUntil: Math.ceil((new Date(transaction.next_date).getTime() - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24)),
+        daysUntil: Math.ceil(((fromDateKey(transaction.next_date)?.getTime() ?? 0) - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24)),
       }))
       .filter((transaction) => transaction.daysUntil >= 0 && transaction.daysUntil <= 7)
       .sort((a, b) => a.daysUntil - b.daysUntil)
@@ -462,8 +461,8 @@ export default function DashboardWeb() {
     if (!browserAlertsEnabled || browserAlertPermission !== 'granted' || !budget) return;
 
     const cycleKey = budget.month_start_day
-      ? getBudgetCycleWindow(new Date(), budget.month_start_day).monthStart.toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0];
+      ? toDateKey(getBudgetCycleWindow(new Date(), budget.month_start_day).monthStart)
+      : toDateKey(new Date());
 
     notifications
       .filter((notification) => notification.tone !== 'success' || weeklySummaryAlertsEnabled)
@@ -1288,7 +1287,7 @@ export default function DashboardWeb() {
                   ? (tx.transfer_direction === 'incoming' ? t('dashboard.transferIn') : t('dashboard.transferOut'))
                   : tx.category;
                 const metadata = [
-                  new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                  (fromDateKey(tx.date) ?? new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
                   tx.merchant || null,
                   tx.note || null,
                   tx.tags?.length ? `#${tx.tags.join(' #')}` : null,
@@ -1308,7 +1307,7 @@ export default function DashboardWeb() {
                             </span>
                           )}
                         </div>
-                        <div style={{ fontSize: '11px', color: theme.textSubtle, overflowWrap: 'anywhere' }}>{new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{tx.note ? ` · ${tx.note}` : ''}</div>
+                        <div style={{ fontSize: '11px', color: theme.textSubtle, overflowWrap: 'anywhere' }}>{(fromDateKey(tx.date) ?? new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{tx.note ? ` · ${tx.note}` : ''}</div>
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: isMobile ? 'stretch' : 'flex-end', width: isMobile ? '100%' : 'auto' }}>

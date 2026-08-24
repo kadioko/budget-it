@@ -1,6 +1,10 @@
-import { Stack } from 'expo-router';
+import { Redirect, Stack } from 'expo-router';
+import { useAuthStore } from '@/store/auth';
 
 export default function AuthLayout() {
+  const { user } = useAuthStore();
+  if (user) return <Redirect href="/(app)/dashboard" />;
+
   return (
     <Stack
       screenOptions={{

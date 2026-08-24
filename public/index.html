@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, maximum-scale=1, user-scalable=0" />
+    <meta name="application-name" content="Budget It" />
+    <meta name="apple-mobile-web-app-title" content="Budget It" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#135350" />
+    <meta name="description" content="Budget It is a simple personal finance tracker for daily spending, monthly budgets, envelopes, savings goals, recurring transactions, and budget alerts." />
+    <meta name="keywords" content="budget app, personal finance tracker, spending tracker, envelope budgeting app, monthly budget planner, savings goals, recurring transaction tracker" />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <meta name="author" content="Budget It" />
+    <link rel="canonical" href="https://budgetit.xyz/" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="msapplication-TileColor" content="#135350" />
+    <meta name="msapplication-TileImage" content="/icon-192.png" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://budgetit.xyz/" />
+    <meta property="og:title" content="Budget It | Personal Finance and Spending Tracker" />
+    <meta property="og:description" content="Track spending, manage accounts, set budget limits, monitor savings goals, and spot overspending early with Budget It." />
+    <meta property="og:image" content="https://budgetit.xyz/brand-logo.png" />
+    <meta property="og:image:alt" content="Budget It app logo" />
+    <meta property="og:site_name" content="Budget It" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Budget It | Personal Finance and Spending Tracker" />
+    <meta name="twitter:description" content="Track spending, manage accounts, set budget limits, monitor savings goals, and spot overspending early with Budget It." />
+    <meta name="twitter:image" content="https://budgetit.xyz/brand-logo.png" />
+    <meta name="twitter:image:alt" content="Budget It app logo" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+    <title>Budget It | Personal Finance and Spending Tracker</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Budget It",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web, Android, iOS",
+        "url": "https://budgetit.xyz/",
+        "description": "Budget It helps people track spending, manage daily and monthly budget targets, organize envelopes, follow savings goals, and monitor recurring transactions.",
+        "image": "https://budgetit.xyz/brand-logo.png",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "featureList": [
+          "Daily and monthly budget tracking",
+          "Envelope and account management",
+          "Transaction logging",
+          "Savings goals",
+          "Recurring transaction reminders",
+          "Budget alerts and spending insights"
+        ]
+      }
+    </script>
+    <style>
+      :root {
+        --bg-main: #f4f7fb;
+        --text-main: #0f172a;
+        --app-font-body: "Manrope", "Segoe UI", sans-serif;
+        --app-font-display: "Space Grotesk", "Manrope", sans-serif;
+      }
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+        height: auto;
+        overflow-x: hidden;
+        overflow-y: auto;
+        background: var(--bg-main);
+        color: var(--text-main);
+        font-family: var(--app-font-body);
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+      #root {
+        position: relative;
+        display: block;
+        min-height: 100vh;
+        height: auto;
+        flex: none;
+        z-index: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js').catch(function (error) {
+            console.error('ServiceWorker registration failed:', error);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>

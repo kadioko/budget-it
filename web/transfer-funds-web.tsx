@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useAuthStore } from '../src/store/auth';
 import { useBudgetStore } from '../src/store/budget';
+import { toDateKey } from '../src/lib/budget-logic';
 import { themeTokens, useThemeStore } from '../src/store/theme';
 
 const formatCurrency = (amount: number, currency: string) => {
@@ -19,7 +20,7 @@ export default function TransferFundsWeb({ onBack }: { onBack: () => void }) {
   const [fromAccountId, setFromAccountId] = useState<'bank' | string>('bank');
   const [toAccountId, setToAccountId] = useState<string>(envelopes[0]?.id || 'bank');
   const [amount, setAmount] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(toDateKey(new Date()));
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');

@@ -1,20 +1,28 @@
 import { create } from 'zustand';
+import { Platform } from 'react-native';
+import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
 import { Profile } from '@/types/index';
 
-const getEmailRedirectTo = () => {
-  if (typeof window === 'undefined') return undefined;
-  return `${window.location.origin}/?auth_action=email_verified`;
+const getRedirectTo = (authAction?: string) => {
+  const queryParams = authAction ? { auth_action: authAction } : undefined;
+
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin) {
+    const search = authAction ? `?auth_action=${authAction}` : '';
+    return `${window.location.origin}/${search}`;
+  }
+
+  return Linking.createURL('/', { queryParams });
 };
 
+const getEmailRedirectTo = () => getRedirectTo('email_verified');
+
 const getPasswordResetRedirectTo = () => {
-  if (typeof window === 'undefined') return undefined;
-  return `${window.location.origin}/?auth_action=password_recovery`;
+  return getRedirectTo('password_recovery');
 };
 
 const getOAuthRedirectTo = () => {
-  if (typeof window === 'undefined') return undefined;
-  return `${window.location.origin}/`;
+  return getRedirectTo();
 };
 
 interface AuthState {
@@ -29,6 +37,7 @@ interface AuthState {
   updatePassword: (password: string) => Promise<void>;
   signOut: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  setUser: (user: any | null) => void;
   setProfile: (profile: Profile) => void;
 }
 
@@ -51,8 +60,10 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       if (error) throw error;
 
-      if (data.user) {
-        set({ user: data.user });
+      // With email confirmation enabled Supabase returns a user but no session.
+      // Do not treat that account as signed in until the confirmation flow completes.
+      if (data.session?.user) {
+        set({ user: data.session.user });
       }
     } catch (err: any) {
       set({ error: err.message });
@@ -176,5 +187,9 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setProfile: (profile: Profile) => {
     set({ profile });
+  },
+
+  setUser: (user) => {
+    set({ user, profile: null });
   },
 }));

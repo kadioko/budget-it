@@ -13,6 +13,7 @@ type TransactionRow = {
   amount: number;
   category: string;
   date: string;
+  kind: "standard" | "transfer" | null;
 };
 
 type RecurringRow = {
@@ -47,6 +48,36 @@ const json = (body: unknown, status = 200) =>
     status,
     headers: { "Content-Type": "application/json", ...corsHeaders },
   });
+
+const getBearerToken = (request: Request) => {
+  const authHeader = request.headers.get("Authorization") ?? "";
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  return match?.[1] ?? "";
+};
+
+const getAuthorizedUserId = async (request: Request, targetedUserId: string | null) => {
+  const token = getBearerToken(request);
+  const isServiceRoleCall = Boolean(serviceRoleKey && token === serviceRoleKey);
+
+  if (isServiceRoleCall) {
+    return { authorized: true, isServiceRoleCall };
+  }
+
+  if (!targetedUserId) {
+    return { authorized: false, isServiceRoleCall, error: "A userId is required for user-triggered scheduling." };
+  }
+
+  const { data, error } = await admin.auth.getUser(token);
+  if (error || !data.user) {
+    return { authorized: false, isServiceRoleCall, error: "Invalid or missing user session." };
+  }
+
+  if (data.user.id !== targetedUserId) {
+    return { authorized: false, isServiceRoleCall, error: "You can only schedule notifications for your own account." };
+  }
+
+  return { authorized: true, isServiceRoleCall };
+};
 
 const getBudgetCycleWindow = (referenceDate: Date, monthStartDay = 1) => {
   const safeStartDay = Math.max(1, Math.min(28, monthStartDay));
@@ -107,6 +138,11 @@ serve(async (request) => {
 
     const body = request.method === "POST" ? await request.json().catch(() => ({})) : {};
     const targetedUserId = typeof body?.userId === "string" ? body.userId : null;
+    const auth = await getAuthorizedUserId(request, targetedUserId);
+
+    if (!auth.authorized) {
+      return json({ error: auth.error ?? "Unauthorized" }, 401);
+    }
 
     const budgetsQuery = admin.from("budgets").select("user_id, monthly_target, currency, month_start_day, category_budgets");
     const { data: budgets, error: budgetsError } = targetedUserId
@@ -128,6 +164,7 @@ serve(async (request) => {
       const weeklyStart = new Date(now);
       weeklyStart.setUTCDate(now.getUTCDate() - 6);
       const weeklyStartKey = weeklyStart.toISOString().split("T")[0];
+      const transactionQueryStart = weeklyStartKey < cycleStart ? weeklyStartKey : cycleStart;
 
       const { data: preferenceRow } = await admin
         .from("notification_preferences")
@@ -144,16 +181,17 @@ serve(async (request) => {
 
       const { data: transactions, error: txError } = await admin
         .from("transactions")
-        .select("amount, category, date")
+        .select("amount, category, date, kind")
         .eq("user_id", budget.user_id)
-        .gte("date", cycleStart)
+        .gte("date", transactionQueryStart)
         .lte("date", cycleEnd);
 
       if (txError) throw txError;
 
       const txRows = (transactions ?? []) as TransactionRow[];
-      const spentMonthToDate = txRows
-        .filter((tx) => tx.amount > 0)
+      const cycleTxRows = txRows.filter((tx) => tx.date >= cycleStart);
+      const spentMonthToDate = cycleTxRows
+        .filter((tx) => tx.kind !== "transfer" && tx.amount > 0)
         .reduce((sum, tx) => sum + tx.amount, 0);
       const projectedMonthEnd = (spentMonthToDate / elapsedDays) * cycleLength;
 
@@ -174,8 +212,8 @@ serve(async (request) => {
       if (preferences.overspend_alerts_enabled && Object.keys(categoryBudgets).length > 0) {
         const risk = Object.entries(categoryBudgets)
           .map(([category, limit]) => {
-            const spent = txRows
-              .filter((tx) => tx.amount > 0 && tx.category === category)
+            const spent = cycleTxRows
+              .filter((tx) => tx.kind !== "transfer" && tx.amount > 0 && tx.category === category)
               .reduce((sum, tx) => sum + tx.amount, 0);
             const ratio = limit > 0 ? spent / limit : 0;
             return { category, limit, spent, ratio };
@@ -227,7 +265,7 @@ serve(async (request) => {
 
       if (preferences.weekly_summary_alerts_enabled) {
         const weekSpent = txRows
-          .filter((tx) => tx.amount > 0 && tx.date >= weeklyStartKey)
+          .filter((tx) => tx.kind !== "transfer" && tx.amount > 0 && tx.date >= weeklyStartKey)
           .reduce((sum, tx) => sum + tx.amount, 0);
         const remainingDays = Math.max(1, Math.ceil((monthEnd.getTime() - now.getTime()) / 86400000));
         const monthlyRemaining = Math.max(0, budget.monthly_target - spentMonthToDate);

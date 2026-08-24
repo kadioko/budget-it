@@ -1,65 +1,129 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
-  Alert,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/store/auth';
 import { useBudgetStore } from '@/store/budget';
+import { toDateKey } from '@/lib/budget-logic';
+import { useLocalSearchParams } from 'expo-router';
+import { formatMoney, nativeStyles, nativeTheme } from '@/ui/nativeTheme';
+import { useI18n } from '@/store/language';
 
-const CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Other'];
+const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Other'];
+const INCOME_CATEGORIES = ['Salary', 'Business', 'Investment', 'Gift', 'Other'];
 
 export default function AddTransactionScreen() {
-  const router = useRouter();
+  const { type: requestedType } = useLocalSearchParams<{ type?: 'expense' | 'income' }>();
   const { user } = useAuthStore();
-  const { budget, addTransaction, loading } = useBudgetStore();
+  const { budget, envelopes, transactions, addTransaction, fetchEnvelopes, loading, isOffline } = useBudgetStore();
+  const { language, t } = useI18n();
+  const [type, setType] = useState<'expense' | 'income'>('expense');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('Food');
+  const [merchant, setMerchant] = useState('');
+  const [tags, setTags] = useState('');
   const [note, setNote] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(toDateKey(new Date()));
+  const [accountId, setAccountId] = useState<'bank' | string>('bank');
+  const [feedback, setFeedback] = useState<{ tone: 'success' | 'offline' | 'error'; message: string } | null>(null);
+  const locale = language === 'sw' ? 'sw-TZ' : 'en-US';
+
+  const categories = type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+  const merchantSuggestions = useMemo(() => Array.from(new Set(transactions.map((item) => item.merchant?.trim()).filter((item): item is string => Boolean(item)))).slice(0, 4), [transactions]);
+
+  useEffect(() => {
+    if (user) fetchEnvelopes(user.id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  const setTransactionType = (nextType: 'expense' | 'income') => {
+    setType(nextType);
+    setCategory(nextType === 'expense' ? 'Food' : 'Salary');
+  };
+
+  useEffect(() => {
+    if (requestedType === 'expense' || requestedType === 'income') {
+      setTransactionType(requestedType);
+    }
+  // A dashboard quick action intentionally resets the entry type.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedType]);
+
+  const selectMerchant = (value: string) => {
+    setMerchant(value);
+    const previous = transactions.find((item) => item.merchant?.trim().toLowerCase() === value.toLowerCase() && item.kind !== 'transfer');
+    if (previous) {
+      setCategory(previous.category);
+      setType(previous.amount < 0 ? 'income' : 'expense');
+    }
+  };
 
   const handleAddTransaction = async () => {
-    if (!amount || parseFloat(amount) <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
+    const parsedAmount = parseFloat(amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setFeedback({ tone: 'error', message: t('mobile.transactionForm.validAmount') });
       return;
     }
 
     if (!user || !budget) {
-      Alert.alert('Error', 'Budget not found');
+      setFeedback({ tone: 'error', message: t('mobile.transactionForm.setupBudget') });
       return;
     }
 
     try {
+      setFeedback(null);
+      const signedAmount = type === 'income' ? -Math.abs(parsedAmount) : Math.abs(parsedAmount);
+      const tagList = tags
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+
       await addTransaction(
         user.id,
-        parseFloat(amount),
+        signedAmount,
         category,
         date,
-        note || undefined
+        note || undefined,
+        accountId === 'bank' ? null : accountId,
+        {
+          merchant: merchant || undefined,
+          tags: tagList,
+        }
       );
-      Alert.alert('Success', 'Transaction added');
+      setFeedback({
+        tone: isOffline ? 'offline' : 'success',
+        message: isOffline
+          ? t('mobile.transactionForm.savedOffline')
+          : type === 'income' ? t('mobile.transactionForm.incomeLogged') : t('mobile.transactionForm.expenseAdded'),
+      });
       setAmount('');
-      setCategory('Food');
+      setMerchant('');
+      setTags('');
       setNote('');
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(toDateKey(new Date()));
+      setAccountId('bank');
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to add transaction');
+      setFeedback({ tone: 'error', message: err.message || t('mobile.transactionForm.saveFailed') });
     }
   };
 
   if (!budget) {
     return (
-      <View style={styles.container}>
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>Please set up your budget first</Text>
+      <View style={[nativeStyles.screen, styles.centered]}>
+        <View style={nativeStyles.orbTop} />
+        <View style={nativeStyles.orbBottom} />
+        <View style={[nativeStyles.card, styles.emptyCard]}>
+          <Text style={nativeStyles.emptyTitle}>{t('mobile.transactionForm.budgetFirst')}</Text>
+          <Text style={nativeStyles.emptyText}>{t('mobile.transactionForm.budgetFirstBody')}</Text>
         </View>
       </View>
     );
@@ -68,194 +132,279 @@ export default function AddTransactionScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={nativeStyles.screen}
     >
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          <View style={styles.card}>
-            <Text style={styles.label}>Amount</Text>
-            <View style={styles.amountInput}>
-              <Text style={styles.currencySymbol}>{budget.currency}</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="0.00"
-                placeholderTextColor="#bdc3c7"
-                value={amount}
-                onChangeText={setAmount}
-                keyboardType="decimal-pad"
-                editable={!loading}
-              />
-            </View>
-          </View>
+      <View style={nativeStyles.orbTop} />
+      <View style={nativeStyles.orbBottom} />
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={[nativeStyles.content, styles.scrollContent]} keyboardShouldPersistTaps="handled">
+        <View style={nativeStyles.heroCard}>
+          <Text style={nativeStyles.heroEyebrow}>{t('mobile.transactionForm.eyebrow')}</Text>
+          <Text style={nativeStyles.heroTitle}>{t('mobile.transactionForm.title')}</Text>
+          <Text style={nativeStyles.heroText}>{t('mobile.transactionForm.subtitle')}</Text>
+        </View>
 
-          <View style={styles.card}>
-            <Text style={styles.label}>Category</Text>
-            <View style={styles.categoryGrid}>
-              {CATEGORIES.map((cat) => (
-                <TouchableOpacity
+        <View style={nativeStyles.card}>
+          <Text style={nativeStyles.label}>{t('mobile.transactionForm.type')}</Text>
+          <View style={styles.segmented}>
+            {(['expense', 'income'] as const).map((item) => {
+              const active = type === item;
+              return (
+                <Pressable
+                  key={item}
+                  style={[styles.segment, active && styles.segmentActive]}
+                  onPress={() => setTransactionType(item)}
+                  disabled={loading}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active, disabled: loading }}
+                  accessibilityLabel={item === 'expense' ? t('mobile.transactionForm.expense') : t('mobile.transactionForm.income')}
+                >
+                  <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
+                    {item === 'expense' ? t('mobile.transactionForm.expense') : t('mobile.transactionForm.income')}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={nativeStyles.card}>
+          <Text style={nativeStyles.label}>{t('mobile.transactionForm.moneySpace')}</Text>
+          <Text style={styles.accountHint}>{t('mobile.transactionForm.moneySpaceHint')}</Text>
+          <View style={styles.accountList}>
+            <AccountOption label={t('mobile.transactionForm.bankBalance')} balance={budget.bank_balance} currency={budget.currency} locale={locale} availableLabel={t('mobile.transactionForm.available')} selected={accountId === 'bank'} onPress={() => setAccountId('bank')} />
+            {envelopes.map((envelope) => <AccountOption key={envelope.id} label={envelope.name} balance={envelope.balance} currency={budget.currency} locale={locale} availableLabel={t('mobile.transactionForm.available')} selected={accountId === envelope.id} onPress={() => setAccountId(envelope.id)} />)}
+          </View>
+        </View>
+
+        <View style={nativeStyles.card}>
+          <Text style={nativeStyles.label}>{t('mobile.transactionForm.amount')}</Text>
+          <View style={nativeStyles.inputShell}>
+            <Text style={styles.currencyPrefix}>{budget.currency}</Text>
+            <TextInput
+              style={nativeStyles.input}
+              placeholder="0.00"
+              placeholderTextColor="#94a3b8"
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="decimal-pad"
+              editable={!loading}
+            />
+          </View>
+        </View>
+
+        <View style={nativeStyles.card}>
+          <Text style={nativeStyles.label}>{t('mobile.transactionForm.category')}</Text>
+          <View style={styles.chipGrid}>
+            {categories.map((cat) => {
+              const active = category === cat;
+              return (
+                <Pressable
                   key={cat}
-                  style={[
-                    styles.categoryButton,
-                    category === cat && styles.categoryButtonActive,
-                  ]}
+                  style={[nativeStyles.chip, styles.categoryChip, active && nativeStyles.chipActive]}
                   onPress={() => setCategory(cat)}
                   disabled={loading}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active, disabled: loading }}
+                  accessibilityLabel={`Select ${cat} category`}
                 >
-                  <Text
-                    style={[
-                      styles.categoryButtonText,
-                      category === cat && styles.categoryButtonTextActive,
-                    ]}
-                  >
-                    {cat}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                  <Text style={[nativeStyles.chipText, active && nativeStyles.chipTextActive]}>{cat}</Text>
+                </Pressable>
+              );
+            })}
           </View>
-
-          <View style={styles.card}>
-            <Text style={styles.label}>Date</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#bdc3c7"
-              value={date}
-              onChangeText={setDate}
-              editable={!loading}
-            />
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.label}>Note (Optional)</Text>
-            <TextInput
-              style={[styles.input, styles.noteInput]}
-              placeholder="Add a note..."
-              placeholderTextColor="#bdc3c7"
-              value={note}
-              onChangeText={setNote}
-              multiline
-              numberOfLines={3}
-              editable={!loading}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-            onPress={handleAddTransaction}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.submitButtonText}>Add Transaction</Text>
-            )}
-          </TouchableOpacity>
         </View>
+
+        <View style={nativeStyles.card}>
+          <Text style={nativeStyles.label}>{t('mobile.transactionForm.details')}</Text>
+          <Field value={merchant} onChangeText={setMerchant} placeholder={t('mobile.transactionForm.merchantPlaceholder')} editable={!loading} />
+          {merchantSuggestions.length > 0 ? <View style={styles.suggestionWrap}><Text style={styles.suggestionLabel}>{t('mobile.transactionForm.recentMerchants')}</Text><View style={styles.suggestionRow}>{merchantSuggestions.map((item) => <Pressable key={item} style={styles.suggestionChip} onPress={() => selectMerchant(item)} accessibilityRole="button" accessibilityLabel={`Use ${item} as merchant`}><Text style={styles.suggestionText}>{item}</Text></Pressable>)}</View></View> : null}
+          <Field value={tags} onChangeText={setTags} placeholder={t('mobile.transactionForm.tagsPlaceholder')} editable={!loading} />
+          <Field value={date} onChangeText={setDate} placeholder={t('mobile.transactionForm.datePlaceholder')} editable={!loading} />
+          <TextInput
+            style={[styles.textArea]}
+            placeholder={t('mobile.transactionForm.notePlaceholder')}
+            placeholderTextColor="#94a3b8"
+            value={note}
+            onChangeText={setNote}
+            multiline
+            numberOfLines={4}
+            editable={!loading}
+          />
+        </View>
+
       </ScrollView>
+      <View style={styles.stickyAction}>
+        {feedback ? (
+          <View style={[styles.feedback, feedback.tone === 'error' ? styles.feedbackError : feedback.tone === 'offline' ? styles.feedbackOffline : styles.feedbackSuccess]}>
+            <Ionicons name={feedback.tone === 'error' ? 'alert-circle-outline' : feedback.tone === 'offline' ? 'cloud-upload-outline' : 'checkmark-circle-outline'} size={16} color={feedback.tone === 'error' ? nativeTheme.danger : feedback.tone === 'offline' ? nativeTheme.warning : nativeTheme.success} />
+            <Text style={[styles.feedbackText, feedback.tone === 'error' ? styles.feedbackErrorText : feedback.tone === 'offline' ? styles.feedbackOfflineText : styles.feedbackSuccessText]}>{feedback.message}</Text>
+          </View>
+        ) : null}
+        <Pressable
+          style={[nativeStyles.primaryButton, styles.saveButton, loading && styles.disabledButton]}
+          onPress={handleAddTransaction}
+          disabled={loading}
+          accessibilityRole="button"
+          accessibilityState={{ busy: loading, disabled: loading }}
+        >
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={nativeStyles.primaryButtonText}>{type === 'income' ? t('mobile.transactionForm.saveIncome') : t('mobile.transactionForm.saveExpense')}</Text>}
+        </Pressable>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
+function AccountOption({ label, balance, currency, locale, availableLabel, selected, onPress }: { label: string; balance: number; currency: string; locale: string; availableLabel: string; selected: boolean; onPress: () => void }) {
+  return <Pressable style={[styles.accountOption, selected && styles.accountOptionSelected]} onPress={onPress} accessibilityRole="radio" accessibilityState={{ selected }} accessibilityLabel={`${label}, ${formatMoney(balance, currency, locale)} ${availableLabel}`}><View style={styles.accountCopy}><Text style={styles.accountName}>{label}</Text><Text style={styles.accountBalance}>{formatMoney(balance, currency, locale)} {availableLabel}</Text></View><View style={[styles.radio, selected && styles.radioSelected]}>{selected ? <View style={styles.radioDot} /> : null}</View></Pressable>;
+}
+
+function Field({
+  value,
+  onChangeText,
+  placeholder,
+  editable,
+}: {
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+  editable: boolean;
+}) {
+  return (
+    <View style={[nativeStyles.inputShell, styles.fieldSpacing]}>
+      <TextInput
+        style={nativeStyles.input}
+        placeholder={placeholder}
+        placeholderTextColor="#94a3b8"
+        value={value}
+        onChangeText={onChangeText}
+        editable={editable}
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
+  scrollContent: {
+    paddingBottom: 190,
   },
-  content: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2c3e50',
-    marginBottom: 12,
-  },
-  amountInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  scrollView: { flex: 1 },
+  stickyAction: {
+    position: 'absolute',
+    left: 18,
+    right: 18,
+    bottom: 94,
+    padding: 8,
+    borderRadius: 24,
+    backgroundColor: 'rgba(246,250,248,0.96)',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    borderColor: nativeTheme.border,
   },
-  currencySymbol: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2c3e50',
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#2c3e50',
-  },
-  noteInput: {
-    textAlignVertical: 'top',
-    paddingTop: 12,
-  },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  categoryButton: {
-    flex: 1,
-    minWidth: '30%',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-  },
-  categoryButtonActive: {
-    backgroundColor: '#3498db',
-    borderColor: '#3498db',
-  },
-  categoryButtonText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#7f8c8d',
-  },
-  categoryButtonTextActive: {
-    color: '#fff',
-  },
-  submitButton: {
-    backgroundColor: '#27ae60',
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  emptyState: {
+  saveButton: { minHeight: 58 },
+  feedback: { flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 8 },
+  feedbackSuccess: { backgroundColor: nativeTheme.successSoft },
+  feedbackOffline: { backgroundColor: nativeTheme.warningSoft },
+  feedbackError: { backgroundColor: nativeTheme.dangerSoft },
+  feedbackText: { flex: 1, fontSize: 11, lineHeight: 16, fontWeight: '800' },
+  feedbackSuccessText: { color: '#0c6a49' },
+  feedbackOfflineText: { color: '#7d4c0a' },
+  feedbackErrorText: { color: '#b91c1c' },
+  centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 22,
   },
-  emptyText: {
-    fontSize: 14,
-    color: '#7f8c8d',
+  emptyCard: {
+    width: '100%',
+  },
+  segmented: {
+    flexDirection: 'row',
+    gap: 10,
+    padding: 5,
+    borderRadius: 18,
+    backgroundColor: nativeTheme.surfaceMuted,
+    borderWidth: 1,
+    borderColor: nativeTheme.border,
+  },
+  segment: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentActive: {
+    backgroundColor: nativeTheme.navy,
+  },
+  segmentText: {
+    color: nativeTheme.muted,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  segmentTextActive: {
+    color: '#ffffff',
+  },
+  currencyPrefix: {
+    color: nativeTheme.ink,
+    fontSize: 16,
+    fontWeight: '900',
+    marginRight: 10,
+  },
+  chipGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 9,
+  },
+  accountHint: {
+    color: nativeTheme.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: -3,
+    marginBottom: 12,
+  },
+  accountList: { gap: 8 },
+  accountOption: {
+    minHeight: 60,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: nativeTheme.border,
+    backgroundColor: nativeTheme.surfaceMuted,
+    paddingHorizontal: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  accountOptionSelected: { borderColor: nativeTheme.primary, backgroundColor: '#e5f3ed' },
+  accountCopy: { flex: 1 },
+  accountName: { color: nativeTheme.ink, fontSize: 13, fontWeight: '900' },
+  accountBalance: { color: nativeTheme.muted, fontSize: 11, fontWeight: '700', marginTop: 3 },
+  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#93aaa5', alignItems: 'center', justifyContent: 'center' },
+  radioSelected: { borderColor: nativeTheme.primary },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: nativeTheme.primary },
+  categoryChip: {
+    minWidth: '30%',
+    alignItems: 'center',
+  },
+  fieldSpacing: {
+    marginBottom: 10,
+  },
+  suggestionWrap: { marginTop: -1, marginBottom: 12 },
+  suggestionLabel: { color: nativeTheme.subtle, fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 7 },
+  suggestionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  suggestionChip: { minHeight: 44, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: '#dff1eb', alignItems: 'center', justifyContent: 'center' },
+  suggestionText: { color: nativeTheme.primary, fontSize: 11, fontWeight: '800' },
+  textArea: {
+    minHeight: 104,
+    borderWidth: 1,
+    borderColor: nativeTheme.border,
+    borderRadius: 16,
+    backgroundColor: nativeTheme.surfaceMuted,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    color: nativeTheme.ink,
+    fontSize: 16,
+    textAlignVertical: 'top',
+  },
+  disabledButton: {
+    opacity: 0.65,
   },
 });

@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { BudgetNotificationRecord } from '@/types/index';
 
@@ -19,9 +21,10 @@ type NotificationPreferenceState = {
   fetchInbox: (userId: string) => Promise<void>;
   markInboxItemRead: (notificationId: string) => Promise<void>;
   triggerScheduler: (userId?: string) => Promise<void>;
+  clearData: () => void;
 };
 
-const webStorage = createJSONStorage(() => ({
+const localStorageAdapter = {
   getItem: (name: string) => {
     if (typeof window === 'undefined') return null;
     return window.localStorage.getItem(name);
@@ -34,7 +37,11 @@ const webStorage = createJSONStorage(() => ({
     if (typeof window === 'undefined') return;
     window.localStorage.removeItem(name);
   },
-}));
+};
+
+const notificationStorage = createJSONStorage(() => (
+  Platform.OS === 'web' ? localStorageAdapter : AsyncStorage
+));
 
 export const useNotificationSettingsStore = create<NotificationPreferenceState>()(
   persist(
@@ -76,7 +83,7 @@ export const useNotificationSettingsStore = create<NotificationPreferenceState>(
       },
       syncPreferences: async (userId) => {
         const state = get();
-        await supabase.from('notification_preferences').upsert({
+        const { error } = await supabase.from('notification_preferences').upsert({
           user_id: userId,
           browser_alerts_enabled: state.browserAlertsEnabled,
           overspend_alerts_enabled: state.overspendAlertsEnabled,
@@ -84,6 +91,7 @@ export const useNotificationSettingsStore = create<NotificationPreferenceState>(
           weekly_summary_alerts_enabled: state.weeklySummaryAlertsEnabled,
           updated_at: new Date().toISOString(),
         });
+        if (error) throw error;
       },
       fetchInbox: async (userId) => {
         set({ loading: true });
@@ -103,23 +111,26 @@ export const useNotificationSettingsStore = create<NotificationPreferenceState>(
         }
       },
       markInboxItemRead: async (notificationId) => {
-        await supabase
+        const { error } = await supabase
           .from('budget_notifications')
           .update({ read_at: new Date().toISOString() })
           .eq('id', notificationId);
+        if (error) throw error;
         set((state) => ({
           inbox: state.inbox.filter((item) => item.id !== notificationId),
         }));
       },
+      clearData: () => set({ inbox: [], loading: false }),
       triggerScheduler: async (userId) => {
-        await supabase.functions.invoke('schedule-budget-alerts', {
+        const { error } = await supabase.functions.invoke('schedule-budget-alerts', {
           body: userId ? { userId } : {},
         });
+        if (error) throw error;
       },
     }),
     {
       name: 'budget-it-notification-settings',
-      storage: webStorage,
+      storage: notificationStorage,
       partialize: (state) => ({
         browserAlertsEnabled: state.browserAlertsEnabled,
         overspendAlertsEnabled: state.overspendAlertsEnabled,

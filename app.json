@@ -2,35 +2,42 @@
   "expo": {
     "name": "Budget It",
     "slug": "budget-it",
-    "version": "1.0.0",
+    "version": "1.0.10",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#f6faf8"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTabletMode": true,
-      "bundleIdentifier": "com.budgetit.app"
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kadioko.budgetit"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0a272e"
       },
-      "package": "com.budgetit.app"
+      "package": "com.kadioko.budgetit",
+      "versionCode": 11
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "template": "./web/index.html"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#f6faf8",
+          "imageWidth": 200
+        }
+      ],
+      "expo-status-bar"
     ],
     "scheme": "budgetit",
     "extra": {
