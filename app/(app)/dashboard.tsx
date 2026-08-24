@@ -41,17 +41,22 @@ export default function DashboardScreen() {
   } = useBudgetStore();
   const { inbox, fetchInbox } = useNotificationSettingsStore();
   const [refreshing, setRefreshing] = React.useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = React.useState<Date | null>(null);
 
   const refreshDashboard = async () => {
-    if (!user) return;
+    if (!user || refreshing) return;
     setRefreshing(true);
-    await Promise.all([
-      fetchBudget(user.id),
-      fetchEnvelopes(user.id),
-      fetchTransactions(user.id),
-      fetchInbox(user.id).catch(() => undefined),
-    ]);
-    setRefreshing(false);
+    try {
+      await Promise.all([
+        fetchBudget(user.id),
+        fetchEnvelopes(user.id),
+        fetchTransactions(user.id),
+        fetchInbox(user.id).catch(() => undefined),
+      ]);
+      setLastSyncedAt(new Date());
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   useEffect(() => {
@@ -109,6 +114,11 @@ export default function DashboardScreen() {
   const cyclePercent = monthlyTarget > 0 ? Math.min(100, Math.round((spentCycle / monthlyTarget) * 100)) : 0;
   const safeDaily = cycleDetails ? Math.max(0, (stats?.monthlyRemaining || 0) / cycleDetails.remainingDays) : 0;
   const projectedGap = (stats?.projectedMonthEnd || 0) - monthlyTarget;
+  const syncLabel = refreshing
+    ? 'Refreshing data'
+    : lastSyncedAt
+      ? `Updated ${lastSyncedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+      : 'Tap to refresh';
 
   if (loading && !budget && transactions.length === 0) {
     return (
@@ -178,6 +188,28 @@ export default function DashboardScreen() {
               ? `At this pace, you may go over by ${formatMoney(projectedGap, currency)}.`
               : `You are pacing ${formatMoney(Math.abs(projectedGap), currency)} under target.`}
           </Text>
+
+          <Pressable
+            style={({ pressed }) => [styles.syncButton, pressed && !refreshing && styles.syncButtonPressed]}
+            onPress={refreshDashboard}
+            disabled={refreshing}
+            accessibilityRole="button"
+            accessibilityLabel="Refresh dashboard data"
+            accessibilityHint="Fetches the latest budget, transactions, and alerts"
+          >
+            <View style={styles.syncButtonIcon}>
+              {refreshing ? (
+                <ActivityIndicator size="small" color={nativeTheme.navy} />
+              ) : (
+                <Ionicons name="refresh" size={15} color={nativeTheme.navy} />
+              )}
+            </View>
+            <View>
+              <Text style={styles.syncButtonTitle}>{refreshing ? 'Syncing your budget' : 'Sync pulse'}</Text>
+              <Text style={styles.syncButtonLabel}>{syncLabel}</Text>
+            </View>
+            {!refreshing ? <Ionicons name="chevron-forward" size={15} color="#9edacb" /> : null}
+          </Pressable>
 
           <View style={styles.heroGrid}>
             <View style={styles.heroStat}>
@@ -423,6 +455,42 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '900',
+  },
+  syncButton: {
+    minHeight: 50,
+    marginTop: 16,
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    backgroundColor: 'rgba(141,212,194,0.13)',
+    borderWidth: 1,
+    borderColor: 'rgba(141,212,194,0.28)',
+  },
+  syncButtonPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.985 }],
+  },
+  syncButtonIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: nativeTheme.accent,
+  },
+  syncButtonTitle: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  syncButtonLabel: {
+    color: '#9edacb',
+    fontSize: 10,
+    fontWeight: '800',
+    marginTop: 1,
   },
   quickRow: {
     flexDirection: 'row',
