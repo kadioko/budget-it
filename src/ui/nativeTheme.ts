@@ -202,22 +202,15 @@ export const nativeStyles = StyleSheet.create({
   },
 });
 
-export const formatMoney = (amount: number, currency = 'USD') => {
+export const formatMoney = (amount: number, currency = 'USD', locale = 'en-US') => {
   const safeAmount = Number.isFinite(amount) ? amount : 0;
 
-  if (currency === 'TZS') {
-    return `${safeAmount.toLocaleString('en-US', {
-      maximumFractionDigits: 0,
-      minimumFractionDigits: 0,
-    })} TZS`;
-  }
-
   try {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: ['TZS', 'KES', 'JPY'].includes(currency) ? 0 : undefined,
+      maximumFractionDigits: ['TZS', 'KES', 'JPY'].includes(currency) ? 0 : undefined,
     }).format(safeAmount);
   } catch {
     return `${safeAmount.toFixed(2)} ${currency}`;

@@ -6,10 +6,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { nativeTheme } from '@/ui/nativeTheme';
 import { useAuthStore } from '@/store/auth';
 import { useBudgetStore } from '@/store/budget';
+import { useI18n } from '@/store/language';
 
 export default function AppLayout() {
   const { user } = useAuthStore();
   const { processRecurringTransactions } = useBudgetStore();
+  const { t } = useI18n();
 
   React.useEffect(() => {
     if (user) void processRecurringTransactions(user.id);
@@ -58,40 +60,40 @@ export default function AppLayout() {
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: 'Dashboard',
-          tabBarLabel: 'Dashboard',
+          title: t('mobile.nav.dashboard'),
+          tabBarLabel: t('mobile.nav.dashboard'),
           tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? 'grid' : 'grid-outline'} color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="add-transaction"
         options={{
-          title: 'Add Money Move',
-          tabBarLabel: 'Add',
+          title: t('mobile.transactionForm.title'),
+          tabBarLabel: t('mobile.nav.add'),
           tabBarIcon: ({ focused }) => <AddTabIcon focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="transactions"
         options={{
-          title: 'Transactions',
-          tabBarLabel: 'History',
+          title: t('mobile.transactions.title'),
+          tabBarLabel: t('mobile.nav.history'),
           tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? 'receipt' : 'receipt-outline'} color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="insights"
         options={{
-          title: 'Insights',
-          tabBarLabel: 'Insights',
+          title: t('mobile.nav.insights'),
+          tabBarLabel: t('mobile.nav.insights'),
           tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? 'pulse' : 'pulse-outline'} color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
-          tabBarLabel: 'Settings',
+          title: t('mobile.nav.settings'),
+          tabBarLabel: t('mobile.nav.settings'),
           tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? 'settings' : 'settings-outline'} color={color} focused={focused} />,
         }}
       />

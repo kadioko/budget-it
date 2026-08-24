@@ -69,7 +69,7 @@ export default function TransferFundsScreen() {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={nativeStyles.screen}>
       <View style={nativeStyles.orbTop} />
       <View style={nativeStyles.orbBottom} />
-      <ScrollView contentContainerStyle={[nativeStyles.content, styles.content]} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[nativeStyles.content, styles.content]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={styles.headerRow}>
           <Pressable onPress={() => router.back()} style={styles.backButton} accessibilityLabel="Go back">
             <Ionicons name="arrow-back" size={20} color="#ffffff" />
@@ -115,10 +115,12 @@ export default function TransferFundsScreen() {
           </View>
         </View>
 
-        <Pressable style={[nativeStyles.primaryButton, loading && styles.disabled]} onPress={submitTransfer} disabled={loading}>
+      </ScrollView>
+      <View style={styles.stickyAction}>
+        <Pressable style={[nativeStyles.primaryButton, styles.saveButton, loading && styles.disabled]} onPress={submitTransfer} disabled={loading}>
           {loading ? <ActivityIndicator color="#ffffff" /> : <Text style={nativeStyles.primaryButtonText}>Move money</Text>}
         </Pressable>
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -144,7 +146,7 @@ function AccountPicker({ accounts, selectedId, onSelect, currency }: { accounts:
 }
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: 48 },
+  content: { paddingBottom: 156 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   backButton: { width: 42, height: 42, borderRadius: 14, backgroundColor: nativeTheme.navy, alignItems: 'center', justifyContent: 'center' },
   headerLabel: { color: nativeTheme.primary, fontWeight: '900', letterSpacing: 1, fontSize: 11 },
@@ -161,5 +163,7 @@ const styles = StyleSheet.create({
   swapIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: nativeTheme.accentSoft, alignItems: 'center', justifyContent: 'center' },
   currency: { color: nativeTheme.primary, fontWeight: '900', marginRight: 10 },
   noteLabel: { marginTop: 16 },
+  stickyAction: { position: 'absolute', left: 18, right: 18, bottom: 94, padding: 8, borderRadius: 24, backgroundColor: 'rgba(246,250,248,0.96)', borderWidth: 1, borderColor: nativeTheme.border },
+  saveButton: { minHeight: 58 },
   disabled: { opacity: 0.65 },
 });

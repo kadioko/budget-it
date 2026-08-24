@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,11 +10,13 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/store/auth';
 import { useBudgetStore } from '@/store/budget';
 import { toDateKey } from '@/lib/budget-logic';
 import { useLocalSearchParams } from 'expo-router';
 import { formatMoney, nativeStyles, nativeTheme } from '@/ui/nativeTheme';
+import { useI18n } from '@/store/language';
 
 const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Utilities', 'Other'];
 const INCOME_CATEGORIES = ['Salary', 'Business', 'Investment', 'Gift', 'Other'];
@@ -23,7 +24,8 @@ const INCOME_CATEGORIES = ['Salary', 'Business', 'Investment', 'Gift', 'Other'];
 export default function AddTransactionScreen() {
   const { type: requestedType } = useLocalSearchParams<{ type?: 'expense' | 'income' }>();
   const { user } = useAuthStore();
-  const { budget, envelopes, transactions, addTransaction, fetchEnvelopes, loading } = useBudgetStore();
+  const { budget, envelopes, transactions, addTransaction, fetchEnvelopes, loading, isOffline } = useBudgetStore();
+  const { language, t } = useI18n();
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('Food');
@@ -32,6 +34,8 @@ export default function AddTransactionScreen() {
   const [note, setNote] = useState('');
   const [date, setDate] = useState(toDateKey(new Date()));
   const [accountId, setAccountId] = useState<'bank' | string>('bank');
+  const [feedback, setFeedback] = useState<{ tone: 'success' | 'offline' | 'error'; message: string } | null>(null);
+  const locale = language === 'sw' ? 'sw-TZ' : 'en-US';
 
   const categories = type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
   const merchantSuggestions = useMemo(() => Array.from(new Set(transactions.map((item) => item.merchant?.trim()).filter((item): item is string => Boolean(item)))).slice(0, 4), [transactions]);
@@ -66,16 +70,17 @@ export default function AddTransactionScreen() {
   const handleAddTransaction = async () => {
     const parsedAmount = parseFloat(amount);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      Alert.alert('Amount needed', 'Please enter a valid amount.');
+      setFeedback({ tone: 'error', message: t('mobile.transactionForm.validAmount') });
       return;
     }
 
     if (!user || !budget) {
-      Alert.alert('Budget not ready', 'Please set up your budget first.');
+      setFeedback({ tone: 'error', message: t('mobile.transactionForm.setupBudget') });
       return;
     }
 
     try {
+      setFeedback(null);
       const signedAmount = type === 'income' ? -Math.abs(parsedAmount) : Math.abs(parsedAmount);
       const tagList = tags
         .split(',')
@@ -94,7 +99,12 @@ export default function AddTransactionScreen() {
           tags: tagList,
         }
       );
-      Alert.alert('Saved', type === 'income' ? 'Income logged.' : 'Expense added.');
+      setFeedback({
+        tone: isOffline ? 'offline' : 'success',
+        message: isOffline
+          ? t('mobile.transactionForm.savedOffline')
+          : type === 'income' ? t('mobile.transactionForm.incomeLogged') : t('mobile.transactionForm.expenseAdded'),
+      });
       setAmount('');
       setMerchant('');
       setTags('');
@@ -102,7 +112,7 @@ export default function AddTransactionScreen() {
       setDate(toDateKey(new Date()));
       setAccountId('bank');
     } catch (err: any) {
-      Alert.alert('Could not save', err.message || 'Failed to add transaction.');
+      setFeedback({ tone: 'error', message: err.message || t('mobile.transactionForm.saveFailed') });
     }
   };
 
@@ -112,8 +122,8 @@ export default function AddTransactionScreen() {
         <View style={nativeStyles.orbTop} />
         <View style={nativeStyles.orbBottom} />
         <View style={[nativeStyles.card, styles.emptyCard]}>
-          <Text style={nativeStyles.emptyTitle}>Budget first</Text>
-          <Text style={nativeStyles.emptyText}>Set your targets in Settings, then come back to log spending.</Text>
+          <Text style={nativeStyles.emptyTitle}>{t('mobile.transactionForm.budgetFirst')}</Text>
+          <Text style={nativeStyles.emptyText}>{t('mobile.transactionForm.budgetFirstBody')}</Text>
         </View>
       </View>
     );
@@ -128,13 +138,13 @@ export default function AddTransactionScreen() {
       <View style={nativeStyles.orbBottom} />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={[nativeStyles.content, styles.scrollContent]} keyboardShouldPersistTaps="handled">
         <View style={nativeStyles.heroCard}>
-          <Text style={nativeStyles.heroEyebrow}>Quick Capture</Text>
-          <Text style={nativeStyles.heroTitle}>Add a money move</Text>
-          <Text style={nativeStyles.heroText}>Log the amount, merchant, tags, and category while the detail is still fresh.</Text>
+          <Text style={nativeStyles.heroEyebrow}>{t('mobile.transactionForm.eyebrow')}</Text>
+          <Text style={nativeStyles.heroTitle}>{t('mobile.transactionForm.title')}</Text>
+          <Text style={nativeStyles.heroText}>{t('mobile.transactionForm.subtitle')}</Text>
         </View>
 
         <View style={nativeStyles.card}>
-          <Text style={nativeStyles.label}>Type</Text>
+          <Text style={nativeStyles.label}>{t('mobile.transactionForm.type')}</Text>
           <View style={styles.segmented}>
             {(['expense', 'income'] as const).map((item) => {
               const active = type === item;
@@ -146,7 +156,7 @@ export default function AddTransactionScreen() {
                   disabled={loading}
                 >
                   <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
-                    {item === 'expense' ? 'Expense' : 'Income'}
+                    {item === 'expense' ? t('mobile.transactionForm.expense') : t('mobile.transactionForm.income')}
                   </Text>
                 </Pressable>
               );
@@ -155,16 +165,16 @@ export default function AddTransactionScreen() {
         </View>
 
         <View style={nativeStyles.card}>
-          <Text style={nativeStyles.label}>Money space</Text>
-          <Text style={styles.accountHint}>Choose where this money should be recorded.</Text>
+          <Text style={nativeStyles.label}>{t('mobile.transactionForm.moneySpace')}</Text>
+          <Text style={styles.accountHint}>{t('mobile.transactionForm.moneySpaceHint')}</Text>
           <View style={styles.accountList}>
-            <AccountOption label="Bank balance" balance={budget.bank_balance} currency={budget.currency} selected={accountId === 'bank'} onPress={() => setAccountId('bank')} />
-            {envelopes.map((envelope) => <AccountOption key={envelope.id} label={envelope.name} balance={envelope.balance} currency={budget.currency} selected={accountId === envelope.id} onPress={() => setAccountId(envelope.id)} />)}
+            <AccountOption label={t('mobile.transactionForm.bankBalance')} balance={budget.bank_balance} currency={budget.currency} locale={locale} availableLabel={t('mobile.transactionForm.available')} selected={accountId === 'bank'} onPress={() => setAccountId('bank')} />
+            {envelopes.map((envelope) => <AccountOption key={envelope.id} label={envelope.name} balance={envelope.balance} currency={budget.currency} locale={locale} availableLabel={t('mobile.transactionForm.available')} selected={accountId === envelope.id} onPress={() => setAccountId(envelope.id)} />)}
           </View>
         </View>
 
         <View style={nativeStyles.card}>
-          <Text style={nativeStyles.label}>Amount</Text>
+          <Text style={nativeStyles.label}>{t('mobile.transactionForm.amount')}</Text>
           <View style={nativeStyles.inputShell}>
             <Text style={styles.currencyPrefix}>{budget.currency}</Text>
             <TextInput
@@ -180,7 +190,7 @@ export default function AddTransactionScreen() {
         </View>
 
         <View style={nativeStyles.card}>
-          <Text style={nativeStyles.label}>Category</Text>
+          <Text style={nativeStyles.label}>{t('mobile.transactionForm.category')}</Text>
           <View style={styles.chipGrid}>
             {categories.map((cat) => {
               const active = category === cat;
@@ -199,14 +209,14 @@ export default function AddTransactionScreen() {
         </View>
 
         <View style={nativeStyles.card}>
-          <Text style={nativeStyles.label}>Details</Text>
-          <Field value={merchant} onChangeText={setMerchant} placeholder="Merchant, person, or source" editable={!loading} />
-          {merchantSuggestions.length > 0 ? <View style={styles.suggestionWrap}><Text style={styles.suggestionLabel}>Recent merchants</Text><View style={styles.suggestionRow}>{merchantSuggestions.map((item) => <Pressable key={item} style={styles.suggestionChip} onPress={() => selectMerchant(item)}><Text style={styles.suggestionText}>{item}</Text></Pressable>)}</View></View> : null}
-          <Field value={tags} onChangeText={setTags} placeholder="Tags separated by commas" editable={!loading} />
-          <Field value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" editable={!loading} />
+          <Text style={nativeStyles.label}>{t('mobile.transactionForm.details')}</Text>
+          <Field value={merchant} onChangeText={setMerchant} placeholder={t('mobile.transactionForm.merchantPlaceholder')} editable={!loading} />
+          {merchantSuggestions.length > 0 ? <View style={styles.suggestionWrap}><Text style={styles.suggestionLabel}>{t('mobile.transactionForm.recentMerchants')}</Text><View style={styles.suggestionRow}>{merchantSuggestions.map((item) => <Pressable key={item} style={styles.suggestionChip} onPress={() => selectMerchant(item)}><Text style={styles.suggestionText}>{item}</Text></Pressable>)}</View></View> : null}
+          <Field value={tags} onChangeText={setTags} placeholder={t('mobile.transactionForm.tagsPlaceholder')} editable={!loading} />
+          <Field value={date} onChangeText={setDate} placeholder={t('mobile.transactionForm.datePlaceholder')} editable={!loading} />
           <TextInput
             style={[styles.textArea]}
-            placeholder="Add a note..."
+            placeholder={t('mobile.transactionForm.notePlaceholder')}
             placeholderTextColor="#94a3b8"
             value={note}
             onChangeText={setNote}
@@ -218,20 +228,26 @@ export default function AddTransactionScreen() {
 
       </ScrollView>
       <View style={styles.stickyAction}>
+        {feedback ? (
+          <View style={[styles.feedback, feedback.tone === 'error' ? styles.feedbackError : feedback.tone === 'offline' ? styles.feedbackOffline : styles.feedbackSuccess]}>
+            <Ionicons name={feedback.tone === 'error' ? 'alert-circle-outline' : feedback.tone === 'offline' ? 'cloud-upload-outline' : 'checkmark-circle-outline'} size={16} color={feedback.tone === 'error' ? nativeTheme.danger : feedback.tone === 'offline' ? nativeTheme.warning : nativeTheme.success} />
+            <Text style={[styles.feedbackText, feedback.tone === 'error' ? styles.feedbackErrorText : feedback.tone === 'offline' ? styles.feedbackOfflineText : styles.feedbackSuccessText]}>{feedback.message}</Text>
+          </View>
+        ) : null}
         <Pressable
           style={[nativeStyles.primaryButton, styles.saveButton, loading && styles.disabledButton]}
           onPress={handleAddTransaction}
           disabled={loading}
         >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={nativeStyles.primaryButtonText}>Save {type === 'income' ? 'Income' : 'Expense'}</Text>}
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={nativeStyles.primaryButtonText}>{type === 'income' ? t('mobile.transactionForm.saveIncome') : t('mobile.transactionForm.saveExpense')}</Text>}
         </Pressable>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-function AccountOption({ label, balance, currency, selected, onPress }: { label: string; balance: number; currency: string; selected: boolean; onPress: () => void }) {
-  return <Pressable style={[styles.accountOption, selected && styles.accountOptionSelected]} onPress={onPress}><View style={styles.accountCopy}><Text style={styles.accountName}>{label}</Text><Text style={styles.accountBalance}>{formatMoney(balance, currency)} available</Text></View><View style={[styles.radio, selected && styles.radioSelected]}>{selected ? <View style={styles.radioDot} /> : null}</View></Pressable>;
+function AccountOption({ label, balance, currency, locale, availableLabel, selected, onPress }: { label: string; balance: number; currency: string; locale: string; availableLabel: string; selected: boolean; onPress: () => void }) {
+  return <Pressable style={[styles.accountOption, selected && styles.accountOptionSelected]} onPress={onPress}><View style={styles.accountCopy}><Text style={styles.accountName}>{label}</Text><Text style={styles.accountBalance}>{formatMoney(balance, currency, locale)} {availableLabel}</Text></View><View style={[styles.radio, selected && styles.radioSelected]}>{selected ? <View style={styles.radioDot} /> : null}</View></Pressable>;
 }
 
 function Field({
@@ -276,6 +292,14 @@ const styles = StyleSheet.create({
     borderColor: nativeTheme.border,
   },
   saveButton: { minHeight: 58 },
+  feedback: { flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 8 },
+  feedbackSuccess: { backgroundColor: nativeTheme.successSoft },
+  feedbackOffline: { backgroundColor: nativeTheme.warningSoft },
+  feedbackError: { backgroundColor: nativeTheme.dangerSoft },
+  feedbackText: { flex: 1, fontSize: 11, lineHeight: 16, fontWeight: '800' },
+  feedbackSuccessText: { color: '#0c6a49' },
+  feedbackOfflineText: { color: '#7d4c0a' },
+  feedbackErrorText: { color: '#b91c1c' },
   centered: {
     flex: 1,
     justifyContent: 'center',

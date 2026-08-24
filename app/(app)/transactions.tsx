@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Pressable,
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,24 +14,33 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { useBudgetStore } from '@/store/budget';
 import { Transaction } from '@/types/index';
-import { fromDateKey } from '@/lib/budget-logic';
+import { fromDateKey, toDateKey } from '@/lib/budget-logic';
 import { categoryInitial, formatMoney, nativeStyles, nativeTheme } from '@/ui/nativeTheme';
+import { useI18n } from '@/store/language';
 
 const FILTERS = ['All', 'Expenses', 'Income', 'Transfers'] as const;
 type Filter = typeof FILTERS[number];
+type DateFilter = 'all' | '7d' | 'month';
 
 export default function TransactionsScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { transactions, loading, budget, error, isOffline, deleteTransaction, fetchTransactions } = useBudgetStore();
+  const { language, t } = useI18n();
   const [filter, setFilter] = useState<Filter>('All');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const locale = language === 'sw' ? 'sw-TZ' : 'en-US';
 
   const refreshTransactions = async () => {
-    if (!user) return;
+    if (!user || refreshing) return;
     setRefreshing(true);
-    await fetchTransactions(user.id);
-    setRefreshing(false);
+    try {
+      await fetchTransactions(user.id);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   useEffect(() => {
@@ -42,13 +51,28 @@ export default function TransactionsScreen() {
   }, [user]);
 
   const filteredTransactions = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const today = new Date();
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastSevenDays = new Date(today);
+    lastSevenDays.setDate(today.getDate() - 6);
+
     return transactions.filter((item) => {
-      if (filter === 'All') return true;
-      if (filter === 'Transfers') return item.kind === 'transfer';
-      if (filter === 'Income') return item.amount < 0 && item.kind !== 'transfer';
-      return item.amount > 0 && item.kind !== 'transfer';
+      const matchesType = filter === 'All'
+        || (filter === 'Transfers' && item.kind === 'transfer')
+        || (filter === 'Income' && item.amount < 0 && item.kind !== 'transfer')
+        || (filter === 'Expenses' && item.amount > 0 && item.kind !== 'transfer');
+      const matchesDate = dateFilter === 'all'
+        || (dateFilter === '7d' && item.date >= toDateKey(lastSevenDays))
+        || (dateFilter === 'month' && item.date >= toDateKey(monthStart));
+      const searchableText = [item.category, item.merchant, item.note, ...(item.tags || [])]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return matchesType && matchesDate && (!normalizedQuery || searchableText.includes(normalizedQuery));
     });
-  }, [filter, transactions]);
+  }, [dateFilter, filter, searchQuery, transactions]);
 
   const transactionSummary = useMemo(() => ({
     expenses: transactions.filter((item) => item.amount > 0 && item.kind !== 'transfer').length,
@@ -56,13 +80,25 @@ export default function TransactionsScreen() {
   }), [transactions]);
 
   const handleDelete = (id: string) => {
-    Alert.alert('Delete transaction', 'This will remove the transaction and update balances.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('mobile.transactions.delete'), t('mobile.transactions.deleteBody'), [
+      { text: t('mobile.transactions.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
-        onPress: () => deleteTransaction(id),
+        text: t('mobile.transactions.delete'),
+        onPress: () => {
+          void deleteTransaction(id).catch(() => {
+            Alert.alert(t('mobile.transactions.delete'), t('mobile.transactions.deleteFailed'));
+          });
+        },
         style: 'destructive',
       },
+    ]);
+  };
+
+  const handleTransactionAction = (item: Transaction) => {
+    Alert.alert(t('mobile.transactions.actions'), item.category, [
+      { text: t('mobile.transactions.cancel'), style: 'cancel' },
+      { text: t('mobile.transactions.edit'), onPress: () => router.push({ pathname: '/(app)/edit-transaction', params: { id: item.id } }) },
+      { text: t('mobile.transactions.delete'), style: 'destructive', onPress: () => handleDelete(item.id) },
     ]);
   };
 
@@ -70,8 +106,10 @@ export default function TransactionsScreen() {
     <TransactionCard
       item={item}
       currency={budget?.currency || 'USD'}
-      onDelete={() => handleDelete(item.id)}
-      onEdit={() => router.push({ pathname: '/(app)/edit-transaction', params: { id: item.id } })}
+      locale={locale}
+      transferLabel={t('mobile.transactions.transfer')}
+      recurringLabel={t('mobile.transactions.recurring')}
+      onManage={() => handleTransactionAction(item)}
     />
   );
 
@@ -80,8 +118,7 @@ export default function TransactionsScreen() {
       <View style={[nativeStyles.screen, styles.centered]}>
         <View style={nativeStyles.orbTop} />
         <View style={nativeStyles.orbBottom} />
-        <ActivityIndicator size="large" color={nativeTheme.primary} />
-        <Text style={styles.loadingText}>Loading transactions...</Text>
+        <TransactionSkeleton label={t('mobile.transactions.loading')} />
       </View>
     );
   }
@@ -101,22 +138,35 @@ export default function TransactionsScreen() {
           <>
             {isOffline ? (
               <View style={styles.connectionBanner}>
-                <Text style={styles.connectionBannerText}>Offline mode: showing your last saved transactions.</Text>
+                <Text style={styles.connectionBannerText}>{t('mobile.transactions.offline')}</Text>
               </View>
             ) : null}
             <View style={nativeStyles.heroCard}>
-              <Text style={nativeStyles.heroEyebrow}>Money Trail</Text>
-              <Text style={nativeStyles.heroTitle}>Transactions</Text>
+              <Text style={nativeStyles.heroEyebrow}>{t('mobile.transactions.eyebrow')}</Text>
+              <Text style={nativeStyles.heroTitle}>{t('mobile.transactions.title')}</Text>
               <Text style={nativeStyles.heroText}>
-                Review spending, income, transfers, merchants, and notes in one clean feed.
+                {t('mobile.transactions.subtitle')}
               </Text>
               <View style={styles.summaryRow}>
-                <View style={styles.summaryItem}><Text style={styles.summaryValue}>{transactionSummary.expenses}</Text><Text style={styles.summaryLabel}>Expenses</Text></View>
+                <View style={styles.summaryItem}><Text style={styles.summaryValue}>{transactionSummary.expenses}</Text><Text style={styles.summaryLabel}>{t('mobile.transactions.expenses')}</Text></View>
                 <View style={styles.summaryDivider} />
-                <View style={styles.summaryItem}><Text style={styles.summaryValue}>{transactionSummary.income}</Text><Text style={styles.summaryLabel}>Income entries</Text></View>
+                <View style={styles.summaryItem}><Text style={styles.summaryValue}>{transactionSummary.income}</Text><Text style={styles.summaryLabel}>{t('mobile.transactions.incomeEntries')}</Text></View>
                 <View style={styles.summaryDivider} />
-                <View style={styles.summaryItem}><Text style={styles.summaryValue}>{transactions.filter((item) => item.kind === 'transfer').length}</Text><Text style={styles.summaryLabel}>Transfers</Text></View>
+                <View style={styles.summaryItem}><Text style={styles.summaryValue}>{transactions.filter((item) => item.kind === 'transfer').length}</Text><Text style={styles.summaryLabel}>{t('mobile.transactions.transfers')}</Text></View>
               </View>
+            </View>
+
+            <View style={styles.searchShell}>
+              <Ionicons name="search-outline" size={18} color={nativeTheme.subtle} />
+              <TextInput
+                style={styles.searchInput}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder={t('mobile.transactions.searchPlaceholder')}
+                placeholderTextColor="#7d9592"
+                returnKeyType="search"
+              />
+              {searchQuery ? <Pressable onPress={() => setSearchQuery('')} hitSlop={8} accessibilityLabel="Clear transaction search"><Ionicons name="close-circle" size={18} color={nativeTheme.subtle} /></Pressable> : null}
             </View>
 
             <View style={styles.filterRow}>
@@ -128,24 +178,31 @@ export default function TransactionsScreen() {
                     style={[nativeStyles.chip, styles.filterChip, active && nativeStyles.chipActive]}
                     onPress={() => setFilter(item)}
                   >
-                    <Text style={[nativeStyles.chipText, active && nativeStyles.chipTextActive]}>{item}</Text>
+                    <Text style={[nativeStyles.chipText, active && nativeStyles.chipTextActive]}>{item === 'All' ? t('mobile.transactions.all') : item === 'Expenses' ? t('mobile.transactions.expenses') : item === 'Income' ? t('mobile.transactions.income') : t('mobile.transactions.transfers')}</Text>
                   </Pressable>
                 );
+              })}
+            </View>
+            <View style={[styles.filterRow, styles.dateFilterRow]}>
+              {(['all', '7d', 'month'] as const).map((item) => {
+                const active = dateFilter === item;
+                const label = item === 'all' ? t('mobile.transactions.allTime') : item === '7d' ? t('mobile.transactions.lastSevenDays') : t('mobile.transactions.thisMonth');
+                return <Pressable key={item} style={[styles.dateChip, active && styles.dateChipActive]} onPress={() => setDateFilter(item)}><Text style={[styles.dateChipText, active && styles.dateChipTextActive]}>{label}</Text></Pressable>;
               })}
             </View>
           </>
         }
         ListEmptyComponent={
           <View style={[nativeStyles.card, styles.emptyCard]}>
-            <Text style={nativeStyles.emptyTitle}>{error ? 'Could not load transactions' : 'No transactions yet'}</Text>
+            <Text style={nativeStyles.emptyTitle}>{error && !transactions.length ? t('mobile.transactions.loadError') : transactions.length ? t('mobile.transactions.noResults') : t('mobile.transactions.empty')}</Text>
             <Text style={nativeStyles.emptyText}>
-              {error
-                ? 'Check your connection and pull down to try again.'
-                : 'Add your first expense or income entry and it will appear here with merchant and tag details.'}
+              {error && !transactions.length
+              ? t('mobile.transactions.offline')
+                : transactions.length ? t('mobile.transactions.noResultsBody') : t('mobile.transactions.emptyBody')}
             </Text>
-            {error ? (
+            {error && !transactions.length ? (
               <Pressable style={[nativeStyles.primaryButton, styles.retryButton]} onPress={refreshTransactions}>
-                <Text style={nativeStyles.primaryButtonText}>Try Again</Text>
+                <Text style={nativeStyles.primaryButtonText}>{t('mobile.transactions.retry')}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -155,16 +212,31 @@ export default function TransactionsScreen() {
   );
 }
 
+function TransactionSkeleton({ label }: { label: string }) {
+  return (
+    <View style={styles.skeletonWrap} accessibilityLabel={label}>
+      <View style={[styles.skeletonBlock, styles.skeletonHero]} />
+      <View style={[styles.skeletonBlock, styles.skeletonCard]} />
+      <View style={[styles.skeletonBlock, styles.skeletonCard]} />
+      <Text style={styles.loadingText}>{label}</Text>
+    </View>
+  );
+}
+
 function TransactionCard({
   item,
   currency,
-  onDelete,
-  onEdit,
+  locale,
+  transferLabel,
+  recurringLabel,
+  onManage,
 }: {
   item: Transaction;
   currency: string;
-  onDelete: () => void;
-  onEdit: () => void;
+  locale: string;
+  transferLabel: string;
+  recurringLabel: string;
+  onManage: () => void;
 }) {
   const isIncome = item.amount < 0;
   const isTransfer = item.kind === 'transfer';
@@ -185,34 +257,23 @@ function TransactionCard({
 
         <View style={styles.transactionInfo}>
           <View style={styles.titleRow}>
-            <Text style={styles.transactionCategory}>{isTransfer ? 'Transfer' : item.category}</Text>
+            <Text style={styles.transactionCategory}>{isTransfer ? transferLabel : item.category}</Text>
             {item.is_recurring ? (
               <View style={styles.recurringPill}>
-                <Text style={styles.recurringText}>Recurring</Text>
+                <Text style={styles.recurringText}>{recurringLabel}</Text>
               </View>
             ) : null}
           </View>
-          <Text style={styles.transactionDate}>{(fromDateKey(item.date) ?? new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
+          <Text style={styles.transactionDate}>{(fromDateKey(item.date) ?? new Date()).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
           {subtitle ? <Text style={styles.transactionNote} numberOfLines={2}>{subtitle}</Text> : null}
         </View>
 
         <Text style={[styles.transactionAmount, { color }]}>
-          {sign}{formatMoney(Math.abs(item.amount), currency)}
+          {sign}{formatMoney(Math.abs(item.amount), currency, locale)}
         </Text>
       </View>
 
-      {!isTransfer ? (
-        <View style={styles.actionRow}>
-          <Pressable onPress={onEdit} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={`Edit ${item.category} transaction`}>
-            <Ionicons name="create-outline" size={14} color={nativeTheme.primary} />
-            <Text style={styles.editButtonText}>Edit</Text>
-          </Pressable>
-          <Pressable onPress={onDelete} style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={`Delete ${item.category} transaction`}>
-            <Ionicons name="trash-outline" size={14} color={nativeTheme.danger} />
-            <Text style={styles.deleteButtonText}>Delete</Text>
-          </Pressable>
-        </View>
-      ) : null}
+      {!isTransfer ? <Pressable onPress={onManage} style={styles.actionButton} accessibilityRole="button" accessibilityLabel={`Manage ${item.category} transaction`}><Ionicons name="ellipsis-horizontal" size={18} color={nativeTheme.primary} /></Pressable> : null}
     </View>
   );
 }
@@ -239,6 +300,13 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 14,
   },
+  dateFilterRow: { marginTop: -5 },
+  searchShell: { minHeight: 50, flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 16, paddingHorizontal: 13, marginBottom: 10, backgroundColor: nativeTheme.surface, borderWidth: 1, borderColor: nativeTheme.border },
+  searchInput: { flex: 1, color: nativeTheme.ink, fontSize: 13, fontWeight: '700', paddingVertical: 10 },
+  dateChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: nativeTheme.surfaceMuted, borderWidth: 1, borderColor: nativeTheme.border },
+  dateChipActive: { backgroundColor: '#dff1eb', borderColor: nativeTheme.primary },
+  dateChipText: { color: nativeTheme.muted, fontSize: 11, fontWeight: '800' },
+  dateChipTextActive: { color: nativeTheme.primary },
   summaryRow: {
     flexDirection: 'row',
     marginTop: 20,
@@ -349,49 +417,12 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textTransform: 'uppercase',
   },
-  deleteButton: {
-    minHeight: 42,
-    marginTop: 12,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 13,
-    backgroundColor: nativeTheme.dangerSoft,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
-  },
-  editButton: {
-    minHeight: 42,
-    marginTop: 12,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 13,
-    backgroundColor: nativeTheme.surfaceMuted,
-    borderWidth: 1,
-    borderColor: nativeTheme.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  editButtonText: {
-    color: nativeTheme.primary,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  deleteButtonText: {
-    color: nativeTheme.danger,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
+  actionButton: { position: 'absolute', right: 11, bottom: 10, width: 34, height: 30, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: nativeTheme.surfaceMuted, borderWidth: 1, borderColor: nativeTheme.border },
   emptyCard: {
     alignItems: 'center',
   },
+  skeletonWrap: { width: '100%', gap: 12 },
+  skeletonBlock: { backgroundColor: '#dcebe6', borderRadius: 20 },
+  skeletonHero: { height: 190 },
+  skeletonCard: { height: 96 },
 });

@@ -16,16 +16,12 @@ import { getBudgetCycleWindow, toDateKey } from '@/lib/budget-logic';
 import { Transaction } from '@/types/index';
 import { categoryInitial, formatMoney, nativeStyles, nativeTheme } from '@/ui/nativeTheme';
 import { useNotificationSettingsStore } from '@/store/notifications';
-
-const todayLabel = new Date().toLocaleDateString('en-US', {
-  weekday: 'long',
-  month: 'short',
-  day: 'numeric',
-});
+import { useI18n } from '@/store/language';
 
 export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const { language, t, tr } = useI18n();
   const {
     budget,
     categoryBudgets,
@@ -42,6 +38,12 @@ export default function DashboardScreen() {
   const { inbox, fetchInbox } = useNotificationSettingsStore();
   const [refreshing, setRefreshing] = React.useState(false);
   const [lastSyncedAt, setLastSyncedAt] = React.useState<Date | null>(null);
+  const locale = language === 'sw' ? 'sw-TZ' : 'en-US';
+  const todayLabel = new Date().toLocaleDateString(locale, {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  });
 
   const refreshDashboard = async () => {
     if (!user || refreshing) return;
@@ -71,10 +73,10 @@ export default function DashboardScreen() {
     const { monthStart, monthEnd } = getBudgetCycleWindow(new Date(), budget.month_start_day);
     const remainingDays = Math.max(1, Math.ceil((monthEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
     return {
-      label: `${monthStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${monthEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+      label: `${monthStart.toLocaleDateString(locale, { month: 'short', day: 'numeric' })} - ${monthEnd.toLocaleDateString(locale, { month: 'short', day: 'numeric' })}`,
       remainingDays,
     };
-  }, [budget]);
+  }, [budget, locale]);
 
   const categoryRows = useMemo(() => {
     if (!budget) return [];
@@ -115,18 +117,17 @@ export default function DashboardScreen() {
   const safeDaily = cycleDetails ? Math.max(0, (stats?.monthlyRemaining || 0) / cycleDetails.remainingDays) : 0;
   const projectedGap = (stats?.projectedMonthEnd || 0) - monthlyTarget;
   const syncLabel = refreshing
-    ? 'Refreshing data'
+    ? t('mobile.dashboard.refreshing')
     : lastSyncedAt
-      ? `Updated ${lastSyncedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
-      : 'Tap to refresh';
+      ? tr('mobile.dashboard.updatedAt', { time: lastSyncedAt.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' }) })
+      : t('mobile.dashboard.tapToRefresh');
 
   if (loading && !budget && transactions.length === 0) {
     return (
       <View style={[nativeStyles.screen, styles.centered]}>
         <View style={nativeStyles.orbTop} />
         <View style={nativeStyles.orbBottom} />
-        <ActivityIndicator size="large" color={nativeTheme.primary} />
-        <Text style={styles.loadingText}>Loading your money dashboard...</Text>
+        <DashboardSkeleton label={t('mobile.dashboard.loading')} />
       </View>
     );
   }
@@ -137,17 +138,27 @@ export default function DashboardScreen() {
         <View style={nativeStyles.orbTop} />
         <View style={nativeStyles.orbBottom} />
         <View style={[nativeStyles.card, styles.emptyCard]}>
-          <Text style={nativeStyles.emptyTitle}>{error ? 'Could not load your budget' : 'Set your first budget'}</Text>
+          <Text style={nativeStyles.emptyTitle}>{error ? t('mobile.dashboard.loadError') : t('mobile.dashboard.setupTitle')}</Text>
           <Text style={nativeStyles.emptyText}>
             {error
-              ? 'Check your connection, then try again. Your saved data will remain safe.'
-              : 'Add your daily and monthly targets so Budget It can show pacing, safe spend, and alerts.'}
+              ? t('mobile.dashboard.offline')
+              : t('mobile.dashboard.setupBody')}
           </Text>
+          {!error ? (
+            <View style={styles.setupSteps}>
+              {[t('mobile.dashboard.setupStepOne'), t('mobile.dashboard.setupStepTwo'), t('mobile.dashboard.setupStepThree')].map((step, index) => (
+                <View key={step} style={styles.setupStep}>
+                  <View style={styles.setupStepNumber}><Text style={styles.setupStepNumberText}>{index + 1}</Text></View>
+                  <Text style={styles.setupStepText}>{step}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
           <Pressable
             style={[nativeStyles.primaryButton, styles.emptyButton]}
             onPress={error ? refreshDashboard : () => router.push('/(app)/settings')}
           >
-            <Text style={nativeStyles.primaryButtonText}>{error ? 'Try Again' : 'Open Settings'}</Text>
+            <Text style={nativeStyles.primaryButtonText}>{error ? t('mobile.dashboard.tryAgain') : t('mobile.dashboard.openSetup')}</Text>
           </Pressable>
         </View>
       </View>
@@ -166,7 +177,7 @@ export default function DashboardScreen() {
         {isOffline ? (
           <View style={styles.connectionBanner}>
             <Ionicons name="cloud-offline-outline" size={16} color={nativeTheme.warning} />
-            <Text style={styles.connectionBannerText}>You are offline. Showing your last saved budget.</Text>
+            <Text style={styles.connectionBannerText}>{t('mobile.dashboard.offline')}</Text>
           </View>
         ) : null}
         <View style={nativeStyles.heroCard}>
@@ -182,11 +193,11 @@ export default function DashboardScreen() {
               </Pressable>
             </View>
           </View>
-          <Text style={nativeStyles.heroTitle}>Your budget pulse</Text>
+          <Text style={nativeStyles.heroTitle}>{t('mobile.dashboard.title')}</Text>
           <Text style={nativeStyles.heroText}>
             {projectedGap > 0
-              ? `At this pace, you may go over by ${formatMoney(projectedGap, currency)}.`
-              : `You are pacing ${formatMoney(Math.abs(projectedGap), currency)} under target.`}
+              ? tr('mobile.dashboard.overPace', { amount: formatMoney(projectedGap, currency, locale) })
+              : tr('mobile.dashboard.underPace', { amount: formatMoney(Math.abs(projectedGap), currency, locale) })}
           </Text>
 
           <Pressable
@@ -205,7 +216,7 @@ export default function DashboardScreen() {
               )}
             </View>
             <View>
-              <Text style={styles.syncButtonTitle}>{refreshing ? 'Syncing your budget' : 'Sync pulse'}</Text>
+              <Text style={styles.syncButtonTitle}>{refreshing ? t('mobile.dashboard.syncing') : t('mobile.dashboard.syncPulse')}</Text>
               <Text style={styles.syncButtonLabel}>{syncLabel}</Text>
             </View>
             {!refreshing ? <Ionicons name="chevron-forward" size={15} color="#9edacb" /> : null}
@@ -213,48 +224,48 @@ export default function DashboardScreen() {
 
           <View style={styles.heroGrid}>
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatLabel}>Available</Text>
-              <Text style={styles.heroStatValue}>{formatMoney(totalBalance, currency)}</Text>
+              <Text style={styles.heroStatLabel}>{t('mobile.dashboard.available')}</Text>
+              <Text style={styles.heroStatValue}>{formatMoney(totalBalance, currency, locale)}</Text>
             </View>
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatLabel}>Safe today</Text>
-              <Text style={styles.heroStatValue}>{formatMoney(safeDaily, currency)}</Text>
+              <Text style={styles.heroStatLabel}>{t('mobile.dashboard.safeToday')}</Text>
+              <Text style={styles.heroStatValue}>{formatMoney(safeDaily, currency, locale)}</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.quickRow}>
-          <QuickAction label="Add expense" icon="add" tone="primary" onPress={() => router.push({ pathname: '/(app)/add-transaction', params: { type: 'expense' } })} />
-          <QuickAction label="Log income" icon="trending-up" tone="success" onPress={() => router.push({ pathname: '/(app)/add-transaction', params: { type: 'income' } })} />
-          <QuickAction label="Move money" icon="swap-horizontal" tone="accent" onPress={() => router.push('/(app)/transfer-funds')} />
+          <QuickAction label={t('mobile.dashboard.addExpense')} icon="add" tone="primary" onPress={() => router.push({ pathname: '/(app)/add-transaction', params: { type: 'expense' } })} />
+          <QuickAction label={t('mobile.dashboard.logIncome')} icon="trending-up" tone="success" onPress={() => router.push({ pathname: '/(app)/add-transaction', params: { type: 'income' } })} />
+          <QuickAction label={t('mobile.dashboard.moveMoney')} icon="swap-horizontal" tone="accent" onPress={() => router.push('/(app)/transfer-funds')} />
         </View>
 
         <View style={styles.metricRow}>
           <MetricCard
-            title="Today"
-            value={formatMoney(spentToday, currency)}
-            subtitle={`${dailyPercent}% of daily target`}
+            title={t('mobile.dashboard.today')}
+            value={formatMoney(spentToday, currency, locale)}
+            subtitle={tr('mobile.dashboard.dailyTarget', { percent: dailyPercent })}
             tone={stats?.isOverDailyBudget ? 'danger' : 'success'}
             progress={dailyPercent}
           />
           <MetricCard
-            title="Cycle"
-            value={formatMoney(spentCycle, currency)}
-            subtitle={cycleDetails?.label || 'Current cycle'}
+            title={t('mobile.dashboard.cycle')}
+            value={formatMoney(spentCycle, currency, locale)}
+            subtitle={cycleDetails?.label || t('mobile.dashboard.currentCycle')}
             tone={stats?.isOverMonthlyBudget ? 'danger' : 'primary'}
             progress={cyclePercent}
           />
         </View>
 
         <View style={nativeStyles.card}>
-          <Text style={nativeStyles.sectionEyebrow}>Insights</Text>
-          <Text style={nativeStyles.sectionTitle}>Stay on track</Text>
+          <Text style={nativeStyles.sectionEyebrow}>{t('mobile.dashboard.insights')}</Text>
+          <Text style={nativeStyles.sectionTitle}>{t('mobile.dashboard.stayOnTrack')}</Text>
           <View style={styles.insightBox}>
             <Text style={styles.insightTitle}>
-              {projectedGap > 0 ? 'Slow the pace a little' : 'You have room to breathe'}
+              {projectedGap > 0 ? t('mobile.dashboard.slowPace') : t('mobile.dashboard.roomToBreathe')}
             </Text>
             <Text style={styles.insightText}>
-              Keep spending near {formatMoney(safeDaily, currency)} per day for the next {cycleDetails?.remainingDays || 1} days to finish this cycle cleanly.
+              {tr('mobile.dashboard.safeSpend', { amount: formatMoney(safeDaily, currency, locale), days: cycleDetails?.remainingDays || 1 })}
             </Text>
           </View>
         </View>
@@ -262,16 +273,16 @@ export default function DashboardScreen() {
         <View style={nativeStyles.card}>
           <View style={styles.sectionHeaderRow}>
             <View>
-              <Text style={nativeStyles.sectionEyebrow}>Category Watch</Text>
-              <Text style={nativeStyles.sectionTitle}>Tracked limits</Text>
+              <Text style={nativeStyles.sectionEyebrow}>{t('mobile.dashboard.categoryWatch')}</Text>
+              <Text style={nativeStyles.sectionTitle}>{t('mobile.dashboard.trackedLimits')}</Text>
             </View>
             <Pressable style={styles.smallLink} onPress={() => router.push('/(app)/settings')}>
-              <Text style={styles.smallLinkText}>Manage</Text>
+              <Text style={styles.smallLinkText}>{t('mobile.dashboard.manage')}</Text>
             </Pressable>
           </View>
 
           {categoryRows.length === 0 ? (
-            <Text style={styles.mutedCopy}>Add category limits in Settings to see progress and early warnings here.</Text>
+            <Text style={styles.mutedCopy}>{t('mobile.dashboard.categoryHint')}</Text>
           ) : (
             <View style={styles.listGap}>
               {categoryRows.map((row) => (
@@ -279,11 +290,11 @@ export default function DashboardScreen() {
                   <View style={styles.rowBetween}>
                     <Text style={styles.categoryTitle}>{row.category}</Text>
                     <Text style={[styles.categoryStatus, row.percent >= 85 && styles.categoryWarning]}>
-                      {row.percent >= 100 ? 'Over' : row.percent >= 85 ? 'Almost there' : 'On track'}
+                      {row.percent >= 100 ? t('mobile.dashboard.over') : row.percent >= 85 ? t('mobile.dashboard.almostThere') : t('mobile.dashboard.onTrack')}
                     </Text>
                   </View>
                   <Text style={styles.mutedCopy}>
-                    {formatMoney(row.spent, currency)} of {formatMoney(row.limit, currency)} - {formatMoney(row.remaining, currency)} left
+                    {tr('mobile.dashboard.spentOfLeft', { spent: formatMoney(row.spent, currency, locale), limit: formatMoney(row.limit, currency, locale), remaining: formatMoney(row.remaining, currency, locale) })}
                   </Text>
                   <ProgressBar percent={row.percent} color={row.percent >= 100 ? nativeTheme.danger : row.percent >= 85 ? nativeTheme.warning : nativeTheme.success} />
                 </View>
@@ -295,25 +306,39 @@ export default function DashboardScreen() {
         <View style={nativeStyles.card}>
           <View style={styles.sectionHeaderRow}>
             <View>
-              <Text style={nativeStyles.sectionEyebrow}>Recent Activity</Text>
-              <Text style={nativeStyles.sectionTitle}>Latest transactions</Text>
+              <Text style={nativeStyles.sectionEyebrow}>{t('mobile.dashboard.recentActivity')}</Text>
+              <Text style={nativeStyles.sectionTitle}>{t('mobile.dashboard.latestTransactions')}</Text>
             </View>
             <Pressable style={styles.smallLink} onPress={() => router.push('/(app)/transactions')}>
-              <Text style={styles.smallLinkText}>View all</Text>
+              <Text style={styles.smallLinkText}>{t('mobile.dashboard.viewAll')}</Text>
             </Pressable>
           </View>
 
           {recentTransactions.length === 0 ? (
-            <Text style={styles.mutedCopy}>No transactions yet. Add one and the dashboard starts lighting up.</Text>
+            <Text style={styles.mutedCopy}>{t('mobile.dashboard.noTransactions')}</Text>
           ) : (
             <View style={styles.listGap}>
               {recentTransactions.map((item) => (
-                <TransactionRow key={item.id} item={item} currency={currency} />
+                <TransactionRow key={item.id} item={item} currency={currency} locale={locale} transferLabel={t('mobile.transactions.transfer')} />
               ))}
             </View>
           )}
         </View>
       </ScrollView>
+    </View>
+  );
+}
+
+function DashboardSkeleton({ label }: { label: string }) {
+  return (
+    <View style={styles.skeletonWrap} accessibilityLabel={label}>
+      <View style={[styles.skeletonBlock, styles.skeletonHero]} />
+      <View style={styles.skeletonRow}>
+        <View style={[styles.skeletonBlock, styles.skeletonMetric]} />
+        <View style={[styles.skeletonBlock, styles.skeletonMetric]} />
+      </View>
+      <View style={[styles.skeletonBlock, styles.skeletonCard]} />
+      <Text style={styles.loadingText}>{label}</Text>
     </View>
   );
 }
@@ -361,7 +386,7 @@ function ProgressBar({ percent, color }: { percent: number; color: string }) {
   );
 }
 
-function TransactionRow({ item, currency }: { item: Transaction; currency: string }) {
+function TransactionRow({ item, currency, locale, transferLabel }: { item: Transaction; currency: string; locale: string; transferLabel: string }) {
   const isIncome = item.amount < 0;
   const isTransfer = item.kind === 'transfer';
   const amountColor = isIncome ? nativeTheme.success : isTransfer ? nativeTheme.primary : nativeTheme.danger;
@@ -373,13 +398,13 @@ function TransactionRow({ item, currency }: { item: Transaction; currency: strin
         <Text style={styles.transactionBadgeText}>{categoryInitial(item.category)}</Text>
       </View>
       <View style={styles.transactionBody}>
-        <Text style={styles.transactionTitle}>{isTransfer ? 'Transfer' : item.category}</Text>
+        <Text style={styles.transactionTitle}>{isTransfer ? transferLabel : item.category}</Text>
         <Text style={styles.transactionMeta} numberOfLines={1}>
           {[item.merchant, item.note, item.date].filter(Boolean).join(' - ')}
         </Text>
       </View>
       <Text style={[styles.transactionAmount, { color: amountColor }]}>
-        {sign}{formatMoney(Math.abs(item.amount), currency)}
+        {sign}{formatMoney(Math.abs(item.amount), currency, locale)}
       </Text>
     </View>
   );
@@ -425,6 +450,61 @@ const styles = StyleSheet.create({
   emptyButton: {
     marginTop: 18,
     alignSelf: 'stretch',
+  },
+  setupSteps: {
+    alignSelf: 'stretch',
+    gap: 10,
+    marginTop: 18,
+  },
+  setupStep: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 14,
+    padding: 11,
+    backgroundColor: nativeTheme.surfaceMuted,
+  },
+  setupStepNumber: {
+    width: 25,
+    height: 25,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: nativeTheme.primary,
+  },
+  setupStepNumberText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  setupStepText: {
+    flex: 1,
+    color: nativeTheme.ink,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
+  skeletonWrap: {
+    width: '100%',
+    gap: 14,
+  },
+  skeletonBlock: {
+    backgroundColor: '#dcebe6',
+    borderRadius: 20,
+  },
+  skeletonHero: {
+    height: 206,
+  },
+  skeletonRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  skeletonMetric: {
+    flex: 1,
+    height: 112,
+  },
+  skeletonCard: {
+    height: 172,
   },
   heroGrid: {
     flexDirection: 'row',
