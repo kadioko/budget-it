@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Animated,
   FlatList,
+  PanResponder,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -94,14 +96,6 @@ export default function TransactionsScreen() {
     ]);
   };
 
-  const handleTransactionAction = (item: Transaction) => {
-    Alert.alert(t('mobile.transactions.actions'), item.category, [
-      { text: t('mobile.transactions.cancel'), style: 'cancel' },
-      { text: t('mobile.transactions.edit'), onPress: () => router.push({ pathname: '/(app)/edit-transaction', params: { id: item.id } }) },
-      { text: t('mobile.transactions.delete'), style: 'destructive', onPress: () => handleDelete(item.id) },
-    ]);
-  };
-
   const renderTransaction = ({ item }: { item: Transaction }) => (
     <TransactionCard
       item={item}
@@ -109,7 +103,10 @@ export default function TransactionsScreen() {
       locale={locale}
       transferLabel={t('mobile.transactions.transfer')}
       recurringLabel={t('mobile.transactions.recurring')}
-      onManage={() => handleTransactionAction(item)}
+      editLabel={t('mobile.transactions.edit')}
+      deleteLabel={t('mobile.transactions.delete')}
+      onEdit={() => router.push({ pathname: '/(app)/edit-transaction', params: { id: item.id } })}
+      onDelete={() => handleDelete(item.id)}
     />
   );
 
@@ -229,27 +226,51 @@ function TransactionCard({
   locale,
   transferLabel,
   recurringLabel,
-  onManage,
+  editLabel,
+  deleteLabel,
+  onEdit,
+  onDelete,
 }: {
   item: Transaction;
   currency: string;
   locale: string;
   transferLabel: string;
   recurringLabel: string;
-  onManage: () => void;
+  editLabel: string;
+  deleteLabel: string;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const isIncome = item.amount < 0;
   const isTransfer = item.kind === 'transfer';
   const color = isIncome ? nativeTheme.success : isTransfer ? nativeTheme.primary : nativeTheme.danger;
   const sign = isIncome ? '+' : isTransfer && item.transfer_direction === 'incoming' ? '+' : '-';
+  const translateX = React.useRef(new Animated.Value(0)).current;
   const subtitle = [
     item.merchant,
     item.note,
     item.tags?.length ? item.tags.map((tag) => `#${tag}`).join(' ') : null,
   ].filter(Boolean).join(' - ');
 
-  return (
-    <View style={styles.transactionItem}>
+  const closeActions = () => {
+    Animated.spring(translateX, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start();
+  };
+
+  const panResponder = React.useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gesture) => !isTransfer && gesture.dx < -8 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
+    onPanResponderMove: (_, gesture) => translateX.setValue(Math.max(-136, Math.min(0, gesture.dx))),
+    onPanResponderRelease: (_, gesture) => {
+      Animated.spring(translateX, {
+        toValue: gesture.dx < -52 ? -136 : 0,
+        useNativeDriver: true,
+        bounciness: 0,
+      }).start();
+    },
+    onPanResponderTerminate: () => closeActions(),
+  }), [isTransfer, translateX]);
+
+  const card = (
+    <View style={[styles.transactionItem, !isTransfer && styles.swipeCard]}>
       <View style={styles.transactionTop}>
         <View style={styles.categoryBadge}>
           <Text style={styles.categoryBadgeText}>{categoryInitial(item.category)}</Text>
@@ -272,8 +293,26 @@ function TransactionCard({
           {sign}{formatMoney(Math.abs(item.amount), currency, locale)}
         </Text>
       </View>
+    </View>
+  );
 
-      {!isTransfer ? <Pressable onPress={onManage} style={styles.actionButton} accessibilityRole="button" accessibilityLabel={`Manage ${item.category} transaction`}><Ionicons name="ellipsis-horizontal" size={18} color={nativeTheme.primary} /></Pressable> : null}
+  if (isTransfer) return card;
+
+  return (
+    <View style={styles.swipeContainer}>
+      <View style={styles.swipeActions}>
+        <Pressable style={styles.swipeEdit} onPress={() => { closeActions(); onEdit(); }} accessibilityRole="button" accessibilityLabel={`${editLabel} ${item.category}`}>
+          <Ionicons name="create-outline" size={17} color="#ffffff" />
+          <Text style={styles.swipeActionText}>{editLabel}</Text>
+        </Pressable>
+        <Pressable style={styles.swipeDelete} onPress={() => { closeActions(); onDelete(); }} accessibilityRole="button" accessibilityLabel={`${deleteLabel} ${item.category}`}>
+          <Ionicons name="trash-outline" size={17} color="#ffffff" />
+          <Text style={styles.swipeActionText}>{deleteLabel}</Text>
+        </Pressable>
+      </View>
+      <Animated.View style={{ transform: [{ translateX }] }} {...panResponder.panHandlers}>
+        {card}
+      </Animated.View>
     </View>
   );
 }
@@ -352,6 +391,12 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 3,
   },
+  swipeContainer: { marginBottom: 12, overflow: 'hidden', borderRadius: 22 },
+  swipeCard: { marginBottom: 0 },
+  swipeActions: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 136, flexDirection: 'row', overflow: 'hidden', borderRadius: 22 },
+  swipeEdit: { width: 68, alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: nativeTheme.primary },
+  swipeDelete: { width: 68, alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: nativeTheme.danger },
+  swipeActionText: { color: '#ffffff', fontSize: 10, fontWeight: '900' },
   transactionTop: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -417,7 +462,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textTransform: 'uppercase',
   },
-  actionButton: { position: 'absolute', right: 11, bottom: 10, width: 34, height: 30, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: nativeTheme.surfaceMuted, borderWidth: 1, borderColor: nativeTheme.border },
   emptyCard: {
     alignItems: 'center',
   },
