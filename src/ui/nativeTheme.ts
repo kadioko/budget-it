@@ -7,7 +7,7 @@ export const nativeTheme = {
   surfaceMuted: '#eff7f4',
   ink: '#102a2f',
   muted: '#4d6669',
-  subtle: '#6a8081',
+  subtle: '#5c7477',
   border: '#d5e7e1',
   borderStrong: '#9ac9bc',
   primary: '#135350',
@@ -77,6 +77,7 @@ export const nativeStyles = StyleSheet.create({
     fontSize: 30,
     fontWeight: '900',
     letterSpacing: -0.8,
+    flexShrink: 1,
   },
   heroText: {
     color: '#cbd5e1',
@@ -110,6 +111,7 @@ export const nativeStyles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '900',
     letterSpacing: -0.4,
+    flexShrink: 1,
   },
   label: {
     color: nativeTheme.ink,
@@ -167,12 +169,15 @@ export const nativeStyles = StyleSheet.create({
     fontWeight: '800',
   },
   chip: {
+    minHeight: 44,
     borderWidth: 1,
     borderColor: nativeTheme.border,
     borderRadius: 999,
     backgroundColor: nativeTheme.surfaceMuted,
     paddingVertical: 10,
     paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   chipActive: {
     borderColor: nativeTheme.primaryStrong,

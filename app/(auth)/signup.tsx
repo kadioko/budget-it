@@ -77,6 +77,9 @@ export default function SignupScreen() {
             style={[nativeStyles.primaryButton, styles.submitButton, loading && styles.disabledButton]}
             onPress={handleSignup}
             disabled={loading}
+            accessibilityRole="button"
+            accessibilityState={{ busy: loading, disabled: loading }}
+            accessibilityLabel="Create account"
           >
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={nativeStyles.primaryButtonText}>Create Account</Text>}
           </Pressable>
@@ -84,7 +87,7 @@ export default function SignupScreen() {
 
         <View style={styles.footerCard}>
           <Text style={styles.footerText}>Already have an account?</Text>
-          <Pressable onPress={() => router.replace('/(auth)/login')}>
+          <Pressable onPress={() => router.replace('/(auth)/login')} style={styles.footerLinkButton} accessibilityRole="link" accessibilityLabel="Sign in instead">
             <Text style={styles.footerLink}>Sign in instead</Text>
           </Pressable>
         </View>
@@ -120,6 +123,7 @@ function Field({
         keyboardType={keyboardType || 'default'}
         autoCapitalize="none"
         secureTextEntry={secureTextEntry}
+        accessibilityLabel={placeholder}
       />
     </View>
   );
@@ -159,5 +163,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
     marginTop: 6,
+  },
+  footerLinkButton: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
   },
 });

@@ -154,6 +154,9 @@ export default function AddTransactionScreen() {
                   style={[styles.segment, active && styles.segmentActive]}
                   onPress={() => setTransactionType(item)}
                   disabled={loading}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active, disabled: loading }}
+                  accessibilityLabel={item === 'expense' ? t('mobile.transactionForm.expense') : t('mobile.transactionForm.income')}
                 >
                   <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
                     {item === 'expense' ? t('mobile.transactionForm.expense') : t('mobile.transactionForm.income')}
@@ -200,6 +203,9 @@ export default function AddTransactionScreen() {
                   style={[nativeStyles.chip, styles.categoryChip, active && nativeStyles.chipActive]}
                   onPress={() => setCategory(cat)}
                   disabled={loading}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active, disabled: loading }}
+                  accessibilityLabel={`Select ${cat} category`}
                 >
                   <Text style={[nativeStyles.chipText, active && nativeStyles.chipTextActive]}>{cat}</Text>
                 </Pressable>
@@ -211,7 +217,7 @@ export default function AddTransactionScreen() {
         <View style={nativeStyles.card}>
           <Text style={nativeStyles.label}>{t('mobile.transactionForm.details')}</Text>
           <Field value={merchant} onChangeText={setMerchant} placeholder={t('mobile.transactionForm.merchantPlaceholder')} editable={!loading} />
-          {merchantSuggestions.length > 0 ? <View style={styles.suggestionWrap}><Text style={styles.suggestionLabel}>{t('mobile.transactionForm.recentMerchants')}</Text><View style={styles.suggestionRow}>{merchantSuggestions.map((item) => <Pressable key={item} style={styles.suggestionChip} onPress={() => selectMerchant(item)}><Text style={styles.suggestionText}>{item}</Text></Pressable>)}</View></View> : null}
+          {merchantSuggestions.length > 0 ? <View style={styles.suggestionWrap}><Text style={styles.suggestionLabel}>{t('mobile.transactionForm.recentMerchants')}</Text><View style={styles.suggestionRow}>{merchantSuggestions.map((item) => <Pressable key={item} style={styles.suggestionChip} onPress={() => selectMerchant(item)} accessibilityRole="button" accessibilityLabel={`Use ${item} as merchant`}><Text style={styles.suggestionText}>{item}</Text></Pressable>)}</View></View> : null}
           <Field value={tags} onChangeText={setTags} placeholder={t('mobile.transactionForm.tagsPlaceholder')} editable={!loading} />
           <Field value={date} onChangeText={setDate} placeholder={t('mobile.transactionForm.datePlaceholder')} editable={!loading} />
           <TextInput
@@ -238,6 +244,8 @@ export default function AddTransactionScreen() {
           style={[nativeStyles.primaryButton, styles.saveButton, loading && styles.disabledButton]}
           onPress={handleAddTransaction}
           disabled={loading}
+          accessibilityRole="button"
+          accessibilityState={{ busy: loading, disabled: loading }}
         >
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={nativeStyles.primaryButtonText}>{type === 'income' ? t('mobile.transactionForm.saveIncome') : t('mobile.transactionForm.saveExpense')}</Text>}
         </Pressable>
@@ -247,7 +255,7 @@ export default function AddTransactionScreen() {
 }
 
 function AccountOption({ label, balance, currency, locale, availableLabel, selected, onPress }: { label: string; balance: number; currency: string; locale: string; availableLabel: string; selected: boolean; onPress: () => void }) {
-  return <Pressable style={[styles.accountOption, selected && styles.accountOptionSelected]} onPress={onPress}><View style={styles.accountCopy}><Text style={styles.accountName}>{label}</Text><Text style={styles.accountBalance}>{formatMoney(balance, currency, locale)} {availableLabel}</Text></View><View style={[styles.radio, selected && styles.radioSelected]}>{selected ? <View style={styles.radioDot} /> : null}</View></Pressable>;
+  return <Pressable style={[styles.accountOption, selected && styles.accountOptionSelected]} onPress={onPress} accessibilityRole="radio" accessibilityState={{ selected }} accessibilityLabel={`${label}, ${formatMoney(balance, currency, locale)} ${availableLabel}`}><View style={styles.accountCopy}><Text style={styles.accountName}>{label}</Text><Text style={styles.accountBalance}>{formatMoney(balance, currency, locale)} {availableLabel}</Text></View><View style={[styles.radio, selected && styles.radioSelected]}>{selected ? <View style={styles.radioDot} /> : null}</View></Pressable>;
 }
 
 function Field({
@@ -382,7 +390,7 @@ const styles = StyleSheet.create({
   suggestionWrap: { marginTop: -1, marginBottom: 12 },
   suggestionLabel: { color: nativeTheme.subtle, fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 7 },
   suggestionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  suggestionChip: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: '#dff1eb' },
+  suggestionChip: { minHeight: 44, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: '#dff1eb', alignItems: 'center', justifyContent: 'center' },
   suggestionText: { color: nativeTheme.primary, fontSize: 11, fontWeight: '800' },
   textArea: {
     minHeight: 104,

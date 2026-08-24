@@ -103,6 +103,9 @@ export default function LoginScreen() {
             style={[nativeStyles.primaryButton, styles.submitButton, loading && styles.disabledButton]}
             onPress={handleLogin}
             disabled={loading}
+            accessibilityRole="button"
+            accessibilityState={{ busy: loading, disabled: loading }}
+            accessibilityLabel="Sign in"
           >
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={nativeStyles.primaryButtonText}>Sign In</Text>}
           </Pressable>
@@ -113,20 +116,20 @@ export default function LoginScreen() {
             <View style={styles.dividerLine} />
           </View>
 
-          <Pressable style={styles.googleButton} onPress={handleGoogleSignIn} disabled={loading}>
+          <Pressable style={styles.googleButton} onPress={handleGoogleSignIn} disabled={loading} accessibilityRole="button" accessibilityState={{ disabled: loading }} accessibilityLabel="Continue with Google">
             <View style={styles.googleMark}><Text style={styles.googleMarkText}>G</Text></View>
             <Text style={styles.googleButtonText}>Continue with Google</Text>
             <Ionicons name="arrow-forward" size={18} color={nativeTheme.primary} />
           </Pressable>
 
-          <Pressable style={styles.textButton} onPress={handleResetPassword} disabled={loading}>
+          <Pressable style={styles.textButton} onPress={handleResetPassword} disabled={loading} accessibilityRole="button" accessibilityState={{ disabled: loading }} accessibilityLabel="Reset forgotten password">
             <Text style={styles.textButtonLabel}>Forgot password?</Text>
           </Pressable>
         </View>
 
         <View style={styles.footerCard}>
           <Text style={styles.footerText}>New to Budget It?</Text>
-          <Pressable onPress={() => router.push('/(auth)/signup')}>
+          <Pressable onPress={() => router.push('/(auth)/signup')} style={styles.footerLinkButton} accessibilityRole="link" accessibilityLabel="Create an account">
             <Text style={styles.footerLink}>Create an account</Text>
           </Pressable>
         </View>
@@ -162,6 +165,7 @@ function Field({
         keyboardType={keyboardType || 'default'}
         autoCapitalize="none"
         secureTextEntry={secureTextEntry}
+        accessibilityLabel={placeholder}
       />
     </View>
   );
@@ -271,5 +275,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
     marginTop: 6,
+  },
+  footerLinkButton: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
   },
 });

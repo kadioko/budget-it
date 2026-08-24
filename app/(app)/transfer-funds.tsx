@@ -71,7 +71,7 @@ export default function TransferFundsScreen() {
       <View style={nativeStyles.orbBottom} />
       <ScrollView contentContainerStyle={[nativeStyles.content, styles.content]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={styles.headerRow}>
-          <Pressable onPress={() => router.back()} style={styles.backButton} accessibilityLabel="Go back">
+          <Pressable onPress={() => router.back()} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Go back">
             <Ionicons name="arrow-back" size={20} color="#ffffff" />
           </Pressable>
           <Text style={styles.headerLabel}>ENVELOPE TRANSFER</Text>
@@ -117,7 +117,7 @@ export default function TransferFundsScreen() {
 
       </ScrollView>
       <View style={styles.stickyAction}>
-        <Pressable style={[nativeStyles.primaryButton, styles.saveButton, loading && styles.disabled]} onPress={submitTransfer} disabled={loading}>
+        <Pressable style={[nativeStyles.primaryButton, styles.saveButton, loading && styles.disabled]} onPress={submitTransfer} disabled={loading} accessibilityRole="button" accessibilityState={{ busy: loading, disabled: loading }} accessibilityLabel="Move money">
           {loading ? <ActivityIndicator color="#ffffff" /> : <Text style={nativeStyles.primaryButtonText}>Move money</Text>}
         </Pressable>
       </View>
@@ -131,7 +131,7 @@ function AccountPicker({ accounts, selectedId, onSelect, currency }: { accounts:
       {accounts.map((account) => {
         const active = account.id === selectedId;
         return (
-          <Pressable key={account.id} style={[styles.accountRow, active && styles.accountRowActive]} onPress={() => onSelect(account.id)}>
+          <Pressable key={account.id} style={[styles.accountRow, active && styles.accountRowActive]} onPress={() => onSelect(account.id)} accessibilityRole="radio" accessibilityState={{ selected: active }} accessibilityLabel={`${account.name}, ${formatMoney(account.balance, currency)} available`}>
             <View style={[styles.accountIcon, active && styles.accountIconActive]}><Ionicons name={account.icon as any} size={19} color={active ? '#ffffff' : nativeTheme.primary} /></View>
             <View style={styles.accountCopy}>
               <Text style={styles.accountName}>{account.name}</Text>
@@ -148,7 +148,7 @@ function AccountPicker({ accounts, selectedId, onSelect, currency }: { accounts:
 const styles = StyleSheet.create({
   content: { paddingBottom: 156 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-  backButton: { width: 42, height: 42, borderRadius: 14, backgroundColor: nativeTheme.navy, alignItems: 'center', justifyContent: 'center' },
+  backButton: { width: 44, height: 44, borderRadius: 14, backgroundColor: nativeTheme.navy, alignItems: 'center', justifyContent: 'center' },
   headerLabel: { color: nativeTheme.primary, fontWeight: '900', letterSpacing: 1, fontSize: 11 },
   accountList: { gap: 8, marginTop: 8 },
   accountRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderWidth: 1, borderColor: nativeTheme.border, borderRadius: 17, backgroundColor: nativeTheme.surfaceMuted },

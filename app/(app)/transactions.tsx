@@ -162,6 +162,7 @@ export default function TransactionsScreen() {
                 placeholder={t('mobile.transactions.searchPlaceholder')}
                 placeholderTextColor="#7d9592"
                 returnKeyType="search"
+                accessibilityLabel="Search transactions"
               />
               {searchQuery ? <Pressable onPress={() => setSearchQuery('')} hitSlop={8} accessibilityLabel="Clear transaction search"><Ionicons name="close-circle" size={18} color={nativeTheme.subtle} /></Pressable> : null}
             </View>
@@ -173,7 +174,9 @@ export default function TransactionsScreen() {
                   <Pressable
                     key={item}
                     style={[nativeStyles.chip, styles.filterChip, active && nativeStyles.chipActive]}
-                    onPress={() => setFilter(item)}
+                  onPress={() => setFilter(item)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
                   >
                     <Text style={[nativeStyles.chipText, active && nativeStyles.chipTextActive]}>{item === 'All' ? t('mobile.transactions.all') : item === 'Expenses' ? t('mobile.transactions.expenses') : item === 'Income' ? t('mobile.transactions.income') : t('mobile.transactions.transfers')}</Text>
                   </Pressable>
@@ -184,7 +187,7 @@ export default function TransactionsScreen() {
               {(['all', '7d', 'month'] as const).map((item) => {
                 const active = dateFilter === item;
                 const label = item === 'all' ? t('mobile.transactions.allTime') : item === '7d' ? t('mobile.transactions.lastSevenDays') : t('mobile.transactions.thisMonth');
-                return <Pressable key={item} style={[styles.dateChip, active && styles.dateChipActive]} onPress={() => setDateFilter(item)}><Text style={[styles.dateChipText, active && styles.dateChipTextActive]}>{label}</Text></Pressable>;
+                return <Pressable key={item} style={[styles.dateChip, active && styles.dateChipActive]} onPress={() => setDateFilter(item)} accessibilityRole="radio" accessibilityState={{ selected: active }} accessibilityLabel={label}><Text style={[styles.dateChipText, active && styles.dateChipTextActive]}>{label}</Text></Pressable>;
               })}
             </View>
           </>
@@ -342,7 +345,7 @@ const styles = StyleSheet.create({
   dateFilterRow: { marginTop: -5 },
   searchShell: { minHeight: 50, flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 16, paddingHorizontal: 13, marginBottom: 10, backgroundColor: nativeTheme.surface, borderWidth: 1, borderColor: nativeTheme.border },
   searchInput: { flex: 1, color: nativeTheme.ink, fontSize: 13, fontWeight: '700', paddingVertical: 10 },
-  dateChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: nativeTheme.surfaceMuted, borderWidth: 1, borderColor: nativeTheme.border },
+  dateChip: { minHeight: 44, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: nativeTheme.surfaceMuted, borderWidth: 1, borderColor: nativeTheme.border, alignItems: 'center', justifyContent: 'center' },
   dateChipActive: { backgroundColor: '#dff1eb', borderColor: nativeTheme.primary },
   dateChipText: { color: nativeTheme.muted, fontSize: 11, fontWeight: '800' },
   dateChipTextActive: { color: nativeTheme.primary },

@@ -184,10 +184,10 @@ export default function DashboardScreen() {
           <View style={styles.heroTopRow}>
             <Text style={nativeStyles.heroEyebrow}>{todayLabel}</Text>
             <View style={styles.heroActions}>
-              <Pressable style={styles.heroIconButton} onPress={() => router.push('/(app)/help-guides')} accessibilityRole="button" accessibilityLabel="Open quick guides">
+              <Pressable style={styles.heroIconButton} onPress={() => router.push('/(app)/help-guides')} accessibilityRole="button" accessibilityLabel="Open quick guides" accessibilityHint="Learn how to use Budget It">
                 <Ionicons name="help" size={18} color="#ffffff" />
               </Pressable>
-              <Pressable style={styles.heroIconButton} onPress={() => router.push('/(app)/alerts')} accessibilityRole="button" accessibilityLabel="Open alerts">
+              <Pressable style={styles.heroIconButton} onPress={() => router.push('/(app)/alerts')} accessibilityRole="button" accessibilityLabel="Open alerts" accessibilityHint="Review budget warnings and reminders">
                 <Ionicons name={inbox.length ? 'notifications' : 'notifications-outline'} size={18} color="#ffffff" />
                 {inbox.length ? <View style={styles.alertCount}><Text style={styles.alertCountText}>{inbox.length > 9 ? '9+' : inbox.length}</Text></View> : null}
               </Pressable>
@@ -276,7 +276,7 @@ export default function DashboardScreen() {
               <Text style={nativeStyles.sectionEyebrow}>{t('mobile.dashboard.categoryWatch')}</Text>
               <Text style={nativeStyles.sectionTitle}>{t('mobile.dashboard.trackedLimits')}</Text>
             </View>
-            <Pressable style={styles.smallLink} onPress={() => router.push('/(app)/settings')}>
+            <Pressable style={styles.smallLink} onPress={() => router.push('/(app)/settings')} accessibilityRole="button" accessibilityLabel="Manage category limits">
               <Text style={styles.smallLinkText}>{t('mobile.dashboard.manage')}</Text>
             </Pressable>
           </View>
@@ -309,7 +309,7 @@ export default function DashboardScreen() {
               <Text style={nativeStyles.sectionEyebrow}>{t('mobile.dashboard.recentActivity')}</Text>
               <Text style={nativeStyles.sectionTitle}>{t('mobile.dashboard.latestTransactions')}</Text>
             </View>
-            <Pressable style={styles.smallLink} onPress={() => router.push('/(app)/transactions')}>
+            <Pressable style={styles.smallLink} onPress={() => router.push('/(app)/transactions')} accessibilityRole="button" accessibilityLabel="View all transactions">
               <Text style={styles.smallLinkText}>{t('mobile.dashboard.viewAll')}</Text>
             </Pressable>
           </View>
@@ -347,7 +347,7 @@ function QuickAction({ label, icon, tone, onPress }: { label: string; icon: keyo
   const iconColor = tone === 'success' ? nativeTheme.success : tone === 'accent' ? '#9a6510' : nativeTheme.primary;
   const backgroundColor = tone === 'success' ? nativeTheme.successSoft : tone === 'accent' ? nativeTheme.accentSoft : '#dff1eb';
   return (
-    <Pressable style={({ pressed }) => [styles.quickAction, pressed && styles.pressed]} onPress={onPress}>
+    <Pressable style={({ pressed }) => [styles.quickAction, pressed && styles.pressed]} onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
       <View style={[styles.quickActionIcon, { backgroundColor }]}><Ionicons name={icon} size={17} color={iconColor} /></View>
       <Text style={styles.quickActionText}>{label}</Text>
     </Pressable>
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
   },
   heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   heroActions: { flexDirection: 'row', gap: 8 },
-  heroIconButton: { width: 40, height: 40, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.10)', alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  heroIconButton: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.10)', alignItems: 'center', justifyContent: 'center', position: 'relative' },
   alertCount: { position: 'absolute', right: -5, top: -5, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: nativeTheme.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
   alertCountText: { color: nativeTheme.navy, fontSize: 9, fontWeight: '900' },
   heroStat: {
@@ -675,12 +675,15 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   smallLink: {
+    minHeight: 44,
     borderRadius: 999,
     paddingVertical: 9,
     paddingHorizontal: 13,
     backgroundColor: nativeTheme.surfaceMuted,
     borderWidth: 1,
     borderColor: nativeTheme.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   smallLinkText: {
     color: nativeTheme.primary,

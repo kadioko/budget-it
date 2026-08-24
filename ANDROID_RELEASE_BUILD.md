@@ -42,6 +42,21 @@ npx expo export --platform android --clear
 
 Commit the release source changes before starting the build so the shipped version can be reproduced later. Resolve any failed check before continuing.
 
+## Runtime Smoke Test
+
+Install a fresh preview APK on an Android emulator or a spare phone before creating the production AAB. Test with both default and large system font sizes, and enable TalkBack for at least one pass.
+
+- Fresh install opens to the sign-in screen without a route error.
+- Email sign-up, email sign-in, password reset email, and Google sign-in complete and return to Budget It.
+- Create a budget, save an expense, edit it, delete it, and create a transfer.
+- Turn on airplane mode, save an expense, then reconnect and confirm it syncs once.
+- Open notification settings, change a preference, refresh alerts, and verify the screen recovers from offline mode.
+- Open `budgetit:///` while the app is installed and confirm it lands on the authenticated dashboard or sign-in screen.
+- With large system text enabled, confirm labels wrap instead of overlapping and every primary control remains tappable.
+- With TalkBack enabled, confirm buttons announce a useful name, filters announce their selected state, and swipe actions announce Edit or Delete.
+
+Do not publish a production AAB until these flows have been tested against the production Supabase project.
+
 ## Build The Play Store AAB
 
 Sign in to the correct Expo account, then start the production build:
