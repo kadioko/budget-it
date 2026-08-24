@@ -735,9 +735,33 @@ export const useBudgetStore = create<BudgetState>()(
       });
 
       if (error) throw error;
-      set({ transactions: [...(data || []), ...get().transactions] });
-      await Promise.all([get().fetchBudget(userId), get().fetchEnvelopes(userId)]);
+
+      // The transfer has committed. Reflect its balances immediately instead of
+      // holding the form open while the follow-up reads complete.
+      set((state) => ({
+        transactions: [...(data || []), ...state.transactions],
+        budget: state.budget
+          ? {
+              ...state.budget,
+              bank_balance: state.budget.bank_balance
+                + (toAccountId === 'bank' ? amount : 0)
+                - (fromAccountId === 'bank' ? amount : 0),
+            }
+          : state.budget,
+        envelopes: state.envelopes.map((envelope) => ({
+          ...envelope,
+          balance: envelope.balance
+            + (envelope.id === toAccountId ? amount : 0)
+            - (envelope.id === fromAccountId ? amount : 0),
+        })),
+      }));
       get().calculateStats();
+
+      // Reconcile in the background so the UI stays responsive on slow networks.
+      void Promise.all([get().fetchBudget(userId), get().fetchEnvelopes(userId)]).then(
+        () => get().calculateStats(),
+        () => undefined
+      );
     } catch (err: any) {
       set({ error: err.message });
       throw err;

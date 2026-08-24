@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -23,7 +23,7 @@ type AccountOption = { id: 'bank' | string; name: string; balance: number; icon:
 export default function TransferFundsScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { budget, envelopes, createTransfer, loading } = useBudgetStore();
+  const { budget, envelopes, createTransfer } = useBudgetStore();
   const accounts = useMemo<AccountOption[]>(
     () => [
       { id: 'bank', name: 'Bank balance', balance: budget?.bank_balance || 0, icon: 'business-outline' },
@@ -35,6 +35,16 @@ export default function TransferFundsScreen() {
   const [toAccountId, setToAccountId] = useState<'bank' | string>(envelopes[0]?.id || 'bank');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const canTransfer = accounts.length > 1;
+
+  useEffect(() => {
+    // A first envelope may arrive after the screen mounts. Keep the destination useful.
+    if (fromAccountId === toAccountId) {
+      const alternative = accounts.find((account) => account.id !== fromAccountId);
+      if (alternative) setToAccountId(alternative.id);
+    }
+  }, [accounts, fromAccountId, toAccountId]);
 
   const moveDirection = () => {
     const source = accounts.find((account) => account.id === fromAccountId)?.name || 'source';
@@ -43,6 +53,8 @@ export default function TransferFundsScreen() {
   };
 
   const submitTransfer = async () => {
+    if (isSubmitting) return;
+
     const parsedAmount = Number(amount);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       Alert.alert('Amount needed', 'Enter an amount greater than zero.');
@@ -54,12 +66,21 @@ export default function TransferFundsScreen() {
     }
     if (!user || !budget) return;
 
+    const sourceBalance = accounts.find((account) => account.id === fromAccountId)?.balance ?? 0;
+    if (parsedAmount > sourceBalance) {
+      Alert.alert('Not enough available', `You can move up to ${formatMoney(sourceBalance, budget.currency)} from this account.`);
+      return;
+    }
+
     try {
+      setIsSubmitting(true);
       await createTransfer(user.id, parsedAmount, fromAccountId, toAccountId, toDateKey(new Date()), note || undefined);
       Alert.alert('Money moved', `${formatMoney(parsedAmount, budget.currency)} moved from ${moveDirection()}.`);
       router.back();
     } catch (error: any) {
       Alert.alert('Transfer could not be completed', error?.message || 'Try again when you are online.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -84,7 +105,7 @@ export default function TransferFundsScreen() {
 
         <View style={nativeStyles.card}>
           <Text style={nativeStyles.sectionEyebrow}>From</Text>
-          <AccountPicker accounts={accounts} selectedId={fromAccountId} onSelect={setFromAccountId} currency={budget.currency} />
+          <AccountPicker accounts={accounts} selectedId={fromAccountId} onSelect={setFromAccountId} currency={budget.currency} disabled={isSubmitting} />
 
           <View style={styles.swapLine}>
             <View style={styles.line} />
@@ -93,7 +114,7 @@ export default function TransferFundsScreen() {
           </View>
 
           <Text style={nativeStyles.sectionEyebrow}>To</Text>
-          <AccountPicker accounts={accounts} selectedId={toAccountId} onSelect={setToAccountId} currency={budget.currency} />
+          <AccountPicker accounts={accounts} selectedId={toAccountId} onSelect={setToAccountId} currency={budget.currency} disabled={isSubmitting} />
         </View>
 
         <View style={nativeStyles.card}>
@@ -107,31 +128,43 @@ export default function TransferFundsScreen() {
               keyboardType="decimal-pad"
               value={amount}
               onChangeText={setAmount}
+              editable={!isSubmitting}
+              accessibilityLabel="Transfer amount"
             />
           </View>
           <Text style={[nativeStyles.label, styles.noteLabel]}>Note (optional)</Text>
           <View style={nativeStyles.inputShell}>
-            <TextInput style={nativeStyles.input} placeholder="What is this move for?" placeholderTextColor="#8ca19e" value={note} onChangeText={setNote} />
+            <TextInput style={nativeStyles.input} placeholder="What is this move for?" placeholderTextColor="#8ca19e" value={note} onChangeText={setNote} editable={!isSubmitting} accessibilityLabel="Transfer note" />
           </View>
+          {!canTransfer ? <Text style={styles.helperText}>Add an envelope in Money Spaces before moving money.</Text> : null}
         </View>
 
       </ScrollView>
       <View style={styles.stickyAction}>
-        <Pressable style={[nativeStyles.primaryButton, styles.saveButton, loading && styles.disabled]} onPress={submitTransfer} disabled={loading} accessibilityRole="button" accessibilityState={{ busy: loading, disabled: loading }} accessibilityLabel="Move money">
-          {loading ? <ActivityIndicator color="#ffffff" /> : <Text style={nativeStyles.primaryButtonText}>Move money</Text>}
+        <Pressable
+          style={[nativeStyles.primaryButton, styles.saveButton, (isSubmitting || !canTransfer) && styles.disabled]}
+          onPress={submitTransfer}
+          disabled={isSubmitting || !canTransfer}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityState={{ busy: isSubmitting, disabled: isSubmitting || !canTransfer }}
+          accessibilityLabel={isSubmitting ? 'Moving money' : 'Move money'}
+          accessibilityHint={canTransfer ? 'Moves money between the selected accounts' : 'Create an envelope before transferring money'}
+        >
+          {isSubmitting ? <><ActivityIndicator color="#ffffff" /><Text style={nativeStyles.primaryButtonText}>Moving money...</Text></> : <Text style={nativeStyles.primaryButtonText}>Move money</Text>}
         </Pressable>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-function AccountPicker({ accounts, selectedId, onSelect, currency }: { accounts: AccountOption[]; selectedId: string; onSelect: (id: string) => void; currency: string }) {
+function AccountPicker({ accounts, selectedId, onSelect, currency, disabled }: { accounts: AccountOption[]; selectedId: string; onSelect: (id: string) => void; currency: string; disabled: boolean }) {
   return (
     <View style={styles.accountList}>
       {accounts.map((account) => {
         const active = account.id === selectedId;
         return (
-          <Pressable key={account.id} style={[styles.accountRow, active && styles.accountRowActive]} onPress={() => onSelect(account.id)} accessibilityRole="radio" accessibilityState={{ selected: active }} accessibilityLabel={`${account.name}, ${formatMoney(account.balance, currency)} available`}>
+          <Pressable key={account.id} style={[styles.accountRow, active && styles.accountRowActive, disabled && styles.accountRowDisabled]} onPress={() => onSelect(account.id)} disabled={disabled} hitSlop={4} accessibilityRole="radio" accessibilityState={{ selected: active, disabled }} accessibilityLabel={`${account.name}, ${formatMoney(account.balance, currency)} available`}>
             <View style={[styles.accountIcon, active && styles.accountIconActive]}><Ionicons name={account.icon as any} size={19} color={active ? '#ffffff' : nativeTheme.primary} /></View>
             <View style={styles.accountCopy}>
               <Text style={styles.accountName}>{account.name}</Text>
@@ -153,6 +186,7 @@ const styles = StyleSheet.create({
   accountList: { gap: 8, marginTop: 8 },
   accountRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderWidth: 1, borderColor: nativeTheme.border, borderRadius: 17, backgroundColor: nativeTheme.surfaceMuted },
   accountRowActive: { borderColor: nativeTheme.primary, backgroundColor: '#e5f3ed' },
+  accountRowDisabled: { opacity: 0.65 },
   accountIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: '#d7eee5', alignItems: 'center', justifyContent: 'center' },
   accountIconActive: { backgroundColor: nativeTheme.primary },
   accountCopy: { flex: 1 },
@@ -163,6 +197,7 @@ const styles = StyleSheet.create({
   swapIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: nativeTheme.accentSoft, alignItems: 'center', justifyContent: 'center' },
   currency: { color: nativeTheme.primary, fontWeight: '900', marginRight: 10 },
   noteLabel: { marginTop: 16 },
+  helperText: { color: nativeTheme.muted, fontSize: 12, fontWeight: '700', lineHeight: 18, marginTop: 12 },
   stickyAction: { position: 'absolute', left: 18, right: 18, bottom: 94, padding: 8, borderRadius: 24, backgroundColor: 'rgba(246,250,248,0.96)', borderWidth: 1, borderColor: nativeTheme.border },
   saveButton: { minHeight: 58 },
   disabled: { opacity: 0.65 },
